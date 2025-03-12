@@ -2,7 +2,7 @@
 StocksFlags for PIP&DS
 ## Team Members: 
 - Alan zc2610@nyu.edu
-- Jackson netid@nyu.edu
+- Jackson jc13246@nyu.edu
 - Tyler netid@nyu.edu
 - April netid@nyu.edu
 - Vinci netid@nyu.edu
