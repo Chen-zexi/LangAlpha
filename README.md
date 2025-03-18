@@ -4,7 +4,7 @@ StocksFlags for PIP&DS
 - Alan zc2610@nyu.edu
 - Jackson jc13246@nyu.edu
 - Tyler netid@nyu.edu
-- April netid@nyu.edu
+- April asl8466@nyu.edu
 - Vinci netid@nyu.edu
 
 ## Repository Structure
