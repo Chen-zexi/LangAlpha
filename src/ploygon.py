@@ -48,7 +48,7 @@ class polygon:
                 all_data = pd.concat([all_data, df], ignore_index=True)
         return all_data
     
-    def get_news(self, ticker, from_date, to_date, order="asc", limit=100):
+    def get_news(self, ticker, from_date, to_date, order="asc", limit=100, strict=True):
         """
         Get news for a ticker or tickers.
         
@@ -58,7 +58,7 @@ class polygon:
             to_date: End date in format YYYY-MM-DD
             order: Order of results, "asc" or "desc"
             limit: Maximum number of results to return
-            
+            strict: If True, only return news that has insight_tickers matching the ticker
         Returns:
             Tuple containing (news_data, news_df) where:
             - news_data is the full response dictionary
@@ -136,7 +136,8 @@ class polygon:
                 else:
                     # Already timezone aware, just convert
                     news_df['published_est'] = news_df['published_utc'].dt.tz_convert('US/Eastern')
-            
+            if strict:
+                news_df = news_df[news_df['insight_tickers']==ticker]
             return news_data, news_df
         else:
             return news_data, pd.DataFrame()
