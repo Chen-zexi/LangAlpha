@@ -1,4 +1,4 @@
-name: stocksflags1
+name: stocksflags
 channels:
   - defaults
 dependencies:
