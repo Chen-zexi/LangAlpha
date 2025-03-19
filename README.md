@@ -11,6 +11,7 @@ StocksFlags for PIP&DS
 ```
 StocksFlags/
 ├── data                      # Data directory
+├──                           # Model directory
 ├── src                       # Source code
 └── notebooks                 # Jupyter notebooks for analysis
 ```
