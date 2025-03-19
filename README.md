@@ -56,11 +56,11 @@ git add .                      # Add all modified files
 git commit -m "Your descriptive commit message here"
 
 # Push commits to remote repository
-git push origin main           # Push to main branch
+git push origin master           # Push to main branch
 git push origin your-branch    # Push to a specific branch
 
 # Pull latest changes from remote repository
-git pull origin main           # Pull from main branch
+git pull origin master           # Pull from main branch
 
 # Create and switch to a new branch
 git checkout -b new-branch-name
