@@ -446,7 +446,6 @@ class WRDSConnector:
             # Get the repository root directory (assumes the script is in src/)
             repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             output_dir = os.path.join(repo_root, output_dir)
-            logger.info(f"Using absolute output directory: {output_dir}")
         
         # Retrieve all datasets
         datasets = {
@@ -469,7 +468,6 @@ class WRDSConnector:
                 if df is not None and not df.empty:
                     file_path = os.path.join(output_dir, f"{name}.csv")
                     df.to_csv(file_path, index=False)
-                    logger.info(f"Saved {name} to {file_path}")
         
         # Print summary of retrieved datasets
         logger.info("------- Summary of Retrieved Datasets -------")

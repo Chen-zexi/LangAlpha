@@ -46,6 +46,7 @@ class polygon:
             df = self.get_data(ticker, multiplier, timespan, from_date, to_date, limit)
             if not df.empty:
                 all_data = pd.concat([all_data, df], ignore_index=True)
+            time.sleep(10)
         return all_data
     
     def get_news(self, ticker, from_date, to_date, order="asc", limit=100, strict=True):
