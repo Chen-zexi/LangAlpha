@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 # Default tech stock tickers
-DEFAULT_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'NVDA', 'META', 'TSLA', 'NFLX', 'ADBE',
+DEFAULT_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'NFLX', 'ADBE',
                 'CRM', 'AMD', 'INTC', 'AVGO', 'QCOM', 'SHOP', 'ZM', 'SNOW', 'PYPL', 'PLTR']
 
 
@@ -118,8 +118,9 @@ class WRDSConnector:
             AND a.indfmt = 'INDL'
             AND a.datafmt = 'STD'
             AND a.consol = 'C'
+            AND a.datadate >= '{self.start_date_str}'
+            AND a.datadate <= '{self.end_date_str}'
             ORDER BY a.datadate DESC
-            LIMIT 500
             """
             
             ratios_df = self.execute_query(query)
@@ -162,6 +163,7 @@ class WRDSConnector:
             AND a.datafmt = 'STD'
             AND a.consol = 'C'
             AND a.datadate >= '{self.start_date_str}'
+            AND a.datadate <= '{self.end_date_str}'
             ORDER BY a.datadate DESC
             """
             
@@ -204,6 +206,7 @@ class WRDSConnector:
             AND q.datafmt = 'STD'
             AND q.consol = 'C'
             AND q.datadate >= '{self.start_date_str}'
+            AND q.datadate <= '{self.end_date_str}'
             ORDER BY q.datadate DESC
             """
             
@@ -232,11 +235,12 @@ class WRDSConnector:
             tickers_sql = ','.join([f"'{ticker}'" for ticker in self.tickers])
             
             query = f"""
-            SELECT s.tic, s.datadate, s.prccm, s.prchm, s.prclm, s.cshom
-            FROM comp.secm s
+            SELECT s.tic, s.datadate, s.prccd, s.prchd, s.prcld, s.prcod, s.trfd
+            FROM comp_na_daily_all.secd  s
             WHERE s.tic IN ({tickers_sql})
+            AND s.datadate >= '{self.start_date_str}'
+            AND s.datadate <= '{self.end_date_str}'
             ORDER BY s.datadate DESC
-            LIMIT 1000
             """
             
             security_df = self.execute_query(query)
@@ -273,6 +277,7 @@ class WRDSConnector:
             AND a.datafmt = 'STD'
             AND a.consol = 'C'
             AND a.datadate >= '{self.start_date_str}'
+            AND a.datadate <= '{self.end_date_str}'
             ORDER BY a.datadate DESC
             """
             
@@ -309,6 +314,7 @@ class WRDSConnector:
             AND a.datafmt = 'STD'
             AND a.consol = 'C'
             AND a.datadate >= '{self.start_date_str}'
+            AND a.datadate <= '{self.end_date_str}'
             ORDER BY a.datadate DESC
             """
             
@@ -345,6 +351,7 @@ class WRDSConnector:
             AND a.datafmt = 'STD'
             AND a.consol = 'C'
             AND a.datadate >= '{self.start_date_str}'
+            AND a.datadate <= '{self.end_date_str}'
             ORDER BY a.datadate DESC
             """
             
@@ -398,8 +405,8 @@ class WRDSConnector:
             FROM ciq.wrds_keydev k
             WHERE k.gvkey IN ({gvkeys_sql})
             AND k.announcedate >= '{self.start_date_str}'
+            AND k.announcedate <= '{self.end_date_str}'
             ORDER BY k.announcedate DESC
-            LIMIT 5000
             """
             
             developments_df = self.execute_query(query)
