@@ -10,10 +10,17 @@ StocksFlags for PIP&DS
 ## Repository Structure
 ```
 StocksFlags/
-├── data                      # Data directory
-├── models                    # Valuation Model directory
-├── notebooks                 # Jupyter notebooks for analysis and demonstration
-└── src                       # Source code
+├── data                            # Data directory
+├── models                          # Valuation Model directory
+├── notebooks/                      # Jupyter notebooks for demonstration
+|    └── checkpoint.ipynb           # Checkpoint for milestone 3                  
+├── src/                            # Source code
+|    ├── connect_db.py              # code to connect db
+|    ├── connect_wrds.py            # code to connect wrds
+|    ├── financial_datasets.py      # code to retrieve data from financial datasets
+|    ├── polygon.py                 # code to retrieve data from polygon
+|    └── yahoo_finance.py           # code to retrieve data from yahoo finance
+└── ...
 ```
 
 ## Getting Started
