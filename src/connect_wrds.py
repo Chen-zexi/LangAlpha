@@ -441,6 +441,13 @@ class WRDSConnector:
             logger.error("Failed to retrieve GVKEYs for tickers")
             return None
         
+        # Convert relative path to absolute path
+        if not os.path.isabs(output_dir):
+            # Get the repository root directory (assumes the script is in src/)
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            output_dir = os.path.join(repo_root, output_dir)
+            logger.info(f"Using absolute output directory: {output_dir}")
+        
         # Retrieve all datasets
         datasets = {
             'financial_ratios': self.get_financial_ratios(),
@@ -563,6 +570,13 @@ def main():
     parser.add_argument('--username', help='WRDS username')
     parser.add_argument('--output_dir', default='data/compustat/', help='Directory to save CSV files')
     args = parser.parse_args()
+    
+    # Convert relative output directory to absolute if needed
+    if not os.path.isabs(args.output_dir):
+        # Get the repository root directory (assumes the script is in src/)
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        args.output_dir = os.path.join(repo_root, args.output_dir)
+        logger.info(f"Using absolute output directory: {args.output_dir}")
     
     logger.info("Starting WRDS data retrieval...")
     result = get_wrds_data(
