@@ -235,7 +235,7 @@ class WRDSConnector:
             tickers_sql = ','.join([f"'{ticker}'" for ticker in self.tickers])
             
             query = f"""
-            SELECT s.tic, s.datadate, s.prccd, s.prchd, s.prcld, s.prcod, s.trfd
+            SELECT s.tic, s.datadate, s.cshtrd, s.prccd, s.prchd, s.prcld, s.prcod, s.trfd
             FROM comp_na_daily_all.secd  s
             WHERE s.tic IN ({tickers_sql})
             AND s.datadate >= '{self.start_date_str}'
