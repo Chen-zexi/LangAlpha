@@ -444,7 +444,7 @@ class WRDSConnector:
         # Convert relative path to absolute path
         if not os.path.isabs(output_dir):
             # Get the repository root directory (assumes the script is in src/)
-            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
             output_dir = os.path.join(repo_root, output_dir)
         
         # Retrieve all datasets
@@ -572,7 +572,7 @@ def main():
     # Convert relative output directory to absolute if needed
     if not os.path.isabs(args.output_dir):
         # Get the repository root directory (assumes the script is in src/)
-        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
         args.output_dir = os.path.join(repo_root, args.output_dir)
         logger.info(f"Using absolute output directory: {args.output_dir}")
     
