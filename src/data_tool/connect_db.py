@@ -40,15 +40,20 @@ class ConnectDB:
         df.to_sql(table_name, self.engine, if_exists='append', index=False)
         
     def read_table(self, table_name):
-        sql = f'SELECT * FROM {table_name}'
-        return pd.read_sql(sql, self.engine)
-    
+        sql = text(f'SELECT * FROM {table_name}')
+        with self.engine.connect() as conn:
+            result = conn.execute(sql)
+            return pd.DataFrame(result.fetchall(), columns=result.keys())
+        
     def show_tables(self):
-        return pd.read_sql('SHOW TABLES', self.engine)
+        with self.engine.connect() as conn:
+            result = conn.execute('SHOW TABLES')
+            return pd.DataFrame(result.fetchall(), columns=['Tables'])
+
     
     def execute_sql(self, sql):
         with self.engine.connect() as conn:
-            return conn.execute(text(sql))
+            return conn.execute(sql)
         
     def drop_table(self, table_name):
         self.execute_sql(f'DROP TABLE IF EXISTS {table_name}')
