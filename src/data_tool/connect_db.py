@@ -16,14 +16,15 @@ class ConnectDB:
         else:
             print("DB_USER and DB_PASSWORD are set")
 
-        self.conn_string = 'mysql://{user}:{password}@{host}:{port}/{db}?charset={encoding}'.format(
+        self.conn_string = 'mysql+pymysql://{user}:{password}@{host}:{port}/{db}?charset={encoding}'.format(
             user=self.db_user,
             password=self.db_password,
-            host = 'jsedocc7.scrc.nyu.edu',
-            port     = 3306,
-            encoding = 'utf8',
-            db = 'Elite_Traders'
+            host='jsedocc7.scrc.nyu.edu',
+            port=3306,
+            encoding='utf8',
+            db='Elite_Traders'
         )
+
         self.engine = create_engine(self.conn_string)
 
         # This is for speeding up the insertion into the database schema
