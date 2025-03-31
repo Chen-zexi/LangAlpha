@@ -39,6 +39,13 @@ class ConnectDB:
     def create_table(self, table_name, df, if_exists='append', index=False):
         df.to_sql(table_name, self.engine, if_exists='append', index=False)
         
+    # def read_table(self, table_name):
+    #     sql = f'SELECT * FROM {table_name}'
+    #     return pd.read_sql(sql, self.engine)
+    
+    # def show_tables(self):
+    #     return pd.read_sql('SHOW TABLES', self.engine)
+    
     def read_table(self, table_name):
         sql = text(f'SELECT * FROM {table_name}')
         with self.engine.connect() as conn:
