@@ -222,6 +222,7 @@ def get_company_news(
             url += f"&start_date={start_date}"
         url += f"&limit={limit}"
         
+        print(url, headers)
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
             raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
