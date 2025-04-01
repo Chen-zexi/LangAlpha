@@ -49,7 +49,7 @@ class polygon:
             time.sleep(10)
         return all_data
     
-    def get_news(self, ticker, from_date, to_date, order="asc", limit=100, strict=True):
+    def get_news(self, ticker, from_date=None, to_date=None, order="asc", limit=100, strict=True):
         """
         Get news for a ticker or tickers.
         
@@ -127,16 +127,6 @@ class polygon:
         # Create DataFrame
         if news_items:
             news_df = pd.DataFrame(news_items)
-            
-            # Convert UTC to EST (UTC-5/UTC-4 during DST)
-            if 'published_utc' in news_df.columns and not news_df.empty and news_df['published_utc'].notna().any():
-                news_df['published_utc'] = pd.to_datetime(news_df['published_utc'])
-                # Check if already timezone aware
-                if news_df['published_utc'].dt.tz is None:
-                    news_df['published_est'] = news_df['published_utc'].dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-                else:
-                    # Already timezone aware, just convert
-                    news_df['published_est'] = news_df['published_utc'].dt.tz_convert('US/Eastern')
             if strict:
                 news_df = news_df[news_df['insight_tickers']==ticker]
             return news_data, news_df
