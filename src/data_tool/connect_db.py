@@ -1,7 +1,5 @@
 import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy import event
-from sqlalchemy import text
+from sqlalchemy import create_engine, event, text, inspect
 import os
 from dotenv import load_dotenv
 
@@ -39,29 +37,43 @@ class ConnectDB:
     def create_table(self, table_name, df, if_exists='append', index=False):
         df.to_sql(table_name, self.engine, if_exists='append', index=False)
         
-    # def read_table(self, table_name):
-    #     sql = f'SELECT * FROM {table_name}'
-    #     return pd.read_sql(sql, self.engine)
-    
-    # def show_tables(self):
-    #     return pd.read_sql('SHOW TABLES', self.engine)
+    def insert_df_to_table(self, table_name, df, if_exists='append', index=False):
+        """Insert a DataFrame into a database table"""
+        df.to_sql(table_name, self.engine, if_exists=if_exists, index=index)
+        print(f"Data successfully inserted into {table_name}")
     
     def read_table(self, table_name):
+        """Read all data from a table"""
         sql = text(f'SELECT * FROM {table_name}')
+        with self.engine.connect() as conn:
+            result = conn.execute(sql)
+            return pd.DataFrame(result.fetchall(), columns=result.keys())
+    
+    def read_table_with_condition(self, table_name, condition):
+        """Read data from a table with a WHERE condition"""
+        sql = text(f'SELECT * FROM {table_name} WHERE {condition}')
         with self.engine.connect() as conn:
             result = conn.execute(sql)
             return pd.DataFrame(result.fetchall(), columns=result.keys())
         
     def show_tables(self):
+        """List all tables in the database"""
         with self.engine.connect() as conn:
-            result = conn.execute('SHOW TABLES')
+            result = conn.execute(text('SHOW TABLES'))
             return pd.DataFrame(result.fetchall(), columns=['Tables'])
-
     
-    def execute_sql(self, sql):
+    def execute_sql(self, sql_statement):
+        """Execute an arbitrary SQL statement"""
         with self.engine.connect() as conn:
-            return conn.execute(sql)
+            return conn.execute(text(sql_statement))
         
     def drop_table(self, table_name):
+        """Drop a table if it exists"""
         self.execute_sql(f'DROP TABLE IF EXISTS {table_name}')
+        print(f"Table {table_name} dropped successfully")
+    
+    def check_if_table_exists(self, table_name):
+        """Check if a table exists in the database"""
+        inspector = inspect(self.engine)
+        return table_name in inspector.get_table_names()
         
