@@ -54,7 +54,7 @@ class ConnectDB:
         
     def show_tables(self):
         with self.engine.connect() as conn:
-            result = conn.execute('SHOW TABLES')
+            result = conn.execute(text('SHOW TABLES'))
             return pd.DataFrame(result.fetchall(), columns=['Tables'])
 
     
