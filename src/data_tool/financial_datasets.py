@@ -130,7 +130,7 @@ class FinancialDatasets:
         press_releases = response.json().get('press_releases')
         return press_releases
     
-    def get_news(self, ticker, start_date, end_date, limit=100):
+    def get_news(self, ticker, start_date, end_date, limit=1000):
         
         url = (
             f'{self.base_url}/news'
