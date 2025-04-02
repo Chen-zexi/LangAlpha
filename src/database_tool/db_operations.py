@@ -1,4 +1,4 @@
-from src.data_tool.connect_db import ConnectDB
+from src.database_tool.connect_db import ConnectDB
 import pandas as pd
 from src.data_tool.data_models import Price, FinancialMetrics, LineItem, InsiderTrade, CompanyNews, Position, Portfolio, AnalystSignal, TickerAnalysis, AgentStateData
 from sqlalchemy import text

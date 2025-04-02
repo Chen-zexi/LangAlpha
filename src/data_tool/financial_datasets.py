@@ -15,7 +15,7 @@ from src.data_tool.data_models import (
     InsiderTrade,
     InsiderTradeResponse,
 )
-from src.data_tool.data_operations import DataOperations
+from src.database_tool.db_operations import DataOperations
 
 load_dotenv()
 
