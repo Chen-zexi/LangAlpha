@@ -117,6 +117,36 @@ class CompanyNewsResponse(BaseModel):
     news: list[CompanyNews]
 
 
+# polygon news
+
+class insights(BaseModel):
+    ticker: str
+    sentiment: str
+    sentiment_reasoning: str
+    
+class publisher(BaseModel):
+    name: str
+    logo_url: str
+    favicon_url: str
+    
+class polygon_news(BaseModel):
+    amp_url: str | None = None
+    article_url: str
+    author: str
+    description: str
+    id: str
+    image_url: str | None = None
+    insights: list[insights]
+    keywords: list[str]
+    published_utc: str
+    publisher: publisher
+    tickers:list[str]
+    title: str
+    
+class polygon_news_response(BaseModel):
+    count: int
+    results: list[polygon_news]
+
 class Position(BaseModel):
     cash: float = 0.0
     shares: int = 0
