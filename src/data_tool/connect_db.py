@@ -49,9 +49,12 @@ class ConnectDB:
             result = conn.execute(sql)
             return pd.DataFrame(result.fetchall(), columns=result.keys())
     
-    def read_table_with_condition(self, table_name, condition):
+    def read_table_with_condition(self, table_name, condition, limit=1000):
         """Read data from a table with a WHERE condition"""
-        sql = text(f'SELECT * FROM {table_name} WHERE {condition}')
+        query = f'SELECT * FROM {table_name} WHERE {condition}'
+        if limit is not None:
+            query += f' LIMIT {limit}'
+        sql = text(query)
         with self.engine.connect() as conn:
             result = conn.execute(sql)
             return pd.DataFrame(result.fetchall(), columns=result.keys())
@@ -66,6 +69,20 @@ class ConnectDB:
         """Execute an arbitrary SQL statement"""
         with self.engine.connect() as conn:
             return conn.execute(text(sql_statement))
+        
+    def execute_sql_scalar(self, sql_statement):
+        """Execute an SQL query and return the first value of the first row"""
+        with self.engine.connect() as conn:
+            result = conn.execute(text(sql_statement))
+            row = result.fetchone()
+            return row[0] if row else 0
+        
+    def execute_sql_scalar_tuple(self, sql_statement):
+        """Execute an SQL query and return all values of the first row as a tuple"""
+        with self.engine.connect() as conn:
+            result = conn.execute(text(sql_statement))
+            row = result.fetchone()
+            return tuple(row) if row else None
         
     def drop_table(self, table_name):
         """Drop a table if it exists"""
