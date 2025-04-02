@@ -1,4 +1,4 @@
-from src.data_tool.connect_db import ConnectDB
+from src.database_tool.connect_db import ConnectDB
 from sqlalchemy import text
 import sys
 
