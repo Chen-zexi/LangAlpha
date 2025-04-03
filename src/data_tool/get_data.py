@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Union
 import pandas_market_calendars as mcal
 import requests
-from src.data_tool.connect_wrds import get_fundamentals_quarterly, get_security_daily
+from src.data_tool.data_providers.connect_wrds import get_fundamentals_quarterly, get_security_daily
 from src.data_tool.data_models import FinancialMetrics, FinancialMetricsResponse, RetailActivityResponse, RetailActivity
-from src.data_tool.ploygon import polygon
+from src.data_tool.data_providers.ploygon import polygon
 
 logger = logging.getLogger(__name__)
 

@@ -10,16 +10,31 @@ StocksFlags for PIP&DS
 ## Repository Structure
 ```
 StocksFlags/
-├── data                            # Data directory
-├── models                          # Valuation Model directory
-├── notebooks/                      # Jupyter notebooks for demonstration
-|    └── checkpoint.ipynb           # Checkpoint for milestone 3                  
-├── src/                            # Source code
-|    ├── connect_db.py              # code to connect db
-|    ├── connect_wrds.py            # code to connect wrds
-|    ├── financial_datasets.py      # code to retrieve data from financial datasets
-|    ├── polygon.py                 # code to retrieve data from polygon
-|    └── yahoo_finance.py           # code to retrieve data from yahoo finance
+├── data                                    # Data directory
+├── models                                  # Valuation Model directory
+├── notebooks/                              # Jupyter notebooks for demonstration
+|    ├── checkpoint/
+|    |    └── milestone_3.ipynb             # Checkpoint for milestone 3
+|    ├── demo/                              # Notebook for demo and testing
+|    ├── scrapers/                          # Scrapers (unfinished)
+|    └── db_management.ipynb                # Database management tool                 
+├── src/                                    # Source code
+|    ├── data_tool/
+|    |    ├── data_providers/
+|    |    |    ├── connect_wrds.py          # code to connect wrds
+|    |    |    ├── financial_datasets.py    # code to retrieve data from financial datasets
+|    |    |    ├── polygon.py               # code to retrieve data from polygon
+|    |    |    └── yahoo_finance.py         # code to retrieve data from yahoo finance
+|    |    ├── data_models.py                # pydantic models
+|    |    └── get_data.py                   # get data
+|    ├── database_tool/                     
+|    |    ├── connect_db.py                 # connect to database
+|    |    ├── create_table.py               # create tables
+|    |    └── db_operation.py               # complax data retrieval from database
+|    └── llm/
+|         ├── llm_models.py                 # LLM models
+|         └── api_call.py                   # Make api call to LLM
+|  
 └── ...
 ```
 
