@@ -13,8 +13,8 @@ import os
 from dotenv import load_dotenv
 from src.data_tool.data_models import (
     insights,
-    polygon_news,
-    polygon_news_response,
+    company_news,
+    company_news_response,
 )
 from src.database_tool.db_operations import DataOperations # Added import
 
@@ -99,7 +99,7 @@ class polygon:
         }
         
         try:
-            news_data = polygon_news_response(**news_data_dict)
+            news_data = company_news_response(**news_data_dict)
             news_df = pd.DataFrame(news_data.model_dump()['results'])
             
             # Prepare the DataFrame for insertion
@@ -122,6 +122,6 @@ class polygon:
         except Exception as e:
             print(f"Error processing or inserting news data: {e}")
             news_df = pd.DataFrame()
-            news_data = polygon_news_response(count=0, results=[])
+            news_data = company_news_response(count=0, results=[])
         
         return news_data, news_df
