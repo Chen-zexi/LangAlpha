@@ -131,13 +131,17 @@ class TableCreator:
             create_table_sql = """
             CREATE TABLE company_news (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                ticker VARCHAR(10) NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                author VARCHAR(100) NOT NULL,
-                source VARCHAR(100) NOT NULL,
-                date VARCHAR(20) NOT NULL,
-                url VARCHAR(255) NOT NULL,
-                sentiment VARCHAR(20)
+                polygon_id VARCHAR(255) NOT NULL UNIQUE,  -- Polygon's specific ID
+                ticker VARCHAR(10) NOT NULL, -- Keep for association, though Polygon news can have multiple tickers
+                title TEXT NOT NULL,
+                author VARCHAR(255),
+                publisher VARCHAR(255),
+                published_utc DATETIME NOT NULL,
+                article_url VARCHAR(512) UNIQUE, -- Use article_url for uniqueness check
+                tickers JSON, -- Store list of associated tickers
+                description TEXT,
+                keywords JSON, -- Store list of keywords
+                insights JSON -- Store insights data
             )
             """
             try:

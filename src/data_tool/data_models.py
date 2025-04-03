@@ -23,46 +23,42 @@ class FinancialMetrics(BaseModel):
     ticker: str
     report_period: str
     period: str
-    currency: str
-    market_cap: float | None
-    enterprise_value: float | None
-    price_to_earnings_ratio: float | None
-    price_to_book_ratio: float | None
-    price_to_sales_ratio: float | None
-    enterprise_value_to_ebitda_ratio: float | None
-    enterprise_value_to_revenue_ratio: float | None
-    free_cash_flow_yield: float | None
-    peg_ratio: float | None
-    gross_margin: float | None
-    operating_margin: float | None
-    net_margin: float | None
-    return_on_equity: float | None
-    return_on_assets: float | None
-    return_on_invested_capital: float | None
-    asset_turnover: float | None
-    inventory_turnover: float | None
-    receivables_turnover: float | None
-    days_sales_outstanding: float | None
-    operating_cycle: float | None
-    working_capital_turnover: float | None
-    current_ratio: float | None
-    quick_ratio: float | None
-    cash_ratio: float | None
-    operating_cash_flow_ratio: float | None
-    debt_to_equity: float | None
-    debt_to_assets: float | None
-    interest_coverage: float | None
-    revenue_growth: float | None
-    earnings_growth: float | None
-    book_value_growth: float | None
-    earnings_per_share_growth: float | None
-    free_cash_flow_growth: float | None
-    operating_income_growth: float | None
-    ebitda_growth: float | None
-    payout_ratio: float | None
-    earnings_per_share: float | None
-    book_value_per_share: float | None
-    free_cash_flow_per_share: float | None
+    currency: str | None = None
+    
+    # Valuation & Comparison
+    market_cap: float | None = None
+    earnings_growth: float | None = None
+    fcf_yield: float | None = None
+    
+    # Profitability
+    return_on_equity: float | None = None
+    return_on_invested_capital: float | None = None
+    operating_margin: float | None = None
+    gross_margin: float | None = None
+    earnings_per_share: float | None = None
+    basic_eps: float | None = None
+    diluted_eps: float | None = None
+    net_income: float | None = None
+    revenue: float | None = None
+    
+    # Financial Health & Risk
+    debt_to_equity: float | None = None
+    current_ratio: float | None = None
+    current_assets: float | None = None
+    current_liabilities: float | None = None
+    total_assets: float | None = None
+    total_liabilities: float | None = None
+    
+    # Share Structure & Dividends
+    book_value_per_share: float | None = None
+    outstanding_shares: float | None = None
+    dividends: float | None = None
+    special_distributions: float | None = None
+    
+    # Other
+    free_cash_flow: float | None = None
+    operating_cash_flow: float | None = None
+    capital_expenditure: float | None = None
 
 
 class FinancialMetricsResponse(BaseModel):
@@ -124,28 +120,36 @@ class insights(BaseModel):
     sentiment: str
     sentiment_reasoning: str
     
-class publisher(BaseModel):
-    name: str
-    logo_url: str
-    favicon_url: str
+    model_config = {
+        "extra": "ignore",
+    }
+    
     
 class polygon_news(BaseModel):
-    amp_url: str | None = None
     article_url: str
     author: str
     description: str
     id: str
-    image_url: str | None = None
     insights: list[insights]
     keywords: list[str]
     published_utc: str
-    publisher: publisher
-    tickers:list[str]
+    tickers: list[str]
     title: str
+    publisher: str  
+    
+    model_config = {
+        "extra": "ignore",
+        "arbitrary_types_allowed": True,
+    }
     
 class polygon_news_response(BaseModel):
     count: int
     results: list[polygon_news]
+    
+    model_config = {
+        "extra": "ignore",
+        "arbitrary_types_allowed": True,
+    }
 
 class Position(BaseModel):
     cash: float = 0.0

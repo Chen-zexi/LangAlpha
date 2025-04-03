@@ -11,6 +11,12 @@ from polygon.rest.models import (
 )
 import os
 from dotenv import load_dotenv
+from src.data_tool.data_models import (
+    insights,
+    polygon_news,
+    polygon_news_response,
+)
+from src.database_tool.db_operations import DataOperations # Added import
 
 
 load_dotenv()
@@ -23,6 +29,7 @@ class polygon:
         else:
             print("POLYGON_API_KEY is set")
         self.client = RESTClient(api_key=self.api_key)
+        self.db_ops = DataOperations() # Instantiate DataOperations
         
     def get_data(self, ticker, multiplier=1, timespan='day', from_date='2025-03-13', to_date='2025-03-17', limit=100000):
         aggs = []
@@ -49,7 +56,7 @@ class polygon:
             time.sleep(10)
         return all_data
     
-    def get_news(self, ticker, from_date=None, to_date=None, order="asc", limit=100, strict=True):
+    def get_news(self, ticker, from_date=None, to_date=None, order="asc", limit=1000, strict=True):
         """
         Get news for a ticker or tickers.
         
@@ -62,11 +69,10 @@ class polygon:
             strict: If True, only return news that has insight_tickers matching the ticker
         Returns:
             Tuple containing (news_data, news_df) where:
-            - news_data is the full response dictionary
+            - news_data is the full response dictionary using polygon_news_response model
             - news_df is a DataFrame with key information
         """
         # Get news data
-        news_list = []
         api_response = self.client.list_ticker_news(
             ticker=ticker,
             published_utc_gte=from_date,
@@ -76,102 +82,46 @@ class polygon:
             sort="published_utc",
         )
         
-        # Convert API response objects to dictionaries
+        # Convert API response directly to our model format
+        news_list = []
         for n in api_response:
             # Convert the response object to JSON string then to dict
             news_json = json.loads(json.dumps(n, default=lambda o: o.__dict__))
+            
+            news_json['publisher'] = news_json['publisher']['name']
+                
             news_list.append(news_json)
         
-        # Create a response dictionary similar to the sample
-        news_data = {
+        # Create a response dictionary and parse with Pydantic model
+        news_data_dict = {
             "count": len(news_list),
             "results": news_list,
         }
         
-        # Extract key information for DataFrame
-        news_items = []
-        for item in news_list:
-            # Process publisher data if it exists
-            publisher_name = None
-            if 'publisher' in item and item['publisher'] is not None:
-                if isinstance(item['publisher'], dict) and 'name' in item['publisher']:
-                    publisher_name = item['publisher']['name']
+        try:
+            news_data = polygon_news_response(**news_data_dict)
+            news_df = pd.DataFrame(news_data.model_dump()['results'])
             
-            # Process insights data to extract specific fields
-            sentiment = None
-            sentiment_reasoning = None
-            insight_tickers = None
-            
-            if item.get('insights') and isinstance(item.get('insights'), list) and len(item.get('insights')) > 0:
-                insight = item.get('insights')[0]  # Get first insight
-                sentiment = insight.get('sentiment')
-                sentiment_reasoning = insight.get('sentiment_reasoning')
-                insight_tickers = insight.get('ticker')  # Note: This is renamed from "ticker" in the insights
-                    
-            news_dict = {
-                'id': item.get('id'),
-                'title': item.get('title'),
-                'publisher_name': publisher_name,
-                'author': item.get('author'),
-                'description': item.get('description'),
-                'article_url': item.get('article_url'),
-                'published_utc': item.get('published_utc'),
-                'tickers': item.get('tickers'),
-                'keywords': item.get('keywords'),
-                'sentiment': sentiment,
-                'sentiment_reasoning': sentiment_reasoning,
-                'insight_tickers': insight_tickers
-            }
-            news_items.append(news_dict)
-        
-        # Create DataFrame
-        if news_items:
-            news_df = pd.DataFrame(news_items)
-            if strict:
-                news_df = news_df[news_df['insight_tickers']==ticker]
-            return news_data, news_df
-        else:
-            return news_data, pd.DataFrame()
-    
-    sample_news = {
-    "count": 1,
-    "next_url": "https://api.polygon.io:443/v2/reference/news?cursor=eyJsaW1pdCI6MSwic29ydCI6InB1Ymxpc2hlZF91dGMiLCJvcmRlciI6ImFzY2VuZGluZyIsInRpY2tlciI6e30sInB1Ymxpc2hlZF91dGMiOnsiZ3RlIjoiMjAyMS0wNC0yNiJ9LCJzZWFyY2hfYWZ0ZXIiOlsxNjE5NDA0Mzk3MDAwLG51bGxdfQ",
-    "request_id": "831afdb0b8078549fed053476984947a",
-    "results": [
-        {
-        "amp_url": "https://m.uk.investing.com/news/stock-market-news/markets-are-underestimating-fed-cuts-ubs-3559968?ampMode=1",
-        "article_url": "https://uk.investing.com/news/stock-market-news/markets-are-underestimating-fed-cuts-ubs-3559968",
-        "author": "Sam Boughedda",
-        "description": "UBS analysts warn that markets are underestimating the extent of future interest rate cuts by the Federal Reserve, as the weakening economy is likely to justify more cuts than currently anticipated.",
-        "id": "8ec638777ca03b553ae516761c2a22ba2fdd2f37befae3ab6fdab74e9e5193eb",
-        "image_url": "https://i-invdn-com.investing.com/news/LYNXNPEC4I0AL_L.jpg",
-        "insights": [
-            {
-            "sentiment": "positive",
-            "sentiment_reasoning": "UBS analysts are providing a bullish outlook on the extent of future Federal Reserve rate cuts, suggesting that markets are underestimating the number of cuts that will occur.",
-            "ticker": "UBS"
-            }
-        ],
-        "keywords": [
-            "Federal Reserve",
-            "interest rates",
-            "economic data"
-        ],
-        "published_utc": "2024-06-24T18:33:53Z",
-        "publisher": {
-            "favicon_url": "https://s3.polygon.io/public/assets/news/favicons/investing.ico",
-            "homepage_url": "https://www.investing.com/",
-            "logo_url": "https://s3.polygon.io/public/assets/news/logos/investing.png",
-            "name": "Investing.com"
-        },
-        "tickers": [
-            "UBS"
-        ],
-        "title": "Markets are underestimating Fed cuts: UBS By Investing.com - Investing.com UK"
-        }
-    ],
-    "status": "OK"
-    }
+            # Prepare the DataFrame for insertion
+            if not news_df.empty:
+                news_df = news_df.rename(columns={'id': 'polygon_id'})
+                news_df['ticker'] = ticker
+                
+                # Convert ISO 8601 datetime format (2025-03-01T00:05:27Z) to MySQL compatible format (2025-03-01 00:05:27)
+                if 'published_utc' in news_df.columns:
+                    news_df['published_utc'] = pd.to_datetime(news_df['published_utc']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Convert list/dict columns to JSON strings for DB storage
+                for col in ['tickers', 'keywords', 'insights']:
+                    if col in news_df.columns:
+                        news_df[col] = news_df[col].apply(json.dumps)
+                
+                # Insert data into the database
+                self.db_ops.insert_company_news(news_df, ticker=ticker)
 
-    
-    
+        except Exception as e:
+            print(f"Error processing or inserting news data: {e}")
+            news_df = pd.DataFrame()
+            news_data = polygon_news_response(count=0, results=[])
+        
+        return news_data, news_df
