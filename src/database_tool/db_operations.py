@@ -122,33 +122,75 @@ class DataOperations:
         else:
             print("No new insider trades to insert")
     
-    def insert_company_news(self, news_items, check_duplicates=True):
+    def insert_company_news(self, news_df, ticker, check_duplicates=True):
         """
-        Insert company news into the database
+        Insert company news from a DataFrame into the database
         
         Args:
-            news_items (list[CompanyNews]): List of CompanyNews objects
-            check_duplicates (bool): Whether to check for and skip duplicate entries
+            news_df (pd.DataFrame): DataFrame containing news data, structured according to polygon_news model
+            ticker (str): The primary ticker associated with the news search (used for logging/context)
+            check_duplicates (bool): Whether to check for and skip duplicate entries based on article_url or polygon_id
         """
-        news_data = []
+        if news_df.empty:
+            print(f"No news data provided for {ticker} to insert.")
+            return
+
+        original_count = len(news_df)
+        news_to_insert_df = news_df.copy()
+
+        if check_duplicates:
+            # Check existing news by article_url (or polygon_id if preferred)
+            # Fetch existing unique identifiers from the DB to avoid row-by-row checks
+            existing_identifiers = set()
+            try:
+                # Use article_url as it's marked UNIQUE in the new schema
+                query = text("SELECT article_url FROM company_news WHERE article_url IS NOT NULL")
+                with self.engine.connect() as conn:
+                    result = conn.execute(query)
+                    existing_identifiers = {row[0] for row in result}
+            except Exception as e:
+                print(f"Warning: Could not fetch existing news identifiers for duplicate check: {e}")
+                # Proceed without pre-fetching, rely on DB constraints or individual checks if necessary
+            
+            # Filter out rows where the identifier already exists in the database
+            if 'article_url' in news_to_insert_df.columns:
+                news_to_insert_df = news_to_insert_df[~news_to_insert_df['article_url'].isin(existing_identifiers)]
+            else:
+                 print("Warning: 'article_url' column not found in DataFrame for duplicate check.")
+
+        inserted_count = len(news_to_insert_df)
+        skipped_count = original_count - inserted_count
         
-        for news in news_items:
-            # Skip if this news already exists
-            if check_duplicates:
-                # Using URL as a unique identifier
-                condition = f"url = '{news.url}'"
-                if self.check_data_exists('company_news', condition):
-                    print(f"News article with URL {news.url} already exists, skipping")
-                    continue
-                    
-            news_data.append(self.model_to_dict(news))
-        
-        if news_data:
-            df = pd.DataFrame(news_data)
-            self.db.insert_df_to_table('company_news', df)
-            print(f"Inserted {len(news_data)} company news records")
+        if skipped_count > 0:
+            print(f"Skipped {skipped_count} duplicate news records for {ticker}.")
+
+        if not news_to_insert_df.empty:
+            # Ensure DataFrame columns match the database table columns
+            # Remove columns not present in the table or handle type conversions if necessary
+            # (Assuming the DataFrame preprocessing in get_news handled column naming and JSON conversion)
+            
+            # Select only columns that exist in the DB table schema
+            # This requires knowing the exact column names from create_table.py
+            db_columns = [
+                'polygon_id', 'ticker', 'title', 'author', 'publisher', 
+                'published_utc', 'article_url', 'tickers', 'description', 
+                'keywords', 'insights'
+            ]
+            columns_to_insert = [col for col in db_columns if col in news_to_insert_df.columns]
+            news_to_insert_df = news_to_insert_df[columns_to_insert]
+
+            try:
+                self.db.insert_df_to_table('company_news', news_to_insert_df)
+                print(f"Successfully inserted {inserted_count} new company news records for {ticker}.")
+            except Exception as e:
+                 print(f"Error inserting company news data for {ticker}: {e}")
+                 # Consider logging failed rows or specific error details
+
         else:
-            print("No new company news to insert")
+            if skipped_count == original_count:
+                 print(f"All {original_count} news records for {ticker} already exist in the database.")
+            else:
+                 print(f"No new company news records to insert for {ticker} after duplicate check.")
     
     def insert_analyst_signals(self, ticker, ticker_analysis, check_duplicates=False):
         """
