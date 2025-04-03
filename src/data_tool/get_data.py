@@ -5,10 +5,11 @@ import os
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Union
+import pandas_market_calendars as mcal
 import requests
 from src.data_tool.connect_wrds import get_fundamentals_quarterly, get_security_daily
 from src.data_tool.data_models import FinancialMetrics, FinancialMetricsResponse, RetailActivityResponse, RetailActivity
-import pandas_market_calendars as mcal
+from src.data_tool.ploygon import polygon
 
 logger = logging.getLogger(__name__)
 
@@ -258,4 +259,9 @@ def get_retail_activity(ticker: str, date: str) -> pd.DataFrame:
     return RetailActivityResponse(results=retail_activity)
 
 
+
 # News - Polygon
+def get_news(ticker: str, date: str) -> pd.DataFrame:
+    """Get news for a specific ticker and date."""
+    polygon = polygon()
+    return polygon.get_news(ticker, date)

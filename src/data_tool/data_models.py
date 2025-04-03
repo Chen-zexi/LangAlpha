@@ -111,7 +111,7 @@ class insights(BaseModel):
     }
     
     
-class company_news(BaseModel):
+class CompanyNews(BaseModel):
     article_url: str
     author: str
     description: str
@@ -128,9 +128,9 @@ class company_news(BaseModel):
         "arbitrary_types_allowed": True,
     }
     
-class company_news_response(BaseModel):
+class CompanyNewsResponse(BaseModel):
     count: int
-    results: list[company_news]
+    results: list[CompanyNews]
     
     model_config = {
         "extra": "ignore",
