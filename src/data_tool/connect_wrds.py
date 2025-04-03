@@ -184,19 +184,28 @@ class WRDSConnector:
             return pd.DataFrame()
     
     def get_fundamentals_quarterly(self):
-        """Get quarterly fundamental data."""
+        """Get quarterly fundamental data based on updated metrics requirements."""
         if self.db is None or self.ticker_gvkeys is None:
             return pd.DataFrame()
         
         try:
             gvkeys_sql = ','.join([f"'{gvkey}'" for gvkey in self.ticker_gvkeys['gvkey']])
+            logger.info(f"Using gvkeys: {gvkeys_sql}")
             
-            # Define important fundamental columns
-            core_columns = ['gvkey', 'datadate', 'fyearq', 'fqtr', 'indfmt', 'consol']
-            balance_sheet = ['atq', 'ltq', 'ceqq', 'cheq', 'dlttq', 'dlcq', 'rectq', 'invtq']
-            income_stmt = ['saleq', 'revtq', 'cogsq', 'xsgaq', 'oibdpq', 'niq', 'ibq', 'xrdq', 'capxy']
+            # Define required fundamental columns based on new metrics
+            core_columns = ['gvkey', 'datadate', 'fyearq', 'fqtr']
             
-            columns_sql = ', '.join([f'q.{col}' for col in core_columns + balance_sheet + income_stmt])
+            # Profitability metrics
+            profitability = ['ibq', 'niq', 'epspiq', 'epsfiq', 'oibdpq', 'saleq', 'cogsq', 'cshoq']
+            
+            # Financial health metrics
+            financial_health = ['actq', 'lctq', 'atq', 'ltq', 'dlttq', 'ceqq', 'icaptq']
+            
+            # Cash flow metrics - Note: these might be problematic, so we'll handle them separately
+            cash_flow = ['oancfy', 'capxy']
+            
+            columns_sql = ', '.join([f'q.{col}' for col in core_columns + profitability + financial_health + cash_flow])
+            
             
             query = f"""
             SELECT {columns_sql}
@@ -210,11 +219,55 @@ class WRDSConnector:
             ORDER BY q.datadate DESC
             """
             
+            logger.info(f"Executing quarterly fundamentals query for date range: {self.start_date_str} to {self.end_date_str}")
             quarterly_df = self.execute_query(query)
+            
+            # Check if we got any data
+            if quarterly_df.empty:
+                logger.warning(f"No quarterly data found for the specified criteria. Trying with a more relaxed query...")
+                
+                # Try a simpler query with just core columns
+                relaxed_query = f"""
+                SELECT q.gvkey, q.datadate, q.fyearq, q.fqtr
+                FROM comp.fundq q
+                WHERE q.gvkey IN ({gvkeys_sql})
+                AND q.indfmt = 'INDL'
+                AND q.datafmt = 'STD'
+                AND q.consol = 'C'
+                LIMIT 10
+                """
+                
             
             # Convert date
             if not quarterly_df.empty and 'datadate' in quarterly_df.columns:
                 quarterly_df['datadate'] = pd.to_datetime(quarterly_df['datadate'])
+            
+            # Rename columns for clarity
+            if not quarterly_df.empty:
+                rename_dict = {
+                    'ibq': 'net_income',
+                    'niq': 'net_income_including_extraordinary',
+                    'epspiq': 'basic_eps',
+                    'epsfiq': 'diluted_eps',
+                    'oibdpq': 'operating_income',
+                    'saleq': 'revenue',
+                    'cogsq': 'cost_of_goods_sold',
+                    'actq': 'current_assets',
+                    'lctq': 'current_liabilities',
+                    'atq': 'total_assets',
+                    'ltq': 'total_liabilities',
+                    'dlttq': 'long_term_debt',
+                    'ceqq': 'common_equity',
+                    'cshoq': 'common_shares_outstanding',
+                    'icaptq': 'invested_capital',
+                    'datadate': 'report_date',
+                    'fyearq': 'fiscal_year',
+                    'fqtr': 'fiscal_quarter',
+                    'oancfy': 'net_operating_cash_flow',
+                    'capxy': 'capital_expenditure'
+                }
+                
+                quarterly_df.rename(columns=rename_dict, inplace=True)
             
             # Merge with ticker information
             result = quarterly_df.merge(self.ticker_gvkeys[['gvkey', 'ticker', 'conm']], 
@@ -235,8 +288,9 @@ class WRDSConnector:
             tickers_sql = ','.join([f"'{ticker}'" for ticker in self.tickers])
             
             query = f"""
-            SELECT s.tic, s.datadate, s.cshtrd, s.prccd, s.prchd, s.prcld, s.prcod, s.trfd
-            FROM comp_na_daily_all.secd  s
+            SELECT s.tic, s.datadate, s.cshtrd, s.prccd, s.prchd, s.prcld, s.prcod, s.trfd,
+                   s.cshoc, s.eps, s.divd, s.divsp 
+            FROM comp_na_daily_all.secd s
             WHERE s.tic IN ({tickers_sql})
             AND s.datadate >= '{self.start_date_str}'
             AND s.datadate <= '{self.end_date_str}'
@@ -251,7 +305,19 @@ class WRDSConnector:
             
             # Rename to standardized columns
             if not security_df.empty and 'tic' in security_df.columns:
-                security_df.rename(columns={'tic': 'ticker'}, inplace=True)
+                security_df.rename(columns={
+                    'tic': 'ticker',
+                    'prccd': 'close_price',
+                    'prchd': 'high_price',
+                    'prcld': 'low_price',
+                    'prcod': 'open_price',
+                    'cshtrd': 'trading_volume',
+                    'cshoc': 'outstanding_shares',
+                    'eps': 'eps_ttm',
+                    'divd': 'dividends',
+                    'divsp': 'special_distributions',
+                    'trfd': 'trading_factor'
+                }, inplace=True)
             
             logger.info(f"Retrieved {len(security_df)} security daily records")
             return security_df
