@@ -99,20 +99,6 @@ class InsiderTradeResponse(BaseModel):
     insider_trades: list[InsiderTrade]
 
 
-class CompanyNews(BaseModel):
-    ticker: str
-    title: str
-    author: str
-    source: str
-    date: str
-    url: str
-    sentiment: str | None = None
-
-
-class CompanyNewsResponse(BaseModel):
-    news: list[CompanyNews]
-
-
 # polygon news
 
 class insights(BaseModel):
@@ -125,7 +111,7 @@ class insights(BaseModel):
     }
     
     
-class polygon_news(BaseModel):
+class company_news(BaseModel):
     article_url: str
     author: str
     description: str
@@ -142,14 +128,25 @@ class polygon_news(BaseModel):
         "arbitrary_types_allowed": True,
     }
     
-class polygon_news_response(BaseModel):
+class company_news_response(BaseModel):
     count: int
-    results: list[polygon_news]
+    results: list[company_news]
     
     model_config = {
         "extra": "ignore",
         "arbitrary_types_allowed": True,
     }
+
+
+class RetailActivity(BaseModel):
+    ticker: str
+    date: str
+    activity: float
+    sentiment: int
+    
+class RetailActivityResponse(BaseModel):
+    results: list[RetailActivity]
+
 
 class Position(BaseModel):
     cash: float = 0.0
