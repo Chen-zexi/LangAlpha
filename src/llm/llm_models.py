@@ -31,7 +31,7 @@ class LLMModel(BaseModel):
     
     def has_json_mode(self) -> bool:
         """Check if the model supports JSON mode"""
-        return not self.is_deepseek() and not self.is_gemini()
+        return not self.is_deepseek()
     
     def is_deepseek(self) -> bool:
         """Check if the model is a DeepSeek model"""
