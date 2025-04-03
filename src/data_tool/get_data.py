@@ -5,11 +5,21 @@ import os
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Union
-
+import requests
 from src.data_tool.connect_wrds import get_fundamentals_quarterly, get_security_daily
-from src.data_tool.data_models import FinancialMetrics, FinancialMetricsResponse
+from src.data_tool.data_models import FinancialMetrics, FinancialMetricsResponse, RetailActivityResponse, RetailActivity
+import pandas_market_calendars as mcal
 
 logger = logging.getLogger(__name__)
+
+def market_is_open(date):
+    result = mcal.get_calendar("NASDAQ").valid_days(start_date=date, end_date=date)
+    return result.empty == False
+
+def get_last_trading_day(date):
+    while not market_is_open(date):
+        date = date - timedelta(days=1)
+    return date
 
 def calculate_financial_metrics(ticker: str, 
                                date: Optional[str] = None,
@@ -50,9 +60,6 @@ def calculate_financial_metrics(ticker: str,
     start_date = (target_date - timedelta(days=365))
     fundamentals_df = get_fundamentals_quarterly([ticker], start_date, date, username)
     
-    logger.info(f"Retrieved fundamentals data: {len(fundamentals_df)} rows")
-    logger.info(f"Retrieved security data: {len(security_df)} rows")
-    
     
     
     # Store previous quarter if we have at least 2 quarters
@@ -85,11 +92,10 @@ def calculate_financial_metrics(ticker: str,
     
     try:
         # Calculate market cap
-        calculate_market_cap(metric, latest_security)
+        metric.market_cap = float(security_data['close_price']) * float(security_data['outstanding_shares'])/1000000
         
         # Calculate earnings growth using previous quarter
-        if prev_quarter is not None:
-            calculate_earnings_growth_from_stored_quarters(metric, current_quarter, prev_quarter)
+        calculate_earnings_growth_from_stored_quarters(metric, current_quarter, prev_quarter) if prev_quarter['basic_eps'] is not None else None
         
         # Profitability metrics
         calculate_profitability_metrics(metric, current_quarter)
@@ -102,10 +108,6 @@ def calculate_financial_metrics(ticker: str,
         
         # Cash flow metrics
         calculate_cash_flow_metrics(metric, current_quarter)
-        
-        # Calculate FCF yield if market cap exists
-        if metric.free_cash_flow is not None and metric.market_cap and metric.market_cap > 0:
-            metric.fcf_yield = metric.free_cash_flow / metric.market_cap
         
         logger.info(f"Successfully calculated metrics for {ticker}")
         return metric
@@ -141,81 +143,56 @@ def calculate_financial_metrics_batch(tickers: List[str],
 
 def calculate_earnings_growth_from_stored_quarters(metric: FinancialMetrics, current: pd.Series, previous: pd.Series) -> None:
     """Calculate earnings growth between two quarterly periods using stored data."""
-    if 'basic_eps' in current and current['basic_eps'] and 'basic_eps' in previous and previous['basic_eps']:
-        if previous['basic_eps'] != 0:
-            metric.earnings_growth = (current['basic_eps'] - previous['basic_eps']) / abs(previous['basic_eps'])
-            logger.info(f"Calculated earnings growth for {metric.ticker}: {metric.earnings_growth} " +
-                       f"({current['basic_eps']} vs {previous['basic_eps']})")
-
-
-
-def calculate_market_cap(metric: FinancialMetrics, security_data: dict) -> None:
-    """Calculate market cap from security data."""
-    if all(k in security_data for k in ['close_price', 'outstanding_shares']):
-        if security_data['outstanding_shares'] and security_data['close_price']:
-            metric.market_cap = security_data['close_price'] * security_data['outstanding_shares']
+    metric.earnings_growth = (float(current['basic_eps']) - float(previous['basic_eps'])) / abs(float(previous['basic_eps']))
 
 
 def calculate_profitability_metrics(metric: FinancialMetrics, row: pd.Series) -> None:
     """Calculate profitability metrics."""
-    # Return on Equity
-    if all(k in row for k in ['net_income', 'common_equity']) and row['common_equity'] and row['common_equity'] != 0:
-        metric.return_on_equity = row['net_income'] / row['common_equity']
+
+    metric.return_on_equity = float(row['net_income']) / float(row['common_equity'])
     
-    # Return on Invested Capital
-    if all(k in row for k in ['net_income', 'invested_capital']) and row['invested_capital'] and row['invested_capital'] != 0:
-        metric.return_on_invested_capital = row['net_income'] / row['invested_capital']
+
+    metric.return_on_invested_capital = float(row['net_income']) / float(row['invested_capital'])
     
-    # Operating Margin
-    if all(k in row for k in ['operating_income', 'revenue']) and row['revenue'] and row['revenue'] != 0:
-        metric.operating_margin = row['operating_income'] / row['revenue']
+
+    metric.operating_margin = float(row['operating_income']) / float(row['revenue'])
     
-    # Gross Margin
-    if all(k in row for k in ['revenue', 'cost_of_goods_sold']) and row['revenue'] and row['revenue'] != 0:
-        gross_profit = row['revenue'] - row['cost_of_goods_sold']
-        metric.gross_margin = gross_profit / row['revenue']
+
+    gross_profit = float(row['revenue']) - float(row['cost_of_goods_sold'])
+    metric.gross_margin = gross_profit / float(row['revenue'])
     
-    # EPS metrics
-    if 'basic_eps' in row:
-        metric.basic_eps = row['basic_eps']
-        metric.earnings_per_share = row['basic_eps']  # Also set the general field
+
+    metric.basic_eps = float(row['basic_eps'])
+    metric.earnings_per_share = float(row['basic_eps'])  # Also set the general field
     
-    if 'diluted_eps' in row:
-        metric.diluted_eps = row['diluted_eps']
+
+    metric.diluted_eps = float(row['diluted_eps'])
     
-    # Revenue and income
-    if 'revenue' in row:
-        metric.revenue = row['revenue']
-    
-    if 'net_income' in row:
-        metric.net_income = row['net_income']
+
+    metric.revenue = float(row['revenue'])
+
+    metric.net_income = float(row['net_income'])
 
 
 def calculate_financial_health_metrics(metric: FinancialMetrics, row: pd.Series) -> None:
     """Calculate financial health metrics."""
-    # Debt to Equity
-    if all(k in row for k in ['long_term_debt', 'common_equity']) and row['common_equity'] and row['common_equity'] != 0:
-        metric.debt_to_equity = row['long_term_debt'] / row['common_equity']
-    
-    # Current Ratio
-    if all(k in row for k in ['current_assets', 'current_liabilities']) and row['current_liabilities'] and row['current_liabilities'] != 0:
-        metric.current_ratio = row['current_assets'] / row['current_liabilities']
+
+    metric.debt_to_equity = float(row['long_term_debt']) / float(row['common_equity'])
+    metric.current_ratio = float(row['current_assets']) / float(row['current_liabilities'])
     
     # Balance sheet items
-    metric.current_assets = row.get('current_assets')
-    metric.current_liabilities = row.get('current_liabilities')
-    metric.total_assets = row.get('total_assets')
-    metric.total_liabilities = row.get('total_liabilities')
+    metric.current_assets = float(row.get('current_assets'))
+    metric.current_liabilities = float(row.get('current_liabilities'))
+    metric.total_assets = float(row.get('total_assets'))
+    metric.total_liabilities = float(row.get('total_liabilities'))
 
 
 def calculate_share_structure_metrics(metric: FinancialMetrics, row: pd.Series, security_data: dict) -> None:
     """Calculate share structure metrics."""
-    # Book Value per Share
-    if all(k in row for k in ['common_equity', 'common_shares_outstanding']) and row['common_shares_outstanding'] and row['common_shares_outstanding'] != 0:
-        metric.book_value_per_share = row['common_equity'] / row['common_shares_outstanding']
+    metric.book_value_per_share = float(row['common_equity']) / float(row['common_shares_outstanding'])
     
     # Outstanding Shares - prefer from fundamentals, fallback to security data
-    metric.outstanding_shares = row.get('common_shares_outstanding', security_data.get('outstanding_shares'))
+    metric.outstanding_shares = float(row.get('common_shares_outstanding', security_data.get('outstanding_shares')  ))
     
     # Dividend information - ensure values are set even if not in security data
     # Check if keys exist in security_data, otherwise use defaults
@@ -237,17 +214,48 @@ def calculate_share_structure_metrics(metric: FinancialMetrics, row: pd.Series, 
 def calculate_cash_flow_metrics(metric: FinancialMetrics, row: pd.Series) -> None:
     """Calculate cash flow metrics."""
     # Cash flow metrics
-    metric.operating_cash_flow = row.get('net_operating_cash_flow')
-    metric.capital_expenditure = row.get('capital_expenditure')
+    metric.operating_cash_flow = float(row.get('net_operating_cash_flow'))
+    metric.capital_expenditure = float(row.get('capital_expenditure'))
         
     # Calculate free cash flow even if one component is missing
     if metric.operating_cash_flow and metric.capital_expenditure:
-        metric.free_cash_flow = metric.operating_cash_flow - metric.capital_expenditure
+        metric.free_cash_flow = float(metric.operating_cash_flow) - float(metric.capital_expenditure)
     if not metric.operating_cash_flow:
         logger.warning(f"No operating cash flow data for {metric.ticker}")
     if not metric.capital_expenditure:
         logger.warning(f"No capital expenditure data for {metric.ticker}")
+        
+    if metric.free_cash_flow:
+        metric.fcf_yield = float(metric.free_cash_flow) / float(metric.market_cap)
 
+
+def get_retail_activity(ticker: str, date: str) -> pd.DataFrame:
+    """Get retail trades for a specific ticker and date."""
+    NASDAQ_API_KEY = os.getenv('NASDAQ_API_KEY')
+    date = datetime.strptime(date, '%Y-%m-%d')
+    count = 0
+    dates = []
+    while count < 7:
+        date = get_last_trading_day(date)
+        count += 1
+        dates.append(date.strftime('%Y-%m-%d'))
+        date = date - timedelta(days=1)
+        
+        
+    dates = '%2c'.join(dates)    
+    url = f'https://data.nasdaq.com/api/v3/datatables/NDAQ/RTAT10?date={dates}&ticker={ticker}&api_key={NASDAQ_API_KEY}'
+    response = requests.get(url)
+    response = response.json()['datatable']['data']
+    retail_activity = []
+    for row in response:
+        activity = RetailActivity(
+            ticker=row[0],
+            date=row[1],
+            activity=row[2],
+            sentiment=row[3]
+        )
+        retail_activity.append(activity)
+    return RetailActivityResponse(results=retail_activity)
 
 
 # News - Polygon
