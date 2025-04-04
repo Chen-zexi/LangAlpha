@@ -148,6 +148,35 @@ class RetailActivityResponse(BaseModel):
     results: list[RetailActivity]
 
 
+class ShortTermSentiment(BaseModel):
+    short_term_sentiment: str
+    short_term_confidence: float
+    short_term_reasoning: str
+    
+class LongTermSentiment(BaseModel):
+    long_term_sentiment: str
+    long_term_confidence: float
+    long_term_reasoning: str
+    
+class KeyEventOutlook(BaseModel):
+    event: str
+    event_date: str
+    event_type: str
+    event_impact: str
+    event_reasoning: str
+    
+class NewsSentiment(BaseModel):
+    short_term_sentiment: ShortTermSentiment
+    long_term_sentiment: LongTermSentiment
+    key_events_outlook: list[KeyEventOutlook]
+    
+class NewsSentimentByDate(BaseModel):
+    summary: str
+    sentiment: str
+    reasoning: str
+    date: str
+    stock_price_movement: str
+
 class Position(BaseModel):
     cash: float = 0.0
     shares: int = 0
