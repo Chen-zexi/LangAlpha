@@ -126,3 +126,42 @@ class polygon:
         
         return news_data, news_df
 
+
+def prepare_news_for_llm(news_list):
+    """
+    Prepare company news data for an LLM by removing URLs and converting to a structured format.
+    
+    Args:
+        news_list: List of CompanyNews objects
+        
+    Returns:
+        List of dictionaries containing cleaned news data
+    """
+    processed_news = []
+    
+    for news_item in news_list:
+        # Create a dictionary with all fields except URL
+        news_dict = {
+            "tickers": news_item.tickers,
+            "title": news_item.title,
+            "description": news_item.description,
+            "published_utc": news_item.published_utc,
+        }
+        
+        processed_news.append(news_dict)
+    
+    return processed_news
+
+
+def parse_news_by_date(news_list):
+    """
+    Parse news by date and return a dictionary with date as key and news as value
+    """
+    news_dict = {}
+    for news in news_list:
+        date = pd.to_datetime(news.published_utc).strftime('%Y-%m-%d')
+        if date not in news_dict:
+            news_dict[date] = []
+        news_dict[date].append(news)
+    print(f'{len(news_dict)} days of news parsed')
+    return news_dict
