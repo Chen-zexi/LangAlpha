@@ -136,8 +136,7 @@ dependencies:
   - pyflakes=3.2.0
   - pygments=2.15.1
   - pyparsing=3.2.0
-  - pyqt=6.7.1
-  - pyqt6-sip=13.9.1
+  - pyqt
   - pysocks=1.7.1
   - pytest=8.3.4
   - pytest-cov=6.0.0
@@ -318,6 +317,7 @@ dependencies:
       - pymongo==4.11.2
       - pymysql==1.1.1
       - pypdf2==3.0.1
+      - pyqt6-sip
       - python-dotenv==1.0.1
       - pytickertick==1.0.0
       - regex==2024.11.6
