@@ -1,4 +1,4 @@
-from src.data_tool.connect_db import ConnectDB
+from src.database_tool.connect_db import ConnectDB
 from sqlalchemy import text
 import sys
 
@@ -131,13 +131,17 @@ class TableCreator:
             create_table_sql = """
             CREATE TABLE company_news (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                ticker VARCHAR(10) NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                author VARCHAR(100) NOT NULL,
-                source VARCHAR(100) NOT NULL,
-                date VARCHAR(20) NOT NULL,
-                url VARCHAR(255) NOT NULL,
-                sentiment VARCHAR(20)
+                polygon_id VARCHAR(255) NOT NULL UNIQUE,  -- Polygon's specific ID
+                ticker VARCHAR(10) NOT NULL, -- Keep for association, though Polygon news can have multiple tickers
+                title TEXT NOT NULL,
+                author VARCHAR(255),
+                publisher VARCHAR(255),
+                published_utc DATETIME NOT NULL,
+                article_url VARCHAR(512) UNIQUE, -- Use article_url for uniqueness check
+                tickers JSON, -- Store list of associated tickers
+                description TEXT,
+                keywords JSON, -- Store list of keywords
+                insights JSON -- Store insights data
             )
             """
             try:
@@ -150,48 +154,6 @@ class TableCreator:
         else:
             print("Company News table already exists")
     
-    def create_position_table(self):
-        if not self.db.check_if_table_exists('position'):
-            create_table_sql = """
-            CREATE TABLE position (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                cash FLOAT DEFAULT 0.0,
-                shares INT DEFAULT 0,
-                ticker VARCHAR(10) NOT NULL
-            )
-            """
-            try:
-                with self.engine.connect() as conn:
-                    conn.execute(text(create_table_sql))
-                    conn.commit()
-                print("Position table created successfully")
-            except Exception as e:
-                print(f"Error creating position table: {e}")
-        else:
-            print("Position table already exists")
-    
-    def create_analyst_signal_table(self):
-        if not self.db.check_if_table_exists('analyst_signal'):
-            create_table_sql = """
-            CREATE TABLE analyst_signal (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                agent_name VARCHAR(100) NOT NULL,
-                ticker VARCHAR(10) NOT NULL,
-                signal VARCHAR(50),
-                confidence FLOAT,
-                reasoning TEXT,
-                max_position_size FLOAT
-            )
-            """
-            try:
-                with self.engine.connect() as conn:
-                    conn.execute(text(create_table_sql))
-                    conn.commit()
-                print("Analyst Signal table created successfully")
-            except Exception as e:
-                print(f"Error creating analyst_signal table: {e}")
-        else:
-            print("Analyst Signal table already exists")
     
     def create_all_tables(self):
         """Create all tables defined in the models"""
@@ -199,8 +161,6 @@ class TableCreator:
         self.create_financial_metrics_table()
         self.create_insider_trade_table()
         self.create_company_news_table()
-        self.create_position_table()
-        self.create_analyst_signal_table()
         print("All tables created successfully")
 
 def main():
