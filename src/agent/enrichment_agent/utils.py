@@ -1,7 +1,7 @@
 """Utility functions used in our graph."""
 
 from typing import Optional
-
+import os
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AnyMessage
@@ -9,6 +9,9 @@ from langchain_core.runnables import RunnableConfig
 
 from enrichment_agent.configuration import Configuration
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_message_text(msg: AnyMessage) -> str:
     """Get the text content of a message."""
@@ -31,4 +34,4 @@ def init_model(config: Optional[RunnableConfig] = None) -> BaseChatModel:
     else:
         provider = None
         model = fully_specified_name
-    return init_chat_model(model, model_provider=provider)
+    return init_chat_model(model, model_provider=provider, api_key=os.getenv("GEMINI_API_KEY"))

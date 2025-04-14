@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 
-from enrichment_agent import prompts
+from web_query_agent import prompts
 
 
 @dataclass(kw_only=True)
@@ -15,7 +15,7 @@ class Configuration:
     """The configuration for the agent."""
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        default="anthropic/claude-3-5-sonnet-20240620",
+        default="google_genai/gemini-2.0-flash",
         metadata={
             "description": "The name of the language model to use for the agent. "
             "Should be in the form: provider/model-name."
