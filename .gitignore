@@ -10,4 +10,4 @@ __pycache__/
 .langgraph_api/
 .langgraph_api/*
 
-stocksflags-ec5c40f2f2ee.json
+notebooks/stocksflags-ec5c40f2f2ee.json
