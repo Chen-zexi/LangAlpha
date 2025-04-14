@@ -266,7 +266,7 @@ dependencies:
       - langchain-groq==0.3.2
       - langchain-mcp-adapters==0.0.7
       - langchain-ollama==0.2.2
-      - langchain-openai==0.3.1
+      - langchain-openai>=0.3.1
       - langchain-text-splitters==0.3.8
       - langgraph==0.3.27
       - langgraph-api==0.0.48

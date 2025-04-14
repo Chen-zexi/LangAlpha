@@ -30,8 +30,20 @@ class polygon:
             print("POLYGON_API_KEY is set")
         self.client = RESTClient(api_key=self.api_key)
         self.db_ops = DataOperations() # Instantiate DataOperations
-        
-    def get_data(self, ticker, multiplier=1, timespan='day', from_date='2025-03-13', to_date='2025-03-17', limit=100000):
+    
+    def get_data(self, ticker, multiplier=1, timespan='day', from_date='2025-03-13', to_date='2025-03-17', limit=100000) -> pd.DataFrame:
+        """
+        Get stock data for a ticker from Polygon API
+        Args:
+            ticker: A ticker symbol or list of ticker symbols
+            multiplier: The multiplier for the timespan
+            timespan: The timespan for the data
+            from_date: The start date for the data
+            to_date: The end date for the data
+            limit: The maximum number of results to return
+        Returns:
+            A pandas DataFrame containing the stock data
+        """
         aggs = []
         for a in self.client.list_aggs(ticker=ticker, multiplier=multiplier, timespan=timespan, from_=from_date, to=to_date, limit=limit):
             aggs.append(a)
