@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "enrichment_agent": "enrichment_agent/graph.py:graph",
+    "web_query_agent": "web_query_agent/graph.py:graph"
+  },
+  "env": "../../.env"
+}
