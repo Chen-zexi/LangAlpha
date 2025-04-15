@@ -2,6 +2,12 @@
 .env
 
 .vscode/
+.vscode/*
 
 __pycache__/
 *.pyc
+
+.langgraph_api/
+.langgraph_api/*
+
+notebooks/stocksflags-ec5c40f2f2ee.json
