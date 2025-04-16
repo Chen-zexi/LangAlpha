@@ -10,12 +10,5 @@ __pycache__/
 .langgraph_api/
 .langgraph_api/*
 
-<<<<<<< HEAD
 notebooks/stocksflags-ec5c40f2f2ee.json
 notebooks/rational-diode-456114-m0-79243525427e.json
-=======
-gcp_credential.json
-
-doc/
-doc/*
->>>>>>> 7158b5ce2c543f5fc7b0995d622cecfb5d36d659
