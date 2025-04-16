@@ -52,11 +52,7 @@ async def async_tavily_search(
     
     try:
         # Use asyncio to run the request in a non-blocking way
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: requests.post(TAVILY_API_ENDPOINT, headers=headers, json=payload)
-        )
+        response = requests.post(TAVILY_API_ENDPOINT, headers=headers, json=payload)
         
         if response.status_code == 200:
             return response.json()
