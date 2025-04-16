@@ -2,18 +2,15 @@ from langchain_openai import ChatOpenAI
 from langchain_deepseek import ChatDeepSeek
 from typing import Optional
 
-from market_intelligence_agent.config import (
+from src.agent.market_intelligence_agent.config import (
     REASONING_MODEL,
     REASONING_BASE_URL,
     REASONING_API_KEY,
     BASIC_MODEL,
     BASIC_BASE_URL,
-    BASIC_API_KEY,
-    VL_MODEL,
-    VL_BASE_URL,
-    VL_API_KEY,
+    BASIC_API_KEY
 )
-from market_intelligence_agent.config.agents import LLMType
+from src.agent.market_intelligence_agent.config.agents import LLMType
 
 
 def create_openai_llm(
@@ -83,12 +80,6 @@ def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatDeepSeek:
             base_url=BASIC_BASE_URL,
             api_key=BASIC_API_KEY,
         )
-    elif llm_type == "vision":
-        llm = create_openai_llm(
-            model=VL_MODEL,
-            base_url=VL_BASE_URL,
-            api_key=VL_API_KEY,
-        )
     else:
         raise ValueError(f"Unknown LLM type: {llm_type}")
 
@@ -99,7 +90,6 @@ def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatDeepSeek:
 # Initialize LLMs for different purposes - now these will be cached
 reasoning_llm = get_llm_by_type("reasoning")
 basic_llm = get_llm_by_type("basic")
-vl_llm = get_llm_by_type("vision")
 
 
 if __name__ == "__main__":
@@ -110,4 +100,3 @@ if __name__ == "__main__":
     print(full_response)
 
     basic_llm.invoke("Hello")
-    vl_llm.invoke("Hello")

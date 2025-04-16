@@ -6,12 +6,11 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from langgraph.graph import END
 
-from src.agents import research_agent, coder_agent, browser_agent
-from src.agents.llm import get_llm_by_type
-from src.config import TEAM_MEMBERS
-from src.config.agents import AGENT_LLM_MAP
-from src.prompts.template import apply_prompt_template
-from src.tools.search import tavily_tool
+from src.agent.market_intelligence_agent.agents import research_agent, coder_agent
+from src.agent.market_intelligence_agent.agents.llm import get_llm_by_type
+from src.agent.market_intelligence_agent.config import TEAM_MEMBERS
+from src.agent.market_intelligence_agent.config.agents import AGENT_LLM_MAP
+from src.agent.market_intelligence_agent.prompts.template import apply_prompt_template
 from .types import State, Router
 
 logger = logging.getLogger(__name__)
@@ -60,26 +59,6 @@ def code_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
-
-def browser_node(state: State) -> Command[Literal["supervisor"]]:
-    """Node for the browser agent that performs web browsing tasks."""
-    logger.info("Browser agent starting task")
-    result = browser_agent.invoke(state)
-    logger.info("Browser agent completed task")
-    logger.debug(f"Browser agent response: {result['messages'][-1].content}")
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(
-                    content=RESPONSE_FORMAT.format(
-                        "browser", result["messages"][-1].content
-                    ),
-                    name="browser",
-                )
-            ]
-        },
-        goto="supervisor",
-    )
 
 
 def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
