@@ -1,11 +1,41 @@
 # StocksFlags
-StocksFlags for PIP&DS
-## Team Members: 
-- Alan zc2610@nyu.edu
-- Jackson jc13246@nyu.edu
-- Tyler tan4742@nyu.edu
-- April asl8466@nyu.edu
-- Vinci cc9100@nyu.edu
+StocksFlags is a multi-agent AI equity analysis tool designed to provide comprehensive insights into the stock market. It leverages Large Language Models (LLMs) and agentic workflows to automate data gathering, processing, and analysis, ultimately generating investment signals and supporting user queries through a chatbot interface.
+
+## Key Technologies
+
+*   **Programming Language:** Python
+*   **AI/LLM Frameworks:** LangChain, LangGraph
+*   **Data Sources:** Multiple APIs (e.g., Polygon, Yahoo Finance), Custom MCP Integration, WRDS (Wharton Research Data Services)
+*   **Database:** MySQL
+
+## Core Functionality
+
+The project aims to deliver functionality across three core components:
+
+1.  **LLM Agent-Driven Analysis Tool:**
+    *   Acts as the primary user interface for research and analysis.
+    *   Accepts user queries in natural language.
+    *   Utilizes LLM agents to autonomously:
+        *   Determine the required information.
+        *   Select and execute appropriate data retrieval tools (fetching market data, news, fundamentals from APIs like Polygon, Yahoo Finance, WRDS, and the internal database).
+        *   Process the retrieved information using defined analysis tools (e.g., summarization, sentiment analysis, event extraction).
+        *   Synthesize findings to answer the user's query.
+    *   Integrates with the other components (Trading Signals and Valuation Model) as callable tools within its workflow.
+
+2.  **LLM Agent-Driven Trading Signal Generation:**
+    *   Employs specialized LLM agents (`src/agent`) to generate investment/trading signals.
+    *   Agents analyze data based on various strategies:
+        *   Simulating renowned investor approaches.
+        *   Fundamental analysis.
+        *   Macroeconomic assessment.
+        *   Technical analysis.
+        *   News sentiment interpretation.
+    *   Can be executed directly or invoked as a tool by the main Analysis Tool.
+
+3.  **Damodaran Valuation Model:**
+    *   Implements valuation methodologies inspired by Professor Aswath Damodaran.
+    *   Provides a user interface (details TBD) for manual input and valuation generation.
+    *   Offers a callable tool interface, allowing the LLM Agent-Driven Analysis Tool to programmatically generate valuations as part of its research process.
 
 ## Repository Structure
 ```
@@ -109,3 +139,9 @@ git merge branch-name
 git diff
 ```
 
+## Team Members: 
+- Alan zc2610@nyu.edu
+- Jackson jc13246@nyu.edu
+- Tyler tan4742@nyu.edu
+- April asl8466@nyu.edu
+- Vinci cc9100@nyu.edu

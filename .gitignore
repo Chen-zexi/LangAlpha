@@ -10,4 +10,7 @@ __pycache__/
 .langgraph_api/
 .langgraph_api/*
 
-notebooks/stocksflags-ec5c40f2f2ee.json
+gcp_credential.json
+
+doc/
+doc/*
