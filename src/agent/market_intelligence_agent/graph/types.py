@@ -2,7 +2,7 @@ from typing import Literal
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
 
-from src.agent.market_intelligence_agent.config import TEAM_MEMBERS
+from market_intelligence_agent.config import TEAM_MEMBERS
 
 # Define routing options
 OPTIONS = TEAM_MEMBERS + ["FINISH"]

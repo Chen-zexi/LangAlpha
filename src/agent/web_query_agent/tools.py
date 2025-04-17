@@ -18,9 +18,9 @@ from typing_extensions import Annotated
 from web_query_agent.configuration import Configuration
 from web_query_agent.state import State
 from web_query_agent.utils import init_model
+from langchain_core.tools import tool
 
-
-
+@tool
 async def search(
     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]
 ) -> Optional[list[dict[str, Any]]]:

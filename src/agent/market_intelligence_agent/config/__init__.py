@@ -1,12 +1,10 @@
 from .env import (
     # Reasoning LLM
     REASONING_MODEL,
-    REASONING_BASE_URL,
-    REASONING_API_KEY,
+    REASONING_MODEL_PROVIDER,
     # Basic LLM
     BASIC_MODEL,
-    BASIC_BASE_URL,
-    BASIC_API_KEY,
+    BASIC_MODEL_PROVIDER,
     # Vision-language LLM
 )
 
@@ -16,12 +14,10 @@ TEAM_MEMBERS = ["researcher", "coder", "reporter"]
 __all__ = [
     # Reasoning LLM
     "REASONING_MODEL",
-    "REASONING_BASE_URL",
-    "REASONING_API_KEY",
+    "REASONING_MODEL_PROVIDER",
     # Basic LLM
     "BASIC_MODEL",
-    "BASIC_BASE_URL",
-    "BASIC_API_KEY",
+    "BASIC_MODEL_PROVIDER",
     # Other configurations
     "TEAM_MEMBERS",
     "TAVILY_MAX_RESULTS",

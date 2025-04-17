@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AnyMessage
 from langchain_core.runnables import RunnableConfig
 
-from enrichment_agent.configuration import Configuration
+from web_query_agent.configuration import Configuration
 
 from dotenv import load_dotenv
 

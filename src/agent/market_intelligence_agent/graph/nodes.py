@@ -1,27 +1,30 @@
 import logging
 import json
+import asyncio
 from copy import deepcopy
 from typing import Literal
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from langgraph.graph import END
 
-from src.agent.market_intelligence_agent.agents import research_agent, coder_agent
-from src.agent.market_intelligence_agent.agents.llm import get_llm_by_type
-from src.agent.market_intelligence_agent.config import TEAM_MEMBERS
-from src.agent.market_intelligence_agent.config.agents import AGENT_LLM_MAP
-from src.agent.market_intelligence_agent.prompts.template import apply_prompt_template
-from .types import State, Router
+from market_intelligence_agent.agents import get_research_agent, get_coder_agent
+from market_intelligence_agent.agents.llm import get_llm_by_type
+from market_intelligence_agent.config import TEAM_MEMBERS
+from market_intelligence_agent.config.agents import AGENT_LLM_MAP
+from market_intelligence_agent.prompts.template import apply_prompt_template
+from market_intelligence_agent.tools.tavily import get_tavily_tool
+from market_intelligence_agent.graph.types import State, Router
 
 logger = logging.getLogger(__name__)
 
 RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please execute the next step.*"
 
 
-def research_node(state: State) -> Command[Literal["supervisor"]]:
-    """Node for the researcher agent that performs research tasks."""
+async def research_node_async(state: State) -> Command[Literal["supervisor"]]:
+    """Async version of the researcher node."""
     logger.info("Research agent starting task")
-    result = research_agent.invoke(state)
+    agent = await get_research_agent()
+    result = await agent.ainvoke(state)
     logger.info("Research agent completed task")
     logger.debug(f"Research agent response: {result['messages'][-1].content}")
     return Command(
@@ -39,10 +42,32 @@ def research_node(state: State) -> Command[Literal["supervisor"]]:
     )
 
 
-def code_node(state: State) -> Command[Literal["supervisor"]]:
-    """Node for the coder agent that executes Python code."""
+def research_node(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the researcher agent that performs research tasks."""
+    try:
+        # Use run_until_complete on the current event loop if it exists
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # We're in an async context - create a new thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(lambda: asyncio.new_event_loop().run_until_complete(research_node_async(state)))
+                return future.result()
+        else:
+            # No running loop, use run_until_complete
+            return loop.run_until_complete(research_node_async(state))
+    except RuntimeError:
+        # No event loop, create a new one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(research_node_async(state))
+
+
+async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
+    """Async version of the coder node."""
     logger.info("Code agent starting task")
-    result = coder_agent.invoke(state)
+    agent = await get_coder_agent()
+    result = agent.invoke(state)
     logger.info("Code agent completed task")
     logger.debug(f"Code agent response: {result['messages'][-1].content}")
     return Command(
@@ -59,6 +84,21 @@ def code_node(state: State) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+
+def code_node(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the coder agent that executes Python code."""
+    # Create a new event loop if running in a sync context
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # We're already in an event loop, use create_task and wait
+            return loop.run_until_complete(code_node_async(state))
+        else:
+            # No running event loop, use run_until_complete
+            return loop.run_until_complete(code_node_async(state))
+    except RuntimeError:
+        # No event loop, create a new one
+        return asyncio.run(code_node_async(state))
 
 
 def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
@@ -92,6 +132,8 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     if state.get("deep_thinking_mode"):
         llm = get_llm_by_type("reasoning")
     if state.get("search_before_planning"):
+        # Get tavily tool and use it
+        tavily_tool = get_tavily_tool()
         searched_content = tavily_tool.invoke({"query": state["messages"][-1].content})
         messages = deepcopy(messages)
         messages[

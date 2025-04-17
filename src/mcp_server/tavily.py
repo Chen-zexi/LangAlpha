@@ -69,10 +69,10 @@ async def async_tavily_search(
 async def search(
     query: str,
     search_depth: Literal["basic", "advanced"] = "basic",
-    topic: Optional[str] = None,
+    topic: Optional[Literal["general", "news"]] = None,
     days: Optional[int] = None,
-    time_range: Optional[str] = None,
-    max_results: Optional[int] = None
+    time_range: Optional[Literal["day", "week", "month", "year"]] = None,
+    max_results: Optional[int] = 10
 ) -> dict:
     """
     Search the web using Tavily API.
@@ -82,7 +82,7 @@ async def search(
         search_depth: Depth of search, 'basic' or 'advanced'
         topic: Filter results by by either "general" or "news", you should always use "general" unless you are compiled to search for news
         days: Number of days to look back for results
-        time_range: Time range for results, accepts "day", "week", "month", "year"
+        time_range: Time range for results, only accepts "day", "week", "month", "year"
         max_results: Maximum number of results to return
     
     Returns:

@@ -1,67 +1,58 @@
+import os
 from langchain_openai import ChatOpenAI
-from langchain_deepseek import ChatDeepSeek
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
 from typing import Optional
+from dotenv import load_dotenv
 
-from src.agent.market_intelligence_agent.config import (
+load_dotenv()
+
+from market_intelligence_agent.config import (
     REASONING_MODEL,
-    REASONING_BASE_URL,
-    REASONING_API_KEY,
+    REASONING_MODEL_PROVIDER,
     BASIC_MODEL,
-    BASIC_BASE_URL,
-    BASIC_API_KEY
+    BASIC_MODEL_PROVIDER,
 )
-from src.agent.market_intelligence_agent.config.agents import LLMType
+from market_intelligence_agent.config.agents import LLMType
 
 
-def create_openai_llm(
+def create_reasoning_llm(
+        model: str,
+        provider: str,
+        temperature: float = 0.0,
+        **kwargs
+) -> ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic:
+    """
+    Create a LLM instance with the specified configuration
+    """
+    if provider in ["OPENAI", "openai"]:
+        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+    else:
+        raise ValueError(f"Unknown model: {model}")
+    
+
+def create_basic_llm(
     model: str,
-    base_url: Optional[str] = None,
-    api_key: Optional[str] = None,
+    provider: str,
     temperature: float = 0.0,
-    **kwargs,
-) -> ChatOpenAI:
+    **kwargs
+) -> ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic:
     """
-    Create a ChatOpenAI instance with the specified configuration
+    Create a basic LLM inst ance with the specified configuration
     """
-    # Only include base_url in the arguments if it's not None or empty
-    llm_kwargs = {"model": model, "temperature": temperature, **kwargs}
-
-    if base_url:  # This will handle None or empty string
-        llm_kwargs["base_url"] = base_url
-
-    if api_key:  # This will handle None or empty string
-        llm_kwargs["api_key"] = api_key
-
-    return ChatOpenAI(**llm_kwargs)
+    if provider in ["OPENAI", "openai"]:
+        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+    elif provider in ["GEMINI", "gemini"]:
+        return ChatGoogleGenerativeAI(model=model, temperature=temperature, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
+    elif provider in ["ANTHROPIC", "anthropic"]:
+        return ChatAnthropic(model=model, temperature=temperature, api_key=os.getenv("ANTHROPIC_API_KEY"), **kwargs)
+    else:
+        raise ValueError(f"Unknown model: {model}")
 
 
-def create_deepseek_llm(
-    model: str,
-    base_url: Optional[str] = None,
-    api_key: Optional[str] = None,
-    temperature: float = 0.0,
-    **kwargs,
-) -> ChatDeepSeek:
-    """
-    Create a ChatDeepSeek instance with the specified configuration
-    """
-    # Only include base_url in the arguments if it's not None or empty
-    llm_kwargs = {"model": model, "temperature": temperature, **kwargs}
+_llm_cache: dict[LLMType, ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic] = {}
 
-    if base_url:  # This will handle None or empty string
-        llm_kwargs["api_base"] = base_url
-
-    if api_key:  # This will handle None or empty string
-        llm_kwargs["api_key"] = api_key
-
-    return ChatDeepSeek(**llm_kwargs)
-
-
-# Cache for LLM instances
-_llm_cache: dict[LLMType, ChatOpenAI | ChatDeepSeek] = {}
-
-
-def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatDeepSeek:
+def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic:
     """
     Get LLM instance by type. Returns cached instance if available.
     """
@@ -69,16 +60,14 @@ def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatDeepSeek:
         return _llm_cache[llm_type]
 
     if llm_type == "reasoning":
-        llm = create_deepseek_llm(
+        llm = create_reasoning_llm(
             model=REASONING_MODEL,
-            base_url=REASONING_BASE_URL,
-            api_key=REASONING_API_KEY,
+            provider=REASONING_MODEL_PROVIDER,
         )
     elif llm_type == "basic":
-        llm = create_openai_llm(
+        llm = create_basic_llm(
             model=BASIC_MODEL,
-            base_url=BASIC_BASE_URL,
-            api_key=BASIC_API_KEY,
+            provider=BASIC_MODEL_PROVIDER,
         )
     else:
         raise ValueError(f"Unknown LLM type: {llm_type}")

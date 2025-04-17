@@ -288,8 +288,8 @@ class WRDSConnector:
             tickers_sql = ','.join([f"'{ticker}'" for ticker in self.tickers])
             
             query = f"""
-            SELECT s.tic, s.datadate, s.cshtrd, s.prccd, s.prchd, s.prcld, s.prcod, s.trfd,
-                   s.cshoc, s.eps, s.divd, s.divsp 
+            SELECT s.tic, s.datadate, s.cshtrd, s.prccd, s.prchd, s.prcld, s.prcod, 
+            s.cshoc 
             FROM comp_na_daily_all.secd s
             WHERE s.tic IN ({tickers_sql})
             AND s.datadate >= '{self.start_date_str}'
@@ -313,10 +313,6 @@ class WRDSConnector:
                     'prcod': 'open_price',
                     'cshtrd': 'trading_volume',
                     'cshoc': 'outstanding_shares',
-                    'eps': 'eps_ttm',
-                    'divd': 'dividends',
-                    'divsp': 'special_distributions',
-                    'trfd': 'trading_factor'
                 }, inplace=True)
             
             logger.info(f"Retrieved {len(security_df)} security daily records")

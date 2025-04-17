@@ -1,9 +1,8 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "enrichment_agent": "enrichment_agent/graph.py:graph",
     "web_query_agent": "web_query_agent/graph.py:graph",
-    "market_intelligence_agent": "market_intelligence_agent/graph.py:graph"
+    "market_intelligence_agent": "market_intelligence_agent/graph/builder.py:build_graph"
   },
   "env": "../../.env"
 }
