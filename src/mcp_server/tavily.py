@@ -4,6 +4,7 @@ import asyncio
 import os
 from typing import List, Optional, Literal
 import json
+import httpx
 
 # Create the MCP server with a meaningful name
 mcp = FastMCP("TavilyMCP")
@@ -51,16 +52,18 @@ async def async_tavily_search(
         payload["max_results"] = max_results
     
     try:
-        # Use asyncio to run the request in a non-blocking way
-        response = requests.post(TAVILY_API_ENDPOINT, headers=headers, json=payload)
+        # Use httpx for asynchronous request
+        async with httpx.AsyncClient() as client:
+            response = await client.post(TAVILY_API_ENDPOINT, headers=headers, json=payload)
         
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {
-                "error": f"API request failed with status code {response.status_code}",
-                "message": response.text
-            }
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        return response.json()
+            
+    except httpx.HTTPStatusError as e:
+        return {
+            "error": f"API request failed with status code {e.response.status_code}",
+            "message": e.response.text
+        }
     except Exception as e:
         return {"error": str(e)}
 

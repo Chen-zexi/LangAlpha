@@ -23,8 +23,12 @@ RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please e
 async def research_node_async(state: State) -> Command[Literal["supervisor"]]:
     """Async version of the researcher node."""
     logger.info("Research agent starting task")
+    # Get the cached agent instance (initializes on first call)
     agent = await get_research_agent()
+    
+    # Invoke the agent with the current state
     result = await agent.ainvoke(state)
+    
     logger.info("Research agent completed task")
     logger.debug(f"Research agent response: {result['messages'][-1].content}")
     return Command(
@@ -42,25 +46,11 @@ async def research_node_async(state: State) -> Command[Literal["supervisor"]]:
     )
 
 
-def research_node(state: State) -> Command[Literal["supervisor"]]:
-    """Node for the researcher agent that performs research tasks."""
-    try:
-        # Use run_until_complete on the current event loop if it exists
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # We're in an async context - create a new thread
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(lambda: asyncio.new_event_loop().run_until_complete(research_node_async(state)))
-                return future.result()
-        else:
-            # No running loop, use run_until_complete
-            return loop.run_until_complete(research_node_async(state))
-    except RuntimeError:
-        # No event loop, create a new one
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(research_node_async(state))
+async def research_node(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the researcher agent that performs research tasks.
+    LangGraph typically handles async functions directly. 
+    """
+    return await research_node_async(state)
 
 
 async def code_node_async(state: State) -> Command[Literal["supervisor"]]:

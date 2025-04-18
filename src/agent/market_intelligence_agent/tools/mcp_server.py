@@ -1,47 +1,47 @@
 import asyncio
+from contextlib import asynccontextmanager
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from typing import List, Any
 
-class MCPConnectionManager:
-    def __init__(self):
-        self.client = None
+# Configuration for the MCP servers
+# It's better to manage file paths potentially through config or environment variables
+# but using the existing hardcoded paths for now.
+MCP_SERVERS = {
+    "tavily_search": {
+        "command": "python",
+        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tavily.py"],
+        "transport": "stdio",
+    },
+    "tickertick": {
+        "command": "python",
+        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tickertick.py"],
+        "transport": "stdio",
+    }
+}
 
-    async def connect(self):
-        self.client = MultiServerMCPClient()
-        await self.client.__aenter__()
-        await self.client.connect_to_server(
-            "tavily_search",
-            command="python",
-            args=["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/StocksFlags/src/mcp_server/tavily.py"],
-            transport="stdio",
-        )
-        await self.client.connect_to_server(
-            "tickertick",
-            command="python",
-            args=["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/StocksFlags/src/mcp_server/tickertick.py"],
-            transport="stdio",
-        )
+@asynccontextmanager
+async def managed_mcp_tools() -> List[Any]:
+    """
+    An async context manager that connects to MCP servers,
+    yields the combined tools, and ensures cleanup.
+    """
+    client = MultiServerMCPClient()
+    try:
+        # Enter the client's context (starts background tasks if any)
+        await client.__aenter__()
 
-    async def get_tools(self):
-        return self.client.get_tools()
+        # Connect to all configured servers
+        connect_tasks = [
+            client.connect_to_server(name, **params)
+            for name, params in MCP_SERVERS.items()
+        ]
+        await asyncio.gather(*connect_tasks)
 
-    async def close(self):
-        if self.client:
-            await self.client.__aexit__(None, None, None)
-            self.client = None
+        # Yield the tools for use within the 'async with' block
+        yield client.get_tools()
 
-# Create a global connection manager
-_global_connection_manager = None
+    finally:
+        # Exit the client's context (cleans up connections, stops servers)
+        # The __aexit__ handles potential exceptions during cleanup internally
+        await client.__aexit__(None, None, None)
 
-async def mcp_connection_manager():
-    """Returns the MCPConnectionManager instance."""
-    connection_manager = MCPConnectionManager()
-    await connection_manager.connect()
-    return connection_manager  # Return the instance, don't close here!
-
-async def get_global_mcp_connection():
-    """Returns a global singleton MCPConnectionManager instance."""
-    global _global_connection_manager
-    if _global_connection_manager is None:
-        _global_connection_manager = MCPConnectionManager()
-        await _global_connection_manager.connect()
-    return _global_connection_manager
