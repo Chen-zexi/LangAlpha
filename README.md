@@ -37,31 +37,44 @@ The project aims to deliver functionality across three core components:
     *   Provides a user interface (details TBD) for manual input and valuation generation.
     *   Offers a callable tool interface, allowing the LLM Agent-Driven Analysis Tool to programmatically generate valuations as part of its research process.
 
+Below is an image demonstrate the current agent workflow
+![graph](/assets/graph.jpg)
+
 ## Repository Structure
 ```
 StocksFlags/
-├── data                                    # Data directory
-├── models                                  # Valuation Model directory
-├── notebooks/                              # Jupyter notebooks for demonstration
+├── data                                  # Data directory
+├── models                                # Valuation Model directory
+├── notebooks/                            # Jupyter notebooks for demonstration
 |    ├── checkpoint/
 |    |    └── milestone_3.ipynb             # Checkpoint for milestone 3
 |    ├── demo/                              # Notebook for demo and testing
 |    ├── scrapers/                          # Scrapers (unfinished)
 |    └── db_management.ipynb                # Database management tool                 
 ├── src/                                    # Source code
-|    ├── data_tool/
-|    |    ├── data_providers/
+|    ├── agent/                           # Agent directory
+|    |    └── market_intelligence_agent/    # Market Intelligence Agent
+|    |         ├── agents/                  # Agent implementations
+|    |         ├── prompts/                 # Agent prompts
+|    |         ├── tools/                   # Agent tools
+|    |         ├── config/                  # Configuration files
+|    |         ├── graph/                   # Agent workflow graphs
+|    |         ├── service/                 # Service implementations
+|    |         ├── crawler/                 # Web crawlers
+|    |         └── __init__.py              # Package initialization
+|    ├── data_tool/                      # Tools for data retriving
+|    |    ├── data_providers/             
 |    |    |    ├── connect_wrds.py          # code to connect wrds
 |    |    |    ├── financial_datasets.py    # code to retrieve data from financial datasets
 |    |    |    ├── polygon.py               # code to retrieve data from polygon
 |    |    |    └── yahoo_finance.py         # code to retrieve data from yahoo finance
 |    |    ├── data_models.py                # pydantic models
 |    |    └── get_data.py                   # get data
-|    ├── database_tool/                     
+|    ├── database_tool/                  # Tools for Database Manipulation   
 |    |    ├── connect_db.py                 # connect to database
 |    |    ├── create_table.py               # create tables
 |    |    └── db_operation.py               # complax data retrieval from database
-|    └── llm/
+|    └── llm/                            # LLM config for LLM use oustide of Langraph workflow
 |         ├── llm_models.py                 # LLM models
 |         └── api_call.py                   # Make api call to LLM
 |  
