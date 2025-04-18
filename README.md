@@ -1,5 +1,10 @@
-# StocksFlags
-StocksFlags is a multi-agent AI equity analysis tool designed to provide comprehensive insights into the stock market. It leverages Large Language Models (LLMs) and agentic workflows to automate data gathering, processing, and analysis, ultimately generating investment signals and supporting user queries through a chatbot interface.
+# LangAlpha
+
+ **Note**: Stocksflags is now renamed to LangAlpha
+ 
+LangAlpha is a multi-agent AI equity analysis tool designed to provide comprehensive insights into the stock market. It leverages Large Language Models (LLMs) and agentic workflows to automate data gathering, processing, and analysis, ultimately generating investment signals and supporting user queries through a chatbot interface.
+
+
 
 ## Key Technologies
 
@@ -42,7 +47,7 @@ Below is an image demonstrate the current agent workflow
 
 ## Repository Structure
 ```
-StocksFlags/
+LangAlpha/
 ├── data                                  # Data directory
 ├── models                                # Valuation Model directory
 ├── notebooks/                            # Jupyter notebooks for demonstration
@@ -86,10 +91,10 @@ StocksFlags/
 ### 1. Clone the Repository
 ```bash
 # Clone the repository to your local machine
-git clone https://github.com/Chen-zexi/StocksFlags.git
+git clone https://github.com/Chen-zexi/LangAlpha.git
 
 # Navigate to the project directory
-cd StocksFlags
+cd LangAlpha
 ```
 
 ### 2. Environment Setup
@@ -98,7 +103,7 @@ cd StocksFlags
 conda env create -f environment.yml
 
 # Activate the environment
-conda activate stocksflags
+conda activate langalpha
 ```
 
 ### 3. Set up API Keys
