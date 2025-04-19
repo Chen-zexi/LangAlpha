@@ -19,14 +19,13 @@ from market_intelligence_agent.config.agents import LLMType
 def create_reasoning_llm(
         model: str,
         provider: str,
-        temperature: float = 0.0,
         **kwargs
 ) -> ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic:
     """
     Create a LLM instance with the specified configuration
     """
     if provider in ["OPENAI", "openai"]:
-        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+        return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
     

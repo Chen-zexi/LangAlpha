@@ -52,9 +52,9 @@ LangAlpha/
 ├── models                                # Valuation Model directory
 ├── notebooks/                            # Jupyter notebooks for demonstration
 |    ├── checkpoint/
-|    |    └── milestone_3.ipynb             # Checkpoint for milestone 3
-|    ├── demo/                              # Notebook for demo and testing
-|    ├── scrapers/                          # Scrapers (unfinished)
+|    |    ├── milestone_3.ipynb             # Checkpoint for milestone 3
+|    |    └── milestone_4.ipynb             # Checkpoint for milestone 4
+|    ├── demo/                              # Notebook for demo and testing                         
 |    └── db_management.ipynb                # Database management tool                 
 ├── src/                                    # Source code
 |    ├── agent/                           # Agent directory

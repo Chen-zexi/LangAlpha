@@ -1,6 +1,7 @@
-from typing import Literal
+from typing import Literal, Optional
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
+from datetime import datetime
 
 from market_intelligence_agent.config import TEAM_MEMBERS
 
@@ -25,3 +26,6 @@ class State(MessagesState):
     full_plan: str
     deep_thinking_mode: bool
     search_before_planning: bool
+    # plot_base64: Optional[str]
+    plot_file_path: Optional[str]
+    current_timestamp: Optional[datetime]

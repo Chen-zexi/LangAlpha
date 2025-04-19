@@ -4,8 +4,6 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from typing import List, Any
 
 # Configuration for the MCP servers
-# It's better to manage file paths potentially through config or environment variables
-# but using the existing hardcoded paths for now.
 MCP_SERVERS = {
     "tavily_search": {
         "command": "python",
@@ -15,6 +13,11 @@ MCP_SERVERS = {
     "tickertick": {
         "command": "python",
         "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tickertick.py"],
+        "transport": "stdio",
+    },
+    "polygon": {
+        "command": "python",
+        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/polygon_mcp.py"],
         "transport": "stdio",
     }
 }

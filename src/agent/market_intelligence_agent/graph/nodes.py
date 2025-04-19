@@ -6,6 +6,9 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from langgraph.graph import END
+import os
+import uuid
+import re # Import regex module
 
 from market_intelligence_agent.agents import get_research_agent, get_coder_agent
 from market_intelligence_agent.agents.llm import get_llm_by_type
@@ -57,22 +60,54 @@ async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
     """Async version of the coder node."""
     logger.info("Code agent starting task")
     agent = await get_coder_agent()
-    result = agent.invoke(state)
+
+    # --- Prepare input state for the agent --- 
+    modified_state = deepcopy(state)
+    last_message_content = modified_state["messages"][-1].content
+
+    # Define where to save the plot (you might want a more robust way)
+    output_dir = os.path.abspath("./output/plots")
+    unique_filename = f"plot_{uuid.uuid4()}.png"
+    target_file_path = os.path.join(output_dir, unique_filename)
+    
+    # Append save instruction to the last message
+    save_instruction = f"\n\n**Instruction:** If generating a plot, save it to the following path: '{target_file_path}'" 
+    modified_state["messages"][-1].content += save_instruction
+    # --- End prepare input state ---
+
+    logger.debug(f"Invoking coder agent with state: {modified_state}")
+    result = agent.invoke(modified_state)
     logger.info("Code agent completed task")
-    logger.debug(f"Code agent response: {result['messages'][-1].content}")
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(
-                    content=RESPONSE_FORMAT.format(
-                        "coder", result["messages"][-1].content
-                    ),
-                    name="coder",
-                )
-            ]
-        },
-        goto="supervisor",
-    )
+    
+    agent_response_content = result['messages'][-1].content
+    logger.debug(f"Code agent raw response: {agent_response_content}")
+
+    # --- Extract file path from response --- 
+    extracted_plot_path = None
+    match = re.search(r"Plot saved successfully to (.*?)(?:\n|$)", agent_response_content)
+    if match:
+        extracted_plot_path = match.group(1).strip()
+        logger.info(f"Extracted plot path: {extracted_plot_path}")
+    else:
+        logger.warning("Could not extract plot path from coder response.")
+    # --- End extract file path ---
+
+    # Prepare update dictionary
+    update_dict = {
+        "messages": [
+            HumanMessage(
+                content=RESPONSE_FORMAT.format(
+                    "coder", agent_response_content # Use the original response content
+                ),
+                name="coder",
+            )
+        ]
+    }
+    # Add the extracted path if found
+    if extracted_plot_path:
+        update_dict["plot_file_path"] = extracted_plot_path
+
+    return Command(update=update_dict, goto="supervisor")
 
 
 def code_node(state: State) -> Command[Literal["supervisor"]]:
