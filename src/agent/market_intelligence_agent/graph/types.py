@@ -26,6 +26,5 @@ class State(MessagesState):
     full_plan: str
     deep_thinking_mode: bool
     search_before_planning: bool
-    # plot_base64: Optional[str]
     plot_file_path: Optional[str]
     current_timestamp: Optional[datetime]

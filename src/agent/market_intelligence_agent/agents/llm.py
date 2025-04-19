@@ -25,7 +25,7 @@ def create_reasoning_llm(
     Create a LLM instance with the specified configuration
     """
     if provider in ["OPENAI", "openai"]:
-        return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+        return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), use_responses_api=False,**kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
     
@@ -40,7 +40,7 @@ def create_basic_llm(
     Create a basic LLM inst ance with the specified configuration
     """
     if provider in ["OPENAI", "openai"]:
-        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"), use_responses_api=False, **kwargs)
     elif provider in ["GEMINI", "gemini"]:
         return ChatGoogleGenerativeAI(model=model, temperature=temperature, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
     elif provider in ["ANTHROPIC", "anthropic"]:
