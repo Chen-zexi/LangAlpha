@@ -289,7 +289,7 @@ class WRDSConnector:
             
             query = f"""
             SELECT s.tic, s.datadate, s.cshtrd, s.prccd, s.prchd, s.prcld, s.prcod, 
-            s.cshoc 
+            s.cshoc, s.ajexdi 
             FROM comp_na_daily_all.secd s
             WHERE s.tic IN ({tickers_sql})
             AND s.datadate >= '{self.start_date_str}'
@@ -302,18 +302,31 @@ class WRDSConnector:
             # Convert date
             if not security_df.empty and 'datadate' in security_df.columns:
                 security_df['datadate'] = pd.to_datetime(security_df['datadate'])
-            
+                
+            if 'ajexdi' in security_df.columns:
+                    security_df['adj_close_price'] = security_df['prccd'] / security_df['ajexdi']
+                    logger.info("Calculated adjusted closing prices")
+            else:
+                security_df['adj_close_price'] = security_df['prccd']
+            security_df['market_cap'] = security_df['cshoc'] * security_df['prccd']
             # Rename to standardized columns
-            if not security_df.empty and 'tic' in security_df.columns:
-                security_df.rename(columns={
-                    'tic': 'ticker',
-                    'prccd': 'close_price',
-                    'prchd': 'high_price',
-                    'prcld': 'low_price',
-                    'prcod': 'open_price',
-                    'cshtrd': 'trading_volume',
-                    'cshoc': 'outstanding_shares',
-                }, inplace=True)
+            
+            new_name = {
+                'tic': 'ticker',
+                'datadate': 'date',
+                'prcod': 'open_price',
+                'prchd': 'high_price',
+                'prcld': 'low_price',
+                'prccd': 'close_price',
+                'adj_close_price': 'adj_close_price',
+                'cshtrd': 'trading_volume',
+                'market_cap': 'market_cap',
+                'cshoc': 'outstanding_shares',
+                'ajexdi': 'adj_factor'
+            }
+
+            security_df = security_df[new_name.keys()].rename(columns=new_name)
+                
             
             logger.info(f"Retrieved {len(security_df)} security daily records")
             return security_df

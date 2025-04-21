@@ -55,3 +55,6 @@ tasks/
 .cursor
 /scripts
 /scripts/*
+
+notebooks/load_data/output/
+notebooks/load_data/output/*
