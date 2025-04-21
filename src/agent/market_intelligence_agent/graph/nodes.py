@@ -1,3 +1,4 @@
+from json import tool
 import logging
 import json
 import asyncio
@@ -16,7 +17,7 @@ from market_intelligence_agent.config import TEAM_MEMBERS
 from market_intelligence_agent.config.agents import AGENT_LLM_MAP
 from market_intelligence_agent.prompts.template import apply_prompt_template
 from market_intelligence_agent.tools.tavily import get_tavily_tool
-from market_intelligence_agent.graph.types import State, Router
+from market_intelligence_agent.graph.types import State, Router, SupervisorInstructions
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +133,20 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     messages = apply_prompt_template("supervisor", state)
     response = (
         get_llm_by_type(AGENT_LLM_MAP["supervisor"])
-        .with_structured_output(Router)
+        .with_structured_output(SupervisorInstructions)
         .invoke(messages)
     )
-    goto = response["next"]
+    goto = response.next["next"]
+    instructions = {}
+    if response.feedback is not None:
+        instructions["feedback"] = response.feedback
+    if response.task is not None:
+        instructions["task"] = response.task
+    if response.followup is not None:
+        instructions["followup"] = response.followup
+    if response.focus is not None:
+        instructions["focus"] = response.focus
+    
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"Supervisor response: {response}")
 
@@ -144,30 +155,24 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
         logger.info("Workflow completed")
     else:
         logger.info(f"Supervisor delegating to: {goto}")
-
-    return Command(goto=goto, update={"next": goto})
+        logger.debug(f"Supervisor instructions: {instructions}")
+    return Command(goto=goto, update={"next": goto, "messages": [HumanMessage(content=json.dumps(instructions), name="supervisor")]})
 
 
 def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     """Planner node that generate the full plan."""
     logger.info("Planner generating full plan")
     messages = apply_prompt_template("planner", state)
-    # whether to enable deep thinking mode
     llm = get_llm_by_type("basic")
     if state.get("deep_thinking_mode"):
         llm = get_llm_by_type("reasoning")
     if state.get("search_before_planning"):
         # Get tavily tool and use it
-        tavily_tool = get_tavily_tool()
-        searched_content = tavily_tool.invoke({"query": state["messages"][-1].content})
-        messages = deepcopy(messages)
-        messages[
-            -1
-        ].content += f"\n\n# Relative Search Results\n\n{json.dumps([{'titile': elem['title'], 'content': elem['content']} for elem in searched_content], ensure_ascii=False)}"
-    stream = llm.stream(messages)
+        tool = {"type": "web_search_preview"}
+    stream = llm.stream(messages, tools=[tool])
     full_response = ""
     for chunk in stream:
-        full_response += chunk.content
+        full_response += chunk.text()
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"Planner response: {full_response}")
 
@@ -220,12 +225,7 @@ def reporter_node(state: State) -> Command[Literal["supervisor"]]:
 
     return Command(
         update={
-            "messages": [
-                HumanMessage(
-                    content=RESPONSE_FORMAT.format("reporter", response.content),
-                    name="reporter",
-                )
-            ]
+            "final_report": response.content,
         },
-        goto="supervisor",
+        goto="__end__",
     )

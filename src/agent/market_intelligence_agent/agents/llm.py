@@ -25,7 +25,7 @@ def create_reasoning_llm(
     Create a LLM instance with the specified configuration
     """
     if provider in ["OPENAI", "openai"]:
-        return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), use_responses_api=False,**kwargs)
+        return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
     
