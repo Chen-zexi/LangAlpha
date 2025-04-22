@@ -81,13 +81,13 @@ def search_tickers(query, limit=5):
         return {"error": f"API request failed with status code {response.status_code}"}
 
 @mcp.tool()
-def get_ticker_news_tool(ticker: str, limit: int = 30) -> dict:
+def get_ticker_news_tool(ticker: str, limit: int = 10) -> dict:
     """
     Get news for a specific ticker symbol.
     
     Args:
         ticker: The ticker symbol (e.g., AAPL, MSFT, TSLA)
-        limit: Maximum number of news items to return (default: 30, max: 100)
+        limit: Maximum number of news items to return (default: 10, max: 50)
         
     Returns:
         A dictionary containing news items related to the ticker
@@ -95,13 +95,13 @@ def get_ticker_news_tool(ticker: str, limit: int = 30) -> dict:
     return get_ticker_news(ticker, limit)
 
 @mcp.tool()
-def get_broad_ticker_news_tool(ticker: str, limit: int = 30) -> dict:
+def get_broad_ticker_news_tool(ticker: str, limit: int = 10) -> dict:
     """
     Get broader news for a specific ticker symbol.
     
     Args:
         ticker: The ticker symbol (e.g., AAPL, MSFT, TSLA)
-        limit: Maximum number of news items to return (default: 30, max: 100)
+        limit: Maximum number of news items to return (default: 10, max: 50)
         
     Returns:
         A dictionary containing broader news items related to the ticker
@@ -109,13 +109,13 @@ def get_broad_ticker_news_tool(ticker: str, limit: int = 30) -> dict:
     return get_broad_ticker_news(ticker, limit)
 
 @mcp.tool()
-def get_news_from_source_tool(source: str, limit: int = 30) -> dict:
+def get_news_from_source_tool(source: str, limit: int = 10) -> dict:
     """
     Get news from a specific source.
     
     Args:
         source: The news source (e.g., bloomberg, wsj, cnbc)
-        limit: Maximum number of news items to return (default: 30, max: 100)
+        limit: Maximum number of news items to return (default: 10, max: 50)
         
     Returns:
         A dictionary containing news items from the specified source
@@ -123,13 +123,13 @@ def get_news_from_source_tool(source: str, limit: int = 30) -> dict:
     return get_news_from_source(source, limit)
 
 @mcp.tool()
-def get_news_for_multiple_tickers_tool(tickers: List[str], limit: int = 30) -> dict:
+def get_news_for_multiple_tickers_tool(tickers: List[str], limit: int = 10) -> dict:
     """
     Get news for multiple ticker symbols.
     
     Args:
         tickers: List of ticker symbols (e.g., ["AAPL", "MSFT", "TSLA"])
-        limit: Maximum number of news items to return (default: 30, max: 100)
+        limit: Maximum number of news items to return (default: 10, max: 50)
         
     Returns:
         A dictionary containing news items related to any of the specified tickers
@@ -137,12 +137,12 @@ def get_news_for_multiple_tickers_tool(tickers: List[str], limit: int = 30) -> d
     return get_news_for_multiple_tickers(tickers, limit)
 
 @mcp.tool()
-def get_curated_news_tool(limit: int = 30) -> dict:
+def get_curated_news_tool(limit: int = 10) -> dict:
     """
-    Get curated news from top financial/technology sources.
+    Get curated news from top financial/technology sources. This can be helpful to get a broad overview of the market.
     
     Args:
-        limit: Maximum number of news items to return (default: 30, max: 100)
+        limit: Maximum number of news items to return (default: 10, max: 50)
         
     Returns:
         A dictionary containing curated news items
@@ -150,13 +150,13 @@ def get_curated_news_tool(limit: int = 30) -> dict:
     return get_curated_news(limit)
 
 @mcp.tool()
-def get_entity_news_tool(entity: str, limit: int = 30) -> dict:
+def get_entity_news_tool(entity: str, limit: int = 10) -> dict:
     """
-    Get news about a specific entity (company, person, etc.).
+    Get news about a specific entity (person, etc.)
     
     Args:
-        entity: The entity name (e.g., "Apple Inc", "Elon Musk")
-        limit: Maximum number of news items to return (default: 30, max: 100)
+        entity: The entity name (e.g."Elon Musk", "Trump")
+        limit: Maximum number of news items to return (default: 10, max: 50)
         
     Returns:
         A dictionary containing news items related to the entity
@@ -176,18 +176,6 @@ def search_tickers_tool(query: str, limit: int = 5) -> dict:
         A dictionary containing matching ticker symbols
     """
     return search_tickers(query, limit)
-
-# Also create a resource for curated news that can be loaded directly
-@mcp.resource("news://curated")
-def curated_news_resource() -> dict:
-    """Get curated financial news that can be loaded directly into the context."""
-    return get_curated_news(limit=10)
-
-# Create a resource for specific ticker news
-@mcp.resource("news://{ticker}")
-def ticker_news_resource(ticker: str) -> dict:
-    """Get news for a specific ticker that can be loaded directly into the context."""
-    return get_ticker_news(ticker, limit=10)
 
 # Add this to run the server with stdio transport when executed directly
 if __name__ == "__main__":

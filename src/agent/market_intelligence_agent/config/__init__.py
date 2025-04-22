@@ -5,6 +5,12 @@ from .env import (
     # Basic LLM
     BASIC_MODEL,
     BASIC_MODEL_PROVIDER,
+    # Economic LLM
+    ECONOMIC_MODEL,
+    ECONOMIC_MODEL_PROVIDER,
+    # Coding LLM
+    CODING_MODEL,
+    CODING_MODEL_PROVIDER,
     # Vision-language LLM
 )
 
@@ -18,6 +24,12 @@ __all__ = [
     # Basic LLM
     "BASIC_MODEL",
     "BASIC_MODEL_PROVIDER",
+    # Economic LLM
+    "ECONOMIC_MODEL",
+    "ECONOMIC_MODEL_PROVIDER",
+    # Coding LLM
+    "CODING_MODEL",
+    "CODING_MODEL_PROVIDER",
     # Other configurations
     "TEAM_MEMBERS",
     "TAVILY_MAX_RESULTS",

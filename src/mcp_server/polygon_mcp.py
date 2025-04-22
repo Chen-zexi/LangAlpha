@@ -62,7 +62,7 @@ def get_stock_metrics(
     limit: int = 100
 ) -> Dict[str, Any]:
     """
-    Fetches aggregate stock data (OHLCV) directly via RESTClient and calculates key financial metrics.
+    Fetches aggregate stock data (OHLCV) directly and calculates key stock metrics.
 
     Args:
         ticker: The ticker symbol (e.g., AAPL).
@@ -73,7 +73,7 @@ def get_stock_metrics(
         limit: The maximum number of base aggregates fetched; affects data used for calculations.
 
     Returns:
-        A dictionary containing calculated financial metrics (e.g., price change %,
+        A dictionary containing calculated stock metrics (e.g., price change %,
         highest/lowest price & date, average volume, volatility, max drawdown, SMA).
         Returns a dictionary with an 'error' key if the client is not initialized, fetching fails,
         or calculations cannot be performed (e.g., insufficient data).
@@ -106,15 +106,9 @@ def get_stock_metrics(
     if not aggs_list:
         return {"error": f"No aggregate data found for {ticker} in the specified range."}
 
-    # --- Re-implement Data Processing and Metric Calculation --- 
     try:
-        # Convert Agg objects to dictionaries and create DataFrame
         df = pd.DataFrame([vars(a) for a in aggs_list])
-        # Rename columns if necessary (adjust based on `vars(a)` output)
-        # Assuming vars(a) gives keys like 't', 'o', 'h', 'l', 'c', 'v'
         df.rename(columns={'t': 'timestamp', 'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'}, inplace=True)
-
-        # --- Data Cleaning and Preparation (copied from PolygonDataProvider) ---
         df.dropna(subset=['timestamp', 'open', 'high', 'low', 'close', 'volume'], inplace=True)
 
         if df.empty:
@@ -193,7 +187,6 @@ def get_stock_metrics(
         sma_period = metrics['data_points_used']
         metrics[f'sma_{sma_period}_period'] = df['close'].rolling(window=sma_period).mean().iloc[-1] if len(df) >= sma_period else None
 
-        # --- Final Formatting (copied from PolygonDataProvider) --- 
         volume_keys = {'average_volume', 'total_volume'}
         formatted_metrics = {}
         for key, value in metrics.items():
@@ -227,7 +220,7 @@ def get_stock_metrics(
 @mcp.tool()
 def get_ticker_snapshot(ticker: str) -> Dict[str, Any]:
     """
-    Get the most recent snapshot (trade, quote, minute/day bars) for a single ticker using RESTClient.
+    Get the most recent snapshot (trade, quote, minute/day bars) for a single ticker.
 
     Args:
         ticker: The ticker symbol (e.g., AAPL).
@@ -258,7 +251,7 @@ def get_ticker_snapshot(ticker: str) -> Dict[str, Any]:
 @mcp.tool()
 def get_all_tickers_snapshot(tickers: List[str], include_otc: bool = False) -> List[Dict[str, Any]]:
     """
-    Get the most recent snapshot data for all tickers in a given market using RESTClient.
+    Get the most recent snapshot data for all tickers in a given market.
 
     Args:
         tickers: A list of ticker symbols to fetch snapshots for.
@@ -293,7 +286,7 @@ def get_all_tickers_snapshot(tickers: List[str], include_otc: bool = False) -> L
 @mcp.tool()
 def get_market_movers(direction: str, include_otc: bool = False) -> List[Dict[str, Any]]:
     """
-    Get the top market movers (gainers or losers) based on percentage change using RESTClient.
+    Get the top market movers (gainers or losers) based on percentage change.
 
     Args:
         direction: The direction of movement ('gainers' or 'losers').
@@ -327,7 +320,7 @@ def get_market_movers(direction: str, include_otc: bool = False) -> List[Dict[st
 @mcp.tool()
 def get_market_status() -> Dict[str, Any]:
     """
-    Get the current trading status of the overall US market and specific exchanges using RESTClient.
+    Get the current trading status of the overall US market and specific exchanges.
 
     Returns:
         A dictionary containing the current market status details, converted from client response.
@@ -343,57 +336,6 @@ def get_market_status() -> Dict[str, Any]:
     except Exception as e:
         print(f"Error in get_market_status MCP tool: {e}")
         return {"error": f"An unexpected error occurred: {str(e)}"}
-
-#@mcp.tool()
-# def get_stock_financials(
-#     ticker: str,
-#     timeframe: Optional[str] = 'quarterly', # 'annual', 'quarterly', 'ttm'
-#     limit: Optional[int] = 10 # Max 100 for this endpoint, fixed syntax
-# ) -> List[Dict[str, Any]]:
-#     """
-#     Get historical financial data for a stock ticker from SEC filings using RESTClient (EXPERIMENTAL API).
-#     Manually limits results to the specified `limit` parameter.
-
-#     Args:
-#         ticker: The ticker symbol (e.g., AAPL).
-#         timeframe: Query by timeframe (annual, quarterly, ttm). Defaults to 'quarterly'.
-#         limit: Limit the number of results returned (default: 10, max: 100).
-
-#     Returns:
-#         A list of dictionaries, where each dictionary represents a financial report entry,
-#         converted from the client's response objects. The list length will not exceed `limit`.
-#         Returns a list containing an error dictionary if the client is not initialized or fetching fails.
-#     """
-#     if rest_client is None:
-#         return [{"error": "Polygon RESTClient is not initialized. Check API Key."}]
-
-#     # Capitalize ticker
-#     ticker = ticker.upper()
-
-#     try:
-#         # Use the client's get_stock_financials method
-#         # We still pass the limit to the API, even if it might be ignored
-#         financials_iterator = rest_client.vx.list_stock_financials(
-#             ticker=ticker, # Use capitalized ticker
-#             timeframe=timeframe,
-#             order='desc', # Typically want most recent first
-#             include_sources=False,
-#             limit=limit, # Pass limit to API
-#         )
-
-#         # Convert iterator to a list of dictionaries
-#         financials_list = [_to_dict(f) for f in financials_iterator]
-
-#         # Manually enforce the limit *after* receiving results
-#         return financials_list[:limit]
-
-#     except Exception as e:
-#         print(f"Error fetching stock financials for {ticker}: {e}") # Ticker in log is capitalized
-#         # Handle potential 404 or other client errors gracefully
-#         if hasattr(e, 'response') and hasattr(e.response, 'status_code') and e.response.status_code == 404:
-#              return [{"error": f"Financial data not found for ticker: {ticker}"}] # Ticker in error is capitalized
-#         return [{"error": f"Failed to fetch stock financials for {ticker}: {str(e)}"}] # Ticker in error is capitalized
-
 
 # --- Main Execution Block ---
 if __name__ == "__main__":
