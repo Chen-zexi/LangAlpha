@@ -32,5 +32,4 @@ __all__ = [
     "CODING_MODEL_PROVIDER",
     # Other configurations
     "TEAM_MEMBERS",
-    "TAVILY_MAX_RESULTS",
 ]

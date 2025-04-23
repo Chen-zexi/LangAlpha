@@ -4,6 +4,8 @@ from langgraph.graph.graph import CompiledGraph # Or the specific AgentExecutor 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 import logging
 
+from market_intelligence_agent.graph.types import AgentResult
+
 from market_intelligence_agent.prompts import apply_prompt_template
 from market_intelligence_agent.tools import (
     bash_tool,
@@ -29,6 +31,7 @@ async def initialize_coder_agent():
         get_llm_by_type(AGENT_LLM_MAP["coder"]),
         tools=tools,
         prompt=lambda state: apply_prompt_template("coder", state),
+        response_format=AgentResult
     )
 
 async def get_research_agent() -> CompiledGraph:
@@ -56,12 +59,12 @@ async def get_research_agent() -> CompiledGraph:
     logger.debug("  Getting MCP tools...")
     mcp_tools = _mcp_client_instance.get_tools()
     logger.info(f"  Obtained {len(mcp_tools)} MCP tools.")
-    
     logger.debug("  Creating research agent...")
     _research_agent_instance = create_react_agent(
         get_llm_by_type(AGENT_LLM_MAP["researcher"]),
         tools=mcp_tools, 
         prompt=lambda state: apply_prompt_template("researcher", state),
+        response_format=AgentResult
     )
     logger.info("Research agent created and cached.")
         

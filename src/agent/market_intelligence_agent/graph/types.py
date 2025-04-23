@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 from pydantic import Field, BaseModel
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
@@ -21,6 +21,15 @@ class SupervisorInstructions(BaseModel):
     feedback: str | None = Field(description="Feedback and instruction to the agent")
     next: Router
     
+class CoordinatorInstructions(BaseModel):
+    handoff_to_planner: bool
+    time_range: str
+
+class AgentResult(BaseModel):
+    """Schema for storing agent task results"""
+    task: str = Field(description="The task that was performed")
+    output: str = Field(description="The output of the task")
+
 class State(MessagesState):
     """State for the agent system, extends MessagesState with next field."""
 
@@ -31,7 +40,10 @@ class State(MessagesState):
     next: str
     full_plan: str
     final_report: str
-    deep_thinking_mode: bool
-    search_before_planning: bool
-    plot_file_path: Optional[str]
+    last_agent: str | None = Field(default=None)
     current_timestamp: Optional[datetime]
+    researcher_credits: int = Field(default=0)
+    coder_credits: int = Field(default=0)
+    research_results: List[AgentResult] = Field(default_factory=list)
+    coder_results: List[AgentResult] = Field(default_factory=list)
+    time_range: str

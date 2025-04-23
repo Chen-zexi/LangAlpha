@@ -7,16 +7,14 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from langgraph.graph import END
-import os
-import uuid
-import re # Import regex module
 
 from market_intelligence_agent.agents import get_research_agent, get_coder_agent
 from market_intelligence_agent.agents.llm import get_llm_by_type
 from market_intelligence_agent.config import TEAM_MEMBERS
 from market_intelligence_agent.config.agents import AGENT_LLM_MAP
 from market_intelligence_agent.prompts.template import apply_prompt_template
-from market_intelligence_agent.graph.types import State, SupervisorInstructions
+from market_intelligence_agent.graph.types import State, SupervisorInstructions, CoordinatorInstructions
+from market_intelligence_agent.config.agents import AGENT_LLM_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +29,22 @@ async def research_node_async(state: State) -> Command[Literal["supervisor"]]:
     
     # Invoke the agent with the current state
     result = await agent.ainvoke(state)
-    
+    structured_response = result['structured_response']
+    state['researcher_credits'] -= 1
     logger.info("Research agent completed task")
-    logger.debug(f"Research agent response: {result['messages'][-1].content}")
     return Command(
         update={
             "messages": [
                 HumanMessage(
                     content=RESPONSE_FORMAT.format(
-                        "researcher", result["messages"][-1].content
+                        "researcher", structured_response.output
                     ),
                     name="researcher",
                 )
-            ]
+            ],
+            "research_result": structured_response,
+            "last_agent": "researcher",
+            "researcher_credits": state['researcher_credits']
         },
         goto="supervisor",
     )
@@ -60,33 +61,29 @@ async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
     """Async version of the coder node."""
     logger.info("Code agent starting task")
     agent = await get_coder_agent()
-
-
-    # Define where to save the plot (you might want a more robust way)
-    output_dir = os.path.abspath("./output/plots")
-    unique_filename = f"plot_{uuid.uuid4()}.png"
-    target_file_path = os.path.join(output_dir, unique_filename)
-    
-
     logger.debug(f"Invoking coder agent with state: {state}")
     result = agent.invoke(state)
     logger.info("Code agent completed task")
+    structured_response = result['structured_response']
     
-    agent_response_content = result['messages'][-1].content
-    logger.debug(f"Code agent raw response: {agent_response_content}")
+    state['coder_credits'] -= 1
 
-    # Prepare update dictionary
-    update_dict = {
-        "messages": [
-            HumanMessage(
-                content=RESPONSE_FORMAT.format(
-                    "coder", agent_response_content # Use the original response content
-                ),
-                name="coder",
-            )
-        ]
-    }
-    return Command(update=update_dict, goto="supervisor")
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "coder", structured_response.output
+                    ),
+                    name="coder",
+                )
+            ],
+            "coder_result": structured_response,
+            "last_agent": "coder",
+            "coder_credits": state['coder_credits']
+        }, 
+        goto="supervisor"
+    )
 
 
 def code_node(state: State) -> Command[Literal["supervisor"]]:
@@ -127,6 +124,7 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"Supervisor response: {response}")
+    
 
     if goto == "FINISH":
         goto = "__end__"
@@ -134,19 +132,22 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     else:
         logger.info(f"Supervisor delegating to: {goto}")
         logger.debug(f"Supervisor instructions: {instructions}")
-    return Command(goto=goto, update={"next": goto, "messages": [HumanMessage(content=json.dumps(instructions), name="supervisor")]})
+    return Command( 
+        update={
+            "next": goto, 
+            "messages": [HumanMessage(content=json.dumps(instructions), name="supervisor")],
+            "last_agent": "supervisor"
+        },
+        goto=goto, 
+    )
 
 
 def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     """Planner node that generate the full plan."""
     logger.info("Planner generating full plan")
     messages = apply_prompt_template("planner", state)
-    llm = get_llm_by_type("basic")
-    if state.get("deep_thinking_mode"):
-        llm = get_llm_by_type("reasoning")
-    if state.get("search_before_planning"):
-        # Get tavily tool and use it
-        tool = {"type": "web_search_preview"}
+    llm = get_llm_by_type(AGENT_LLM_MAP["planner"])
+    tool = {"type": "web_search_preview"}
     stream = llm.stream(messages, tools=[tool])
     full_response = ""
     for chunk in stream:
@@ -171,6 +172,7 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
         update={
             "messages": [HumanMessage(content=full_response, name="planner")],
             "full_plan": full_response,
+            "last_agent": "planner"
         },
         goto=goto,
     )
@@ -180,15 +182,19 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     """Coordinator node that communicate with customers."""
     logger.info("Coordinator talking.")
     messages = apply_prompt_template("coordinator", state)
-    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
+    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).with_structured_output(CoordinatorInstructions).invoke(messages)
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"reporter response: {response}")
 
     goto = "__end__"
-    if "handoff_to_planner" in response.content:
+    if response.handoff_to_planner:
         goto = "planner"
 
     return Command(
+        update={
+            'last_agent': 'coordinator',
+            'time_range': response.time_range
+        },
         goto=goto,
     )
 
