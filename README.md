@@ -45,7 +45,6 @@ The project aims to deliver functionality across three core components:
 2.  **LLM Agent-Driven Trading Signal Generation:**
     *   Employs specialized LLM agents (`src/agent`) to generate investment/trading signals.
     *   Agents analyze data based on various strategies:
-        *   Simulating renowned investor approaches.
         *   Fundamental analysis.
         *   Macroeconomic assessment.
         *   Technical analysis.
