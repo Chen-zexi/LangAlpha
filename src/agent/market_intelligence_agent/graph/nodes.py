@@ -260,8 +260,7 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     logger.info("Coordinator talking.")
     messages = apply_prompt_template("coordinator", state)
     response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).with_structured_output(CoordinatorInstructions).invoke(messages)
-    logger.debug(f"Current state messages: {state['messages']}")
-    logger.debug(f"reporter response: {response}")
+
 
     goto = "__end__"
     if response.handoff_to_planner:

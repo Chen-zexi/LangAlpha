@@ -12,6 +12,8 @@ class yahoo_finance:
         self.consumer_secret = os.getenv('YAHOO_CONSUMER_SECRET')
         self.app_id = os.getenv('YAHOO_APP_ID')
         self.auth = OAuth1(self.consumer_key, self.consumer_secret)
+        self.username = os.getenv('YAHOO_USERNAME')
+        self.password = os.getenv('YAHOO_PASSWORD')
         if self.consumer_key is None or self.consumer_secret is None:
             raise ValueError("YAHOO_CONSUMER_KEY or YAHOO_CONSUMER_SECRET is not set")
         else:
@@ -46,3 +48,60 @@ class yahoo_finance:
             data_list.append(data)
                 
         return pd.DataFrame(data_list)
+    
+    def company_360_summary(self, symbol: str, max_counterparties: int = 3, **kwargs):
+        """
+        Innovation / ESG / insider & supply-chain colour in one bite.
+
+        JSON schema
+        -----------
+        {
+        "symbol": str,
+        "innovation": {"score": float, "sectorAvg": float},
+        "sustainability": {"total": int, "percentile": int, "controversy": int},
+        "insiderSentiment": {"vickersIndex": int, "text": str},
+        "keyCounterparties": [
+            {"name": str, "relation": str, "exposure": float}, ...
+        ],
+        "outlook": { ... }                 # raw Yahoo outlook blob
+        }
+        """
+        tk = Ticker(symbol, username=self.username, password=self.password)
+        print(tk)
+        raw = tk.p_company_360.get(symbol, {})
+        print(raw)
+        if not raw:            # graceful fallback
+            return {}
+
+        # --- core scores ---
+        out = {
+            "symbol": symbol,
+            "innovation": {
+                "score": raw.get("innovations", {}).get("score"),
+                "sectorAvg": raw.get("innovations", {}).get("sectorAvg")
+            },
+            "sustainability": {
+                "total": raw.get("sustainability", {}).get("totalScore"),
+                "percentile": raw.get("sustainability", {}).get("totalScorePercentile"),
+                "controversy": raw.get("sustainability", {}).get("controversyLevel")
+            },
+            "insiderSentiment": {
+                "vickersIndex": raw.get("insiderSentiments", {}).get("vickersIndex"),
+                "text": raw.get("insiderSentiments", {}).get("sentimentText")
+            },
+            "outlook": raw.get("companyOutlookSummary")
+        }
+
+        # --- top counterparties (supplier / customer) ---
+        rels = raw.get("supplyChain", {}).get("relationship", [])
+        if rels:
+            out["keyCounterparties"] = [
+                {
+                    "name": r.get("entityYName") or r.get("entityYTicker"),
+                    "relation": r.get("relationToType"),
+                    "exposure": r.get("exposureTotal")
+                }
+                for r in rels[:max_counterparties]
+            ]
+
+        return out

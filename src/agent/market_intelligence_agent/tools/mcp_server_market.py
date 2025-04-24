@@ -5,9 +5,14 @@ from typing import List, Any
 
 # Configuration for the MCP servers
 MCP_SERVERS_MARKET = {
-    "polygon": {
+    "market_data": {
         "command": "python",
-        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/polygon_mcp.py"],
+        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/market_data.py"],
+        "transport": "stdio",
+    },
+    "fundamental_data": {
+        "command": "python",
+        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/fundamental_data.py"],
         "transport": "stdio",
     }
 }
