@@ -5,17 +5,15 @@ from typing import Optional, ClassVar, Type
 from langchain.tools import BaseTool
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use import Agent as BrowserAgent
-from market_intelligence_agent.agents.llm import vl_llm
 from market_intelligence_agent.tools.decorators import create_logged_tool
-from market_intelligence_agent.config import CHROME_INSTANCE_PATH
+from market_intelligence_agent.agents.llm import create_basic_llm
+
 
 expected_browser = None
 
-# Use Chrome instance if specified
-if CHROME_INSTANCE_PATH:
-    expected_browser = Browser(
-        config=BrowserConfig(chrome_instance_path=CHROME_INSTANCE_PATH)
-    )
+
+    
+
 
 
 class BrowserUseInput(BaseModel):
@@ -37,7 +35,7 @@ class BrowserTool(BaseTool):
         """Run the browser task synchronously."""
         self._agent = BrowserAgent(
             task=instruction,  # Will be set per request
-            llm=vl_llm,
+            llm=create_basic_llm(model="gpt-4.1", provider="OPENAI"),
             browser=expected_browser,
         )
         try:
@@ -58,7 +56,7 @@ class BrowserTool(BaseTool):
     async def _arun(self, instruction: str) -> str:
         """Run the browser task asynchronously."""
         self._agent = BrowserAgent(
-            task=instruction, llm=vl_llm  # Will be set per request
+            task=instruction, llm=create_basic_llm(model="gpt-4.1", provider="OPENAI")  # Will be set per request
         )
         try:
             result = await self._agent.run()

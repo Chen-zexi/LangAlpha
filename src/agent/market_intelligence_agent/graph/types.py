@@ -44,6 +44,8 @@ class State(MessagesState):
     current_timestamp: Optional[datetime]
     researcher_credits: int = Field(default=0)
     coder_credits: int = Field(default=0)
+    browser_credits: int = Field(default=0)
+    market_credits: int = Field(default=0)
     research_results: List[AgentResult] = Field(default_factory=list)
     coder_results: List[AgentResult] = Field(default_factory=list)
     time_range: str

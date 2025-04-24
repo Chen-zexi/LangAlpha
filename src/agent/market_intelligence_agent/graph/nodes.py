@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from langgraph.graph import END
 
-from market_intelligence_agent.agents import get_research_agent, get_coder_agent
+from market_intelligence_agent.agents import get_research_agent, get_coder_agent, get_market_agent, get_browser_agent
 from market_intelligence_agent.agents.llm import get_llm_by_type
 from market_intelligence_agent.config import TEAM_MEMBERS
 from market_intelligence_agent.config.agents import AGENT_LLM_MAP
@@ -48,6 +48,37 @@ async def research_node_async(state: State) -> Command[Literal["supervisor"]]:
         },
         goto="supervisor",
     )
+    
+async def market_node_async(state: State) -> Command[Literal["supervisor"]]:
+    """Async version of the market node."""
+    logger.info("Market agent starting task")
+    # Get the cached agent instance (initializes on first call)
+    agent = await get_market_agent()
+    
+    # Invoke the agent with the current state
+    result = await agent.ainvoke(state)
+    structured_response = result['structured_response']
+    state['market_credits'] -= 1
+    logger.info("Market agent completed task")
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "market", structured_response.output
+                    ),
+                    name="market",
+                )
+            ],
+            "market_result": structured_response,
+            "last_agent": "market",
+            "market_credits": state['market_credits']
+        },
+        goto="supervisor",
+    )
+async def market_node(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the market agent that performs market tasks."""
+    return await market_node_async(state)
 
 
 async def research_node(state: State) -> Command[Literal["supervisor"]]:
@@ -101,6 +132,28 @@ def code_node(state: State) -> Command[Literal["supervisor"]]:
         # No event loop, create a new one
         return asyncio.run(code_node_async(state))
 
+async def browser_node(state: State) -> Command[Literal["supervisor"]]:
+    """Node for the browser agent that performs web browsing tasks."""
+    logger.info("Browser agent starting task")
+    agent = await get_browser_agent()
+    result = await agent.ainvoke(state)
+    logger.info("Browser agent completed task")
+    logger.debug(f"Browser agent response: {result['messages'][-1].content}")
+    state['browser_credits'] -= 1
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(
+                    content=RESPONSE_FORMAT.format(
+                        "browser", result["messages"][-1].content
+                    ),
+                    name="browser",
+                )
+            ],
+            "browser_credits": state['browser_credits']
+        },
+        goto="supervisor",
+    )
 
 def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     """Supervisor node that decides which agent should act next."""
@@ -175,6 +228,30 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
             "last_agent": "planner"
         },
         goto=goto,
+    )
+    
+def analyst_node(state: State) -> Command[Literal["supervisor"]]:
+    """Planner node that generate the full plan."""
+    
+    logger.info("Analyst generating full plan")
+    
+    messages = apply_prompt_template("analyst", state)
+    llm = get_llm_by_type(AGENT_LLM_MAP["analyst"])
+    tool = {"type": "web_search_preview"}
+    stream = llm.stream(messages, tools=[tool])
+    full_response = ""
+    for chunk in stream:
+        full_response += chunk.text()
+        
+    logger.debug(f"Analyst has finised the task")
+
+
+    return Command(
+        update={
+            "messages": [HumanMessage(content=full_response, name="analyst")],
+            "last_agent": "analyst"
+        },
+        goto='supervisor',
     )
 
 

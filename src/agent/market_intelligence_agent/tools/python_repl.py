@@ -16,8 +16,7 @@ def python_repl_tool(
         str, "The python code to execute to do further analysis or calculation."
     ],
 ):
-    """Use this to execute python code and do data analysis or calculation. If you want to see the output of a value,
-    you should print it out with `print(...)`. This is visible to the user."""
+    """Executes python code and returns the result. The code runs in a static sandbox without interactive mode, so make sure to print output only."""
     logger.info("Executing Python code")
     try:
         result = repl.run(code)

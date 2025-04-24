@@ -15,7 +15,7 @@ from .env import (
 )
 
 # Team configuration
-TEAM_MEMBERS = ["researcher", "coder", "reporter"]
+TEAM_MEMBERS = ["researcher", "coder", "reporter", "market", "browser", "analyst"]
 
 __all__ = [
     # Reasoning LLM

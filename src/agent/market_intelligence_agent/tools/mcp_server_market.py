@@ -4,17 +4,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from typing import List, Any
 
 # Configuration for the MCP servers
-MCP_SERVERS = {
-    "tavily_search": {
-        "command": "python",
-        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tavily.py"],
-        "transport": "stdio",
-    },
-    "tickertick": {
-        "command": "python",
-        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tickertick.py"],
-        "transport": "stdio",
-    },
+MCP_SERVERS_MARKET = {
     "polygon": {
         "command": "python",
         "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/polygon_mcp.py"],
@@ -23,7 +13,7 @@ MCP_SERVERS = {
 }
 
 @asynccontextmanager
-async def managed_mcp_tools() -> List[Any]:
+async def managed_mcp_tools_market() -> List[Any]:
     """
     An async context manager that connects to MCP servers,
     yields the combined tools, and ensures cleanup.
@@ -36,7 +26,7 @@ async def managed_mcp_tools() -> List[Any]:
         # Connect to all configured servers
         connect_tasks = [
             client.connect_to_server(name, **params)
-            for name, params in MCP_SERVERS.items()
+            for name, params in MCP_SERVERS_MARKET.items()
         ]
         await asyncio.gather(*connect_tasks)
 

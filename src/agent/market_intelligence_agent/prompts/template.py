@@ -18,10 +18,12 @@ def get_prompt_template(prompt_name: str) -> str:
 
 
 def apply_prompt_template(prompt_name: str, state: AgentState) -> list:
+    
     system_prompt = PromptTemplate(
         input_variables=["CURRENT_TIME"],
         template=get_prompt_template(prompt_name),
     ).format(CURRENT_TIME=datetime.now().strftime("%a %b %d %Y %H:%M:%S %z"), **state)
+    
     if prompt_name == "researcher":
         prompt = [{"role": "system", "content": system_prompt}] + [state["messages"][-1].content]
         logger.debug(f"Researcher prompt: {prompt}")
@@ -48,6 +50,15 @@ def apply_prompt_template(prompt_name: str, state: AgentState) -> list:
             ])
             prompt.append({"role": "user", "content": f"Previous coding context:\n{results_text}"})
             
+        return prompt
+    
+    elif prompt_name == "browser":
+        prompt = [{"role": "system", "content": system_prompt}] + [state["messages"][-1].content]
+        return prompt
+
+    
+    elif prompt_name == "market":
+        prompt = [{"role": "system", "content": system_prompt}] + [state["messages"][-1].content]
         return prompt
         
     else:

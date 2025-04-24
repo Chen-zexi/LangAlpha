@@ -8,6 +8,9 @@ from market_intelligence_agent.graph.nodes import (
     coordinator_node,
     reporter_node,
     planner_node,
+    market_node,
+    browser_node,
+    analyst_node,
 )
 
 
@@ -19,6 +22,9 @@ def build_graph():
     builder.add_node("planner", planner_node)
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("researcher", research_node)
+    builder.add_node("market", market_node)
+    builder.add_node("browser", browser_node)
+    builder.add_node("analyst", analyst_node)
     builder.add_node("coder", code_node)
     builder.add_node("reporter", reporter_node)
     return builder.compile()
