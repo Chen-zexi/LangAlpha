@@ -1,9 +1,18 @@
+import asyncio
 import logging
+import warnings
+import sys
+import os
 
-from market_intelligence_agent.config import TEAM_MEMBERS
-from market_intelligence_agent.graph import build_graph
-from langchain_community.adapters.openai import convert_message_to_dict
-import uuid
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+
+from ..config import TEAM_MEMBERS
+from langchain_core.messages import convert_to_messages
+from langgraph_sdk import get_client
+from datetime import datetime
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -19,190 +28,92 @@ def enable_debug_logging():
 
 logger = logging.getLogger(__name__)
 
-# Create the graph
-graph = build_graph()
+# LangGraph Client
+async def get_lg_client_and_thread():
+    lg_client = get_client(url="http://localhost:2024")
+    thread_info = await lg_client.threads.create() # This returns a dict
+    return lg_client, thread_info
 
-# Cache for coordinator messages
-coordinator_cache = []
-MAX_CACHE_SIZE = 2
+# Removed hardcoded user_input_messages
 
-
-async def run_agent_workflow(
-    user_input_messages: list,
-    debug: bool = False,
-    deep_thinking_mode: bool = False,
-    search_before_planning: bool = False,
-):
-    """Run the agent workflow with the given user input.
-
-    Args:
-        user_input_messages: The user request messages
-        debug: If True, enables debug level logging
-
-    Returns:
-        The final state after the workflow completes
-    """
-    if not user_input_messages:
-        raise ValueError("Input could not be empty")
-
-    if debug:
-        enable_debug_logging()
-
-    logger.info(f"Starting workflow with user input: {user_input_messages}")
-
-    workflow_id = str(uuid.uuid4())
-
-    streaming_llm_agents = [*TEAM_MEMBERS, "planner", "coordinator"]
-
-    # Reset coordinator cache at the start of each workflow
-    global coordinator_cache
-    coordinator_cache = []
-    global is_handoff_case
-    is_handoff_case = False
-
-    # TODO: extract message content from object, specifically for on_chat_model_stream
-    async for event in graph.astream_events(
-        {
+async def run_workflow(user_query: str):
+    """Runs the LangGraph workflow with the provided user query."""
+    if not user_query:
+        print("Error: No query provided.")
+        return
+    raw_response = []
+    lg_client, thread_info = await get_lg_client_and_thread()
+    print(f"Starting graph stream for query: '{user_query}'...")
+    # Use the client to stream runs for the specific thread ID
+    async for chunk in lg_client.runs.stream(
+            thread_info["thread_id"], # Get thread_id from the dict
+            assistant_id="market_intelligence_agent",
+            input={
             # Constants
             "TEAM_MEMBERS": TEAM_MEMBERS,
             # Runtime Variables
-            "messages": user_input_messages,
-            "deep_thinking_mode": deep_thinking_mode,
-            "search_before_planning": search_before_planning,
+            "messages": [user_query], # Use the provided query
+            "current_timestamp": datetime.now(),
+            "researcher_credits": 6,
+            "market_credits": 6,
+            "coder_credits": 0,
+            "browser_credits": 3,
         },
-        version="v2",
+        config={
+            "recursion_limit": 150
+        },
+        stream_mode="values"
     ):
-        kind = event.get("event")
-        data = event.get("data")
-        name = event.get("name")
-        metadata = event.get("metadata")
-        node = (
-            ""
-            if (metadata.get("checkpoint_ns") is None)
-            else metadata.get("checkpoint_ns").split(":")[0]
-        )
-        langgraph_step = (
-            ""
-            if (metadata.get("langgraph_step") is None)
-            else str(metadata["langgraph_step"])
-        )
-        run_id = "" if (event.get("run_id") is None) else str(event["run_id"])
+        raw_response.append(chunk)
+        messages = chunk.data.get("messages", None)
+        state = chunk.data
+        next_agent = chunk.data.get('next', None)
+        last_agent = chunk.data.get('last_agent', None)
+        if last_agent == "coordinator":
+            print('Coordinator handed off the task to the team.')
 
-        if kind == "on_chain_start" and name in streaming_llm_agents:
-            if name == "planner":
-                yield {
-                    "event": "start_of_workflow",
-                    "data": {"workflow_id": workflow_id, "input": user_input_messages},
-                }
-            ydata = {
-                "event": "start_of_agent",
-                "data": {
-                    "agent_name": name,
-                    "agent_id": f"{workflow_id}_{name}_{langgraph_step}",
-                },
-            }
-        elif kind == "on_chain_end" and name in streaming_llm_agents:
-            ydata = {
-                "event": "end_of_agent",
-                "data": {
-                    "agent_name": name,
-                    "agent_id": f"{workflow_id}_{name}_{langgraph_step}",
-                },
-            }
-        elif kind == "on_chat_model_start" and node in streaming_llm_agents:
-            ydata = {
-                "event": "start_of_llm",
-                "data": {"agent_name": node},
-            }
-        elif kind == "on_chat_model_end" and node in streaming_llm_agents:
-            ydata = {
-                "event": "end_of_llm",
-                "data": {"agent_name": node},
-            }
-        elif kind == "on_chat_model_stream" and node in streaming_llm_agents:
-            content = data["chunk"].content
-            if content is None or content == "":
-                if not data["chunk"].additional_kwargs.get("reasoning_content"):
-                    # Skip empty messages
-                    continue
-                ydata = {
-                    "event": "message",
-                    "data": {
-                        "message_id": data["chunk"].id,
-                        "delta": {
-                            "reasoning_content": (
-                                data["chunk"].additional_kwargs["reasoning_content"]
-                            )
-                        },
-                    },
-                }
-            else:
-                # Check if the message is from the coordinator
-                if node == "coordinator":
-                    if len(coordinator_cache) < MAX_CACHE_SIZE:
-                        coordinator_cache.append(content)
-                        cached_content = "".join(coordinator_cache)
-                        if cached_content.startswith("handoff"):
-                            is_handoff_case = True
-                            continue
-                        if len(coordinator_cache) < MAX_CACHE_SIZE:
-                            continue
-                        # Send the cached message
-                        ydata = {
-                            "event": "message",
-                            "data": {
-                                "message_id": data["chunk"].id,
-                                "delta": {"content": cached_content},
-                            },
-                        }
-                    elif not is_handoff_case:
-                        # For other agents, send the message directly
-                        ydata = {
-                            "event": "message",
-                            "data": {
-                                "message_id": data["chunk"].id,
-                                "delta": {"content": content},
-                            },
-                        }
-                else:
-                    # For other agents, send the message directly
-                    ydata = {
-                        "event": "message",
-                        "data": {
-                            "message_id": data["chunk"].id,
-                            "delta": {"content": content},
-                        },
-                    }
-        elif kind == "on_tool_start" and node in TEAM_MEMBERS:
-            ydata = {
-                "event": "tool_call",
-                "data": {
-                    "tool_call_id": f"{workflow_id}_{node}_{name}_{run_id}",
-                    "tool_name": name,
-                    "tool_input": data.get("input"),
-                },
-            }
-        elif kind == "on_tool_end" and node in TEAM_MEMBERS:
-            ydata = {
-                "event": "tool_call_result",
-                "data": {
-                    "tool_call_id": f"{workflow_id}_{node}_{name}_{run_id}",
-                    "tool_name": name,
-                    "tool_result": data["output"].content if data.get("output") else "",
-                },
-            }
-        else:
-            continue
-        yield ydata
+        if messages:
+            print("-" * 120)
+            agent_name = messages[-1].get('name', None)
+            if agent_name:
+                if agent_name == "planner":
+                    full_plan = state.get('full_plan', None)
+                    print(json.loads(convert_to_messages(messages)[-1].content)['thought'])
+                    print(f"Planner handed off the following plan to the supervisor: \n{full_plan}")
+                if agent_name == "supervisor":
+                    instructions = json.loads(convert_to_messages(messages)[-1].content)
+                    print(f"Supervisor assigned the following task to {next_agent}: \n{instructions['task']}")
+                if agent_name == "researcher":
+                    research_result = json.loads(convert_to_messages(messages)[-1].content)
+                    print(f"Researcher has finished the task: {research_result['result_summary']}")
+                if agent_name == "coder":
+                    coder_result = json.loads(convert_to_messages(messages)[-1].content)
+                    print(f"Coder has finished the task: {coder_result['result_summary']}")
+                if agent_name == "market":
+                    market_result = json.loads(convert_to_messages(messages)[-1].content)
+                    print(f"Market agent has finished the task: {market_result['result_summary']}")
+        if next_agent:
+            print("=" * 120)
+            if next_agent == "planner":
+                print('Planner is thinking...')
+            if next_agent == "supervisor":
+                print(f'Supervisor is evaluating response from {last_agent}...')
+            if next_agent == "researcher":
+                print('Researcher is gathering information...')
+            if next_agent == "coder":
+                print('Coder is coding...')
+            if next_agent == "market":
+                print('Market agent is retrieving market data...')
+            if next_agent == "browser":
+                print('Browser agent is browsing the web...')
+            if next_agent == "analyst":
+                print('Analyst agent is analyzing the gathered information...')
+            if next_agent == "reporter":
+                print('Reporter agent is preparing the final report...')
+                
+    current_state = await lg_client.threads.get_state(thread_info["thread_id"])
+    final_report = current_state['values']['final_report']
+    print("Graph stream finished.")
+    return raw_response, final_report
 
-    if is_handoff_case:
-        yield {
-            "event": "end_of_workflow",
-            "data": {
-                "workflow_id": workflow_id,
-                "messages": [
-                    convert_message_to_dict(msg)
-                    for msg in data["output"].get("messages", [])
-                ],
-            },
-        }
+

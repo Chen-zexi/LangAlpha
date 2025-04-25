@@ -29,24 +29,24 @@ async def research_node_async(state: State) -> Command[Literal["supervisor"]]:
     
     # Invoke the agent with the current state
     result = await agent.ainvoke(state)
-    structured_response = result['structured_response']
+    structured_response = result['structured_response'].model_dump()
     state['researcher_credits'] -= 1
+    goto = "supervisor"
     logger.info("Research agent completed task")
     return Command(
         update={
             "messages": [
                 HumanMessage(
-                    content=RESPONSE_FORMAT.format(
-                        "researcher", structured_response.output
-                    ),
+                    content=json.dumps(structured_response),
                     name="researcher",
                 )
             ],
             "research_result": structured_response,
             "last_agent": "researcher",
-            "researcher_credits": state['researcher_credits']
+            "researcher_credits": state['researcher_credits'],
+            "next": goto
         },
-        goto="supervisor",
+        goto=goto,
     )
     
 async def market_node_async(state: State) -> Command[Literal["supervisor"]]:
@@ -57,24 +57,24 @@ async def market_node_async(state: State) -> Command[Literal["supervisor"]]:
     
     # Invoke the agent with the current state
     result = await agent.ainvoke(state)
-    structured_response = result['structured_response']
+    structured_response = result['structured_response'].model_dump()
     state['market_credits'] -= 1
+    goto = "supervisor"
     logger.info("Market agent completed task")
     return Command(
         update={
             "messages": [
                 HumanMessage(
-                    content=RESPONSE_FORMAT.format(
-                        "market", structured_response.output
-                    ),
+                    content=json.dumps(structured_response),
                     name="market",
                 )
             ],
             "market_result": structured_response,
             "last_agent": "market",
-            "market_credits": state['market_credits']
+            "market_credits": state['market_credits'],
+            "next": goto
         },
-        goto="supervisor",
+        goto=goto,
     )
 async def market_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the market agent that performs market tasks."""
@@ -95,25 +95,24 @@ async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
     logger.debug(f"Invoking coder agent with state: {state}")
     result = agent.invoke(state)
     logger.info("Code agent completed task")
-    structured_response = result['structured_response']
-    
+    structured_response = result['structured_response'].model_dump()
+    goto = "supervisor"
     state['coder_credits'] -= 1
 
     return Command(
         update={
             "messages": [
                 HumanMessage(
-                    content=RESPONSE_FORMAT.format(
-                        "coder", structured_response.output
-                    ),
+                    content=json.dumps(structured_response),
                     name="coder",
                 )
             ],
             "coder_result": structured_response,
             "last_agent": "coder",
-            "coder_credits": state['coder_credits']
+            "coder_credits": state['coder_credits'],
+            "next": goto
         }, 
-        goto="supervisor"
+        goto=goto
     )
 
 
@@ -140,6 +139,7 @@ async def browser_node(state: State) -> Command[Literal["supervisor"]]:
     logger.info("Browser agent completed task")
     logger.debug(f"Browser agent response: {result['messages'][-1].content}")
     state['browser_credits'] -= 1
+    goto = "supervisor"
     return Command(
         update={
             "messages": [
@@ -150,9 +150,10 @@ async def browser_node(state: State) -> Command[Literal["supervisor"]]:
                     name="browser",
                 )
             ],
-            "browser_credits": state['browser_credits']
+            "browser_credits": state['browser_credits'],
+            "next": goto
         },
-        goto="supervisor",
+        goto=goto,
     )
 
 def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
@@ -223,6 +224,7 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
 
     return Command(
         update={
+            "next": goto,
             "messages": [HumanMessage(content=full_response, name="planner")],
             "full_plan": full_response,
             "last_agent": "planner"
@@ -244,14 +246,15 @@ def analyst_node(state: State) -> Command[Literal["supervisor"]]:
         full_response += chunk.text()
         
     logger.debug(f"Analyst has finised the task")
-
+    goto = "supervisor"
 
     return Command(
         update={
+            "next": goto,
             "messages": [HumanMessage(content=full_response, name="analyst")],
             "last_agent": "analyst"
         },
-        goto='supervisor',
+        goto=goto,
     )
 
 
@@ -269,7 +272,8 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     return Command(
         update={
             'last_agent': 'coordinator',
-            'time_range': response.time_range
+            'time_range': response.time_range,
+            'next': goto
         },
         goto=goto,
     )

@@ -15,7 +15,7 @@ class Router(TypedDict):
     next: Literal[*OPTIONS]
 
 class SupervisorInstructions(BaseModel):
-    task: str | None = Field(description="The task to be performed by the agent")
+    task: str = Field(description="The task to be performed by the agent")
     followup: str | None = Field(description="Follow up question to the user")
     focus: str | None = Field(description="The focus of the report")
     feedback: str | None = Field(description="Feedback and instruction to the agent")
@@ -27,8 +27,8 @@ class CoordinatorInstructions(BaseModel):
 
 class AgentResult(BaseModel):
     """Schema for storing agent task results"""
-    task: str = Field(description="The task that was performed")
-    output: str = Field(description="The output of the task")
+    result_summary: str = Field(description="Breifly summarize what did you do? Maximum 2 sentences")
+    output: str = Field(description="The complete output of the task")
 
 class State(MessagesState):
     """State for the agent system, extends MessagesState with next field."""

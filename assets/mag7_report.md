@@ -1,4 +1,4 @@
-# Tesla (TSLA) Valuation & Investment Outlook: April 2025
+# Magnificent 7 Outlook 2025: Technicals, Catalysts & Trade Idea
 
 ---
 

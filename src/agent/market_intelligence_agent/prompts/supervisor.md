@@ -16,6 +16,7 @@ You will:
    - Does the information need further processing, calculation, **or expert financial interpretation**?
 5. You need to determine if you need to re-route to last agent or proceed with the next task. **If sufficient data seems gathered (e.g., after researcher/market tasks), consider routing to the `analyst` for investment insights before finalizing with the `reporter`.**
 6. Based on your evaluation:
+   - You should always include the "task" as a high level summary of the task that the agent is going to complete.
    - Direct further research with specific questions (e.g., {"next": "researcher", "followup": "Find recent event that happened in the last 24 hours using Tavily search"})
    - Provide feedback and instruction to the agent (e.g., {"next": "researcher", "feedback": "Your response are too general, try narrowing down the query to get more specific information using Tickertick news"})
    - Request data processing or retrieval (e.g., **{"next": "market", "task": "Get fundamental data and DCF valuation for AAPL using the comprehensive dashboard tool"}**, **{"next": "market", "task": "Calculate all trading signals for TSLA"}**, {"next": "coder", "task": "Calculate the EMA of the stock price"}, **{"next": "browser", "task": "Find the full transcript of the CEO interview from this obscure blog post URL"}**)
