@@ -11,7 +11,7 @@ __pycache__/
 .langgraph_api/*
 
 notebooks/stocksflags-ec5c40f2f2ee.json
-notebooks/rational-diode-456114-m0-79243525427e.json.DS_Store
+notebooks/rational-diode-456114-m0-79243525427e.json
 .env
 
 .vscode/
