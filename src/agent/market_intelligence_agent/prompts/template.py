@@ -26,30 +26,12 @@ def apply_prompt_template(prompt_name: str, state: AgentState) -> list:
     
     if prompt_name == "researcher":
         prompt = [{"role": "system", "content": system_prompt}] + [state["messages"][-1].content]
-        logger.debug(f"Researcher prompt: {prompt}")
-        research_results = state.get("research_results", [])
-        if research_results:
-            recent_results = research_results[-3:]
-            results_text = "\n\n".join([
-                f"Previous Research Task: {r['task']}\nResults: {r['output']}"
-                for r in recent_results
-            ])
-            prompt.append({"role": "user", "content": f"Previous research context:\n{results_text}"})
-            
+        logger.debug(f"Researcher prompt: {prompt}")           
         return prompt
         
     elif prompt_name == "coder":
         prompt = [{"role": "system", "content": system_prompt}] + [state["messages"][-1].content]
-        logger.debug(f"Coder prompt: {prompt}")
-        coder_results = state.get("coder_results", [])
-        if coder_results:
-            recent_results = coder_results[-3:]
-            results_text = "\n\n".join([
-                f"Previous Coding Task: {r['task']}\nCode Output: {r['output']}"
-                for r in recent_results
-            ])
-            prompt.append({"role": "user", "content": f"Previous coding context:\n{results_text}"})
-            
+        logger.debug(f"Coder prompt: {prompt}")            
         return prompt
     
     elif prompt_name == "browser":

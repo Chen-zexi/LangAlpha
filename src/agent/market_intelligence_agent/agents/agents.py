@@ -4,18 +4,18 @@ from langgraph.graph.graph import CompiledGraph # Or the specific AgentExecutor 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 import logging
 
-from market_intelligence_agent.graph.types import AgentResult
+from ..graph.types import AgentResult
 
-from market_intelligence_agent.prompts import apply_prompt_template
-from market_intelligence_agent.tools import (
+from ..prompts import apply_prompt_template
+from ..tools import (
     bash_tool,
     python_repl_tool,
     browser_tool,
 )
-from market_intelligence_agent.tools.mcp_server_research import MCP_SERVERS_RESEARCH
-from market_intelligence_agent.tools.mcp_server_market import MCP_SERVERS_MARKET
+from ..tools.mcp_server_research import MCP_SERVERS_RESEARCH
+from ..tools.mcp_server_market import MCP_SERVERS_MARKET
 from .llm import get_llm_by_type
-from market_intelligence_agent.config.agents import AGENT_LLM_MAP
+from ..config.agents import AGENT_LLM_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -123,3 +123,46 @@ async def get_browser_agent():
         prompt=lambda state: apply_prompt_template("browser", state),
     )
     return browser_agent
+
+async def shutdown_mcp_clients():
+    """Explicitly shuts down the global MCP client instances if they were initialized."""
+    global _mcp_client_instance_research, _mcp_client_instance_market
+    logger.info("Attempting to shut down global MCP clients sequentially...")
+    
+    research_client = _mcp_client_instance_research
+    market_client = _mcp_client_instance_market
+    
+    # Clear global refs immediately to prevent reuse during shutdown
+    _mcp_client_instance_research = None
+    _mcp_client_instance_market = None
+    
+    shutdown_error = None
+    
+    if research_client:
+        logger.info("  Shutting down research MCP client...")
+        try:
+            await research_client.__aexit__(None, None, None)
+            logger.info("  Research MCP client shut down.")
+        except Exception as e:
+            logger.error(f"Error shutting down research MCP client: {e}", exc_info=True)
+            if not shutdown_error: # Keep the first error
+                shutdown_error = e
+                
+    if market_client:
+        logger.info("  Shutting down market MCP client...")
+        try:
+            await market_client.__aexit__(None, None, None)
+            logger.info("  Market MCP client shut down.")
+        except Exception as e:
+            logger.error(f"Error shutting down market MCP client: {e}", exc_info=True)
+            if not shutdown_error: # Keep the first error
+                 shutdown_error = e
+
+    if not research_client and not market_client:
+        logger.info("No active global MCP clients found to shut down.")
+    elif shutdown_error:
+        logger.error(f"Error(s) occurred during MCP client shutdown. First error: {shutdown_error}")
+        # Optionally re-raise the first error if needed, but logging might be sufficient
+        # raise shutdown_error 
+    else:
+        logger.info("Global MCP clients shut down successfully.")

@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, START
 
-from market_intelligence_agent.graph.types import State
-from market_intelligence_agent.graph.nodes import (
+from .types import State
+from .nodes import (
     supervisor_node,
     research_node,
     code_node,

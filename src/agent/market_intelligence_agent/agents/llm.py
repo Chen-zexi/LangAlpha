@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from market_intelligence_agent.config import (
+from ..config import (
     REASONING_MODEL,
     REASONING_MODEL_PROVIDER,
     BASIC_MODEL,
@@ -17,7 +17,7 @@ from market_intelligence_agent.config import (
     ECONOMIC_MODEL,
     ECONOMIC_MODEL_PROVIDER,
 )
-from market_intelligence_agent.config.agents import LLMType
+from ..config.agents import LLMType
 
 
 def create_reasoning_llm(
