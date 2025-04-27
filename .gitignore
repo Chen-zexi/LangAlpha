@@ -62,3 +62,5 @@ notebooks/load_data/output/*
 src/agent/output/
 
 notebooks/** linguist-vendored
+
+*.ipynb linguist-vendored
