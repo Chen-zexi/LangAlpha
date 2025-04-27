@@ -44,7 +44,7 @@ def create_basic_llm(
     Create a basic LLM inst ance with the specified configuration
     """
     if provider in ["OPENAI", "openai"]:
-        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"), use_responses_api=False, **kwargs)
+        return ChatOpenAI(model=model, temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"),**kwargs)
     elif provider in ["GEMINI", "gemini"]:
         return ChatGoogleGenerativeAI(model=model, temperature=temperature, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
     elif provider in ["ANTHROPIC", "anthropic"]:
@@ -115,18 +115,8 @@ def get_llm_by_type(llm_type: LLMType) -> ChatOpenAI | ChatGoogleGenerativeAI | 
     return llm
 
 
-# Initialize LLMs for different purposes - now these will be cached
+# Initialize LLMs for different purposes
 reasoning_llm = get_llm_by_type("reasoning")
 basic_llm = get_llm_by_type("basic")
 coding_llm = get_llm_by_type("coding")
 economic_llm = get_llm_by_type("economic")
-
-
-if __name__ == "__main__":
-    stream = reasoning_llm.stream("what is mcp?")
-    full_response = ""
-    for chunk in stream:
-        full_response += chunk.content
-    print(full_response)
-
-    basic_llm.invoke("Hello")

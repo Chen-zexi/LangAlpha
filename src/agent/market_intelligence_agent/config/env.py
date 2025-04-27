@@ -20,3 +20,5 @@ CODING_MODEL_PROVIDER = os.getenv("CODING_MODEL_PROVIDER", "OPENAI")
 
 CHROME_INSTANCE_PATH = os.getenv("CHROME_INSTANCE_PATH", None)
 
+# Budget configuration
+BUDGET = os.getenv("BUDGET", "low")

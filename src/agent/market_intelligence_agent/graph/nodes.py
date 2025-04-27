@@ -1,8 +1,6 @@
-from json import tool
 import logging
 import json
 import asyncio
-from copy import deepcopy
 from typing import Literal, List, Any, Dict
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
@@ -237,9 +235,9 @@ def analyst_node(state: State) -> Command[Literal["supervisor"]]:
 
 def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     """Coordinator node that communicates with customers."""
+    logger.info(f"Budget for LLM: {AGENT_LLM_MAP['budget']}")
     messages = apply_prompt_template("coordinator", state)
     response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).with_structured_output(CoordinatorInstructions).invoke(messages)
-
     goto = "__end__"
     if response.handoff_to_planner:
         goto = "planner"
