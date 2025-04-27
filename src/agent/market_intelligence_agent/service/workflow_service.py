@@ -16,7 +16,7 @@ from langchain_core.messages import message_to_dict
 from datetime import datetime
 import json
 from ..graph import build_graph
-from ..agents.agents import shutdown_mcp_clients
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,  # Default level is INFO
@@ -36,14 +36,24 @@ graph = build_graph()
 
 
 async def run_workflow(user_query: str):
-    """Runs the LangGraph workflow with the provided user query."""
+    """
+    Runs the LangGraph workflow with the provided user query.
+    
+    Args:
+        user_query: The user's query string to process
+        
+    Returns:
+        Tuple of (raw_response, final_report)
+    """
     if not user_query:
         print("Error: No query provided.")
         return
+        
     raw_response = []
     final_report = None
     print("=" * 120)
     print(f"Starting graph stream for query: '{user_query}'...")
+
     try:
         # Use the client to stream runs for the specific thread ID
         async for chunk in graph.astream(
@@ -76,14 +86,9 @@ async def run_workflow(user_query: str):
             if messages:
                 streaming_message(messages, next_agent, last_agent)
         print("Graph stream finished.")
-    finally:
-        # Ensure MCP clients are shut down regardless of how the stream finishes
-        print("Adding a brief delay before MCP client shutdown...")
-        await asyncio.sleep(0.5) # Add a small delay BEFORE shutdown
-        print("Ensuring MCP clients are shut down...")
-        await shutdown_mcp_clients()
-
-    # Removed the sleep here as proper shutdown is now handled
-    return raw_response, final_report
+        return raw_response, final_report
+    except Exception as e:
+        print(f"An unexpected error occurred during execution: {e}")
+        raise
 
 

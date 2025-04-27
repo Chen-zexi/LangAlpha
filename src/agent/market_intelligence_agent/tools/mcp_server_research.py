@@ -1,7 +1,6 @@
 import asyncio
-from contextlib import asynccontextmanager
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from typing import List, Any
+from typing import List, Any, Dict, Callable
 
 # Configuration for the MCP servers
 MCP_SERVERS_RESEARCH = {
@@ -17,29 +16,46 @@ MCP_SERVERS_RESEARCH = {
     }
 }
 
-@asynccontextmanager
-async def managed_mcp_tools_research() -> List[Any]:
+async def execute_with_research_tools(operation: Callable[[List[Any], Dict[str, Any]], Any], state: Dict[str, Any]):
     """
-    An async context manager that connects to MCP servers,
-    yields the combined tools, and ensures cleanup.
+    Creates a new MCP client, connects to research servers, performs the operation, 
+    and ensures proper cleanup within the same task.
+    
+    Args:
+        operation: A callable that takes (tools, state) and returns a result
+        state: The state dictionary to pass to the operation
+        
+    Returns:
+        The result of the operation
     """
+    # Create a new client for this specific operation
     client = MultiServerMCPClient()
+    
+    # Setup phase
     try:
-        # Enter the client's context (starts background tasks if any)
+        # Start the client
         await client.__aenter__()
-
-        # Connect to all configured servers
-        connect_tasks = [
-            client.connect_to_server(name, **params)
-            for name, params in MCP_SERVERS_RESEARCH.items()
-        ]
+        
+        # Connect to all servers
+        connect_tasks = []
+        for name, params in MCP_SERVERS_RESEARCH.items():
+            connect_tasks.append(client.connect_to_server(name, **params))
+        
         await asyncio.gather(*connect_tasks)
-
-        # Yield the tools for use within the 'async with' block
-        yield client.get_tools()
-
+        
+        # Get tools
+        tools = client.get_tools()
+        
+        # Perform the operation
+        result = await operation(tools, state)
+        
+        return result
+    
     finally:
-        # Exit the client's context (cleans up connections, stops servers)
-        # The __aexit__ handles potential exceptions during cleanup internally
-        await client.__aexit__(None, None, None)
+        # Always clean up
+        try:
+            await client.__aexit__(None, None, None)
+        except Exception as e:
+            print(f"Warning: Error during research client cleanup: {e}")
+            # Continue execution even if cleanup fails
 
