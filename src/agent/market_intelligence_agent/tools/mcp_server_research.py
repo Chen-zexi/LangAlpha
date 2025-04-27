@@ -1,17 +1,20 @@
 import asyncio
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from typing import List, Any, Dict, Callable
+from pathlib import Path
+
+base_path = Path(__file__).parent.parent.parent.parent.parent
 
 # Configuration for the MCP servers
 MCP_SERVERS_RESEARCH = {
     "tavily_search": {
         "command": "python",
-        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tavily.py"],
+        "args": [str(base_path / "src/mcp_server/tavily.py")],
         "transport": "stdio",
     },
     "tickertick": {
         "command": "python",
-        "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/NYU/SPRING 25/TECH-UB 24/LangAlpha/src/mcp_server/tickertick.py"],
+        "args": [str(base_path / "src/mcp_server/tickertick.py")],
         "transport": "stdio",
     }
 }
