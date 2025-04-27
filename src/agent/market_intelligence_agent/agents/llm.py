@@ -2,6 +2,7 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
+from langchain_xai import ChatXAI
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -30,6 +31,12 @@ def create_reasoning_llm(
     """
     if provider in ["OPENAI", "openai"]:
         return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+    elif provider in ["GEMINI", "gemini"]:
+        return ChatGoogleGenerativeAI(model=model, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
+    elif provider in ["ANTHROPIC", "anthropic"]:
+        return ChatAnthropic(model=model, api_key=os.getenv("ANTHROPIC_API_KEY"), **kwargs)
+    elif provider in ["XAI", "xai"]:
+        return ChatXAI(model=model, api_key=os.getenv("XAI_API_KEY"), **kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
     
@@ -49,6 +56,8 @@ def create_basic_llm(
         return ChatGoogleGenerativeAI(model=model, temperature=temperature, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
     elif provider in ["ANTHROPIC", "anthropic"]:
         return ChatAnthropic(model=model, temperature=temperature, api_key=os.getenv("ANTHROPIC_API_KEY"), **kwargs)
+    elif provider in ["XAI", "xai"]:
+        return ChatXAI(model=model, temperature=temperature, api_key=os.getenv("XAI_API_KEY"), **kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
     
@@ -63,6 +72,12 @@ def create_coding_llm(
     """
     if provider in ["OPENAI", "openai"]:
         return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+    elif provider in ["GEMINI", "gemini"]:
+        return ChatGoogleGenerativeAI(model=model, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
+    elif provider in ["ANTHROPIC", "anthropic"]:
+        return ChatAnthropic(model=model, api_key=os.getenv("ANTHROPIC_API_KEY"), **kwargs)
+    elif provider in ["XAI", "xai"]:
+        return ChatXAI(model=model, api_key=os.getenv("XAI_API_KEY"), **kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
     
@@ -76,6 +91,12 @@ def create_economic_llm(
     """
     if provider in ["OPENAI", "openai"]:
         return ChatOpenAI(model=model, api_key=os.getenv("OPENAI_API_KEY"), **kwargs)
+    elif provider in ["GEMINI", "gemini"]:
+        return ChatGoogleGenerativeAI(model=model, api_key=os.getenv("GEMINI_API_KEY"), **kwargs)
+    elif provider in ["ANTHROPIC", "anthropic"]:
+        return ChatAnthropic(model=model, api_key=os.getenv("ANTHROPIC_API_KEY"), **kwargs)
+    elif provider in ["XAI", "xai"]:
+        return ChatXAI(model=model, api_key=os.getenv("XAI_API_KEY"), **kwargs)
     else:
         raise ValueError(f"Unknown model: {model}")
 

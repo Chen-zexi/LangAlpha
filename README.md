@@ -141,14 +141,27 @@ uv venv
 # Activate the virtual environment
 # On macOS/Linux:
 source .venv/bin/activate
+
 # On Windows:
-# .venv\\Scripts\\activate
+ .venv\\Scripts\\activate
 
 # Install dependencies from requirements.txt
 uv pip sync requirements.lock
 # or
+uv pip install -e .
+# or
 uv pip install -r requirements.txt
+
+# Install playwright for browser agent
+uv run playwright install
 ```
+
+You can also install the dependencies manually.
+
+```bash
+pip install -r requirements.txt
+```
+
 
 ### 3. Set up API Keys
 1. Create a `.env` file.
@@ -167,15 +180,18 @@ uv run main.py
 ```
 
 2. Run the project with langraph studio
+
 ```bash
+# Install langgraph-cli
 pip install langgraph-cli
-```
 
-```bash
+# Navigate to the src/agent directory
+cd src/agent
+
+# Run the langgraph studio
 langgraph dev --allow-blocking
-```
 
-```bash
+# Run the main.py with dev mode
 uv run main.py -dev
 ```
 Response will be saved in `assets/reports` folder in markdown format.
