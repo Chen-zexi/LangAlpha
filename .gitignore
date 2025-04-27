@@ -64,3 +64,10 @@ src/agent/output/
 notebooks/** linguist-vendored
 
 *.ipynb linguist-vendored
+
+LangAlpha.egg-info/
+LangAlpha.egg-info/*
+
+.venv/
+.venv/*
+
