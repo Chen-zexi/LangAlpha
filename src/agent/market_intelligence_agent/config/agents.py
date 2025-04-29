@@ -39,12 +39,12 @@ elif BUDGET == "high":
         "coordinator": "basic",  
         "planner": "reasoning",  
         "supervisor": "basic",  
-        "researcher": "basic",
+        "researcher": "coding",
         "coder": "coding",
         "reporter": "basic",
         "analyst": "basic",
         "browser": "basic",
-        "market": "basic",
+        "market": "coding",
         "budget": BUDGET,
     }
 else:
