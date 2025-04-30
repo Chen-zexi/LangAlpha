@@ -2,7 +2,7 @@ import logging
 import json
 import asyncio
 from typing import Literal, List, Any, Dict
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.types import Command
 from langgraph.graph import END
 from langgraph.prebuilt import create_react_agent
@@ -23,31 +23,36 @@ RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please e
 
 async def research_node(state: State) -> Command[Literal["supervisor"]]:
     """Research node that performs research tasks with proper resource management."""
-    # Define the operation to run with tools
     async def research_operation(tools: List[Any], current_state: Dict[str, Any]):
-        # Create an agent for this specific task
+        prompt_messages = await apply_prompt_template("researcher", current_state)
+
         agent = create_react_agent(
             get_llm_by_type(AGENT_LLM_MAP["researcher"]),
-            tools=tools, 
-            prompt=lambda s: apply_prompt_template("researcher", s),
+            tools=tools,
             response_format=AgentResult
         )
-        
-        # Invoke the agent
-        return await agent.ainvoke(current_state)
-    
-    # Execute the operation with research tools
+
+        input_data = {**current_state, "messages": prompt_messages}
+        return await agent.ainvoke(input_data)
+
     result = await execute_with_research_tools(research_operation, state)
-    
-    structured_response = result['structured_response'].model_dump()
+
+    structured_response = result.get('structured_response')
+    if structured_response:
+        response_dump = structured_response.model_dump()
+    else:
+        logger.warning("Researcher agent did not return a structured_response.")
+        raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
+        response_dump = {"error": "No structured response", "raw_content": raw_content}
+
     state['researcher_credits'] -= 1
     goto = "supervisor"
-    
+
     return Command(
         update={
             "messages": [
                 HumanMessage(
-                    content=json.dumps(structured_response),
+                    content=json.dumps(response_dump),
                     name="researcher",
                 )
             ],
@@ -60,31 +65,36 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
     
 async def market_node(state: State) -> Command[Literal["supervisor"]]:
     """Market node that performs market analysis tasks with proper resource management."""
-    # Define the operation to run with tools
     async def market_operation(tools: List[Any], current_state: Dict[str, Any]):
-        # Create an agent for this specific task
+        prompt_messages = await apply_prompt_template("market", current_state)
+
         agent = create_react_agent(
             get_llm_by_type(AGENT_LLM_MAP["market"]),
-            tools=tools, 
-            prompt=lambda s: apply_prompt_template("market", s),
+            tools=tools,
             response_format=AgentResult
         )
-        
-        # Invoke the agent
-        return await agent.ainvoke(current_state)
-    
-    # Execute the operation with market tools
+
+        input_data = {**current_state, "messages": prompt_messages}
+        return await agent.ainvoke(input_data)
+
     result = await execute_with_market_tools(market_operation, state)
-    
-    structured_response = result['structured_response'].model_dump()
+
+    structured_response = result.get('structured_response')
+    if structured_response:
+        response_dump = structured_response.model_dump()
+    else:
+        logger.warning("Market agent did not return a structured_response.")
+        raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
+        response_dump = {"error": "No structured response", "raw_content": raw_content}
+
     state['market_credits'] -= 1
     goto = "supervisor"
-    
+
     return Command(
         update={
             "messages": [
                 HumanMessage(
-                    content=json.dumps(structured_response),
+                    content=json.dumps(response_dump),
                     name="market",
                 )
             ],
@@ -97,10 +107,28 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
 
 
 async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
-    """Code node that executes Python code."""
+    """Async Code node that executes Python code."""
     agent = await get_coder_agent()
-    result = agent.invoke(state)
-    structured_response = result['structured_response'].model_dump()
+
+    prompt_messages = await apply_prompt_template("coder", state)
+    input_data = {**state, "messages": prompt_messages}
+
+    result = await agent.ainvoke(input_data)
+
+    structured_response = result.get('structured_response')
+    if structured_response:
+         if hasattr(structured_response, 'model_dump'):
+             response_dump = structured_response.model_dump()
+         elif isinstance(structured_response, dict):
+             response_dump = structured_response
+         else:
+             logger.warning("Coder agent structured_response is not a Pydantic model or dict.")
+             response_dump = {"raw_content": str(structured_response)}
+    else:
+        logger.warning("Coder agent did not return a structured_response.")
+        raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
+        response_dump = {"error": "No structured response", "raw_content": raw_content}
+
     goto = "supervisor"
     state['coder_credits'] -= 1
 
@@ -108,45 +136,55 @@ async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
         update={
             "messages": [
                 HumanMessage(
-                    content=json.dumps(structured_response),
+                    content=json.dumps(response_dump),
                     name="coder",
                 )
             ],
             "last_agent": "coder",
             "coder_credits": state['coder_credits'],
             "next": goto
-        }, 
+        },
         goto=goto
     )
 
 
 def code_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the coder agent that executes Python code."""
-    # Create a new event loop if running in a sync context
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            # We're already in an event loop, use create_task and wait
             return loop.run_until_complete(code_node_async(state))
         else:
-            # No running event loop, use run_until_complete
             return loop.run_until_complete(code_node_async(state))
     except RuntimeError:
-        # No event loop, create a new one
         return asyncio.run(code_node_async(state))
 
 async def browser_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the browser agent that performs web browsing tasks."""
     agent = await get_browser_agent()
-    result = await agent.ainvoke(state)
+
+    prompt_messages = await apply_prompt_template("browser", state)
+    input_data = {**state, "messages": prompt_messages}
+
+    result = await agent.ainvoke(input_data)
+
     state['browser_credits'] -= 1
     goto = "supervisor"
+
+    final_content = "Error: No message content found."
+    if result and "messages" in result and result["messages"]:
+        last_msg = result["messages"][-1]
+        if hasattr(last_msg, 'content'):
+            final_content = last_msg.content
+        elif isinstance(last_msg, str):
+             final_content = last_msg
+
     return Command(
         update={
             "messages": [
                 HumanMessage(
                     content=RESPONSE_FORMAT.format(
-                        "browser", result["messages"][-1].content
+                        "browser", final_content
                     ),
                     name="browser",
                 )
@@ -157,14 +195,15 @@ async def browser_node(state: State) -> Command[Literal["supervisor"]]:
         goto=goto,
     )
 
-def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
+async def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     """Supervisor node that decides which agent should act next."""
-    messages = apply_prompt_template("supervisor", state)
-    response = (
+    messages = await apply_prompt_template("supervisor", state)
+    llm = (
         get_llm_by_type(AGENT_LLM_MAP["supervisor"])
         .with_structured_output(SupervisorInstructions)
-        .invoke(messages)
     )
+    response = await llm.ainvoke(messages)
+
     goto = response.next["next"]
     instructions = {}
     if response.task is not None:
@@ -187,40 +226,48 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     )
 
 
-def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
+async def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     """Planner node that generates the full plan."""
-    messages = apply_prompt_template("planner", state)
+    messages = await apply_prompt_template("planner", state)
     llm = get_llm_by_type(AGENT_LLM_MAP["planner"]).with_structured_output(Plan)
     tool = {"type": "web_search_preview"}
-    full_plan = llm.invoke(messages, tools=[tool])
+    full_plan_obj = await llm.ainvoke(messages, tools=[tool])
 
     goto = "supervisor"
+    full_plan_json = ""
     try:
-        full_plan = full_plan.model_dump_json()
-    except json.JSONDecodeError:
-        logger.warning("Planner response is not a valid JSON")
-        goto = "__end__"
+        if hasattr(full_plan_obj, 'model_dump_json'):
+            full_plan_json = full_plan_obj.model_dump_json()
+        else:
+             full_plan_json = json.dumps(full_plan_obj)
+             logger.warning("Planner response object does not have model_dump_json. Using standard json.dumps.")
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning(f"Planner response could not be serialized to JSON: {e}")
+        full_plan_json = json.dumps({"error": "Failed to serialize plan", "details": str(e)})
 
     return Command(
         update={
             "next": goto,
-            "messages": [HumanMessage(content=full_plan, name="planner")],
-            "full_plan": full_plan,
+            "messages": [HumanMessage(content=full_plan_json, name="planner")],
+            "full_plan": full_plan_json,
             "last_agent": "planner"
         },
         goto=goto,
     )
     
-def analyst_node(state: State) -> Command[Literal["supervisor"]]:
+async def analyst_node(state: State) -> Command[Literal["supervisor"]]:
     """Analyst node that generates analysis."""
-    messages = apply_prompt_template("analyst", state)
+    messages = await apply_prompt_template("analyst", state)
     llm = get_llm_by_type(AGENT_LLM_MAP["analyst"])
     tool = {"type": "web_search_preview"}
-    stream = llm.stream(messages, tools=[tool])
+    stream = llm.astream(messages, tools=[tool])
     full_response = ""
-    for chunk in stream:
-        full_response += chunk.text()
-        
+    async for chunk in stream:
+        if hasattr(chunk, 'content') and isinstance(chunk.content, str):
+             full_response += chunk.content
+        elif isinstance(chunk, str):
+             full_response += chunk
+
     goto = "supervisor"
 
     return Command(
@@ -233,34 +280,40 @@ def analyst_node(state: State) -> Command[Literal["supervisor"]]:
     )
 
 
-def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
+async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     """Coordinator node that communicates with customers."""
-    logger.info(f"Budget for LLM: {AGENT_LLM_MAP['budget']}")
-    messages = apply_prompt_template("coordinator", state)
-    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).with_structured_output(CoordinatorInstructions).invoke(messages)
+    logger.info(f"Budget for LLM: {AGENT_LLM_MAP.get('budget', 'Not Set')}")
+    messages = await apply_prompt_template("coordinator", state)
+    llm = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).with_structured_output(CoordinatorInstructions)
+    response = await llm.ainvoke(messages)
     goto = "__end__"
     if response.handoff_to_planner:
         goto = "planner"
 
+    time_range = response.time_range if hasattr(response, 'time_range') else None
+
     return Command(
         update={
             'last_agent': 'coordinator',
-            'time_range': response.time_range,
+            'time_range': time_range,
             'next': goto
         },
         goto=goto,
     )
 
 
-def reporter_node(state: State) -> Command[Literal["supervisor"]]:
+async def reporter_node(state: State) -> Command[Literal["__end__"]]:
     """Reporter node that writes a final report."""
-    messages = apply_prompt_template("reporter", state)
-    response = get_llm_by_type(AGENT_LLM_MAP["reporter"]).invoke(messages)
+    messages = await apply_prompt_template("reporter", state)
+    llm = get_llm_by_type(AGENT_LLM_MAP["reporter"])
+    response = await llm.ainvoke(messages)
+
+    final_report_content = response.content if hasattr(response, 'content') else str(response)
 
     return Command(
         update={
-            "messages": [HumanMessage(content="reporter has finished the task", name="reporter")],
-            "final_report": response.content,
+            "messages": [AIMessage(content="Reporter has finished the task.", name="reporter")],
+            "final_report": final_report_content,
         },
         goto="__end__",
     )
