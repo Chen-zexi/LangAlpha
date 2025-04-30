@@ -2,6 +2,7 @@ import logging
 import json
 import asyncio
 from typing import Literal, List, Any, Dict
+from pathlib import Path
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.types import Command
 from langgraph.graph import END
@@ -14,13 +15,12 @@ from ..config.agents import AGENT_LLM_MAP
 from ..prompts.template import apply_prompt_template
 from .types import State, SupervisorInstructions, CoordinatorInstructions, Plan, AgentResult
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from ..tools.mcp_server_research import execute_with_research_tools
-from ..tools.mcp_server_market import execute_with_market_tools
 
 logger = logging.getLogger(__name__)
 
 RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please execute the next step.*"
 
+source_dir = Path(__file__).parent.parent
 
 async def research_node(state: State) -> Command[Literal["supervisor"]]:
     """Research node that performs research tasks with proper resource management."""
@@ -29,12 +29,12 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
         {
             "tavily_search": {
                 "command": "python",
-                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/tavily.py"],
+                "args": [str(source_dir / "tools" / "tavily.py")],
                 "transport": "stdio",
             },
             "tickertick": {
                 "command": "python",
-                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/tickertick.py"],
+                "args": [str(source_dir / "tools" / "tickertick.py")],
                 "transport": "stdio",
             }
         }
@@ -82,12 +82,12 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
         {
             "market_data": {
                 "command": "python",
-                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/market_data.py"],
+                "args": [str(source_dir / "tools" / "market_data.py")],
                 "transport": "stdio",
             },
             "fundamental_data": {
                 "command": "python",
-                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/fundamental_data.py"],
+                "args": [str(source_dir / "tools" / "fundamental_data.py")],
                 "transport": "stdio",
             }
         }
@@ -277,25 +277,24 @@ async def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]
         goto=goto,
     )
     
-async def analyst_node(state: State) -> Command[Literal["supervisor"]]:
+async def analyst_node(state: State, response_api = True) -> Command[Literal["supervisor"]]:
     """Analyst node that generates analysis."""
     messages = await apply_prompt_template("analyst", state)
     llm = get_llm_by_type(AGENT_LLM_MAP["analyst"])
-    tool = {"type": "web_search_preview"}
-    stream = llm.astream(messages, tools=[tool])
-    full_response = ""
-    async for chunk in stream:
-        if hasattr(chunk, 'content') and isinstance(chunk.content, str):
-             full_response += chunk.content
-        elif isinstance(chunk, str):
-             full_response += chunk
+    logger.info(f"Analyst result: {result}")
+    if response_api:
+        tool = {"type": "web_search_preview"}
+        result = await llm.ainvoke(messages, tools=[tool])
+        result = result.text()
+    else:
+        result = await llm.ainvoke(messages)
 
     goto = "supervisor"
 
     return Command(
         update={
             "next": goto,
-            "messages": [HumanMessage(content=full_response, name="analyst")],
+            "messages": [HumanMessage(content=result, name="analyst")],
             "last_agent": "analyst"
         },
         goto=goto,
