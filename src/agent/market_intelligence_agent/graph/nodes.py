@@ -281,13 +281,14 @@ async def analyst_node(state: State, response_api = True) -> Command[Literal["su
     """Analyst node that generates analysis."""
     messages = await apply_prompt_template("analyst", state)
     llm = get_llm_by_type(AGENT_LLM_MAP["analyst"])
-    logger.info(f"Analyst result: {result}")
     if response_api:
         tool = {"type": "web_search_preview"}
         result = await llm.ainvoke(messages, tools=[tool])
+        logger.info(f"Analyst result: {result}")
         result = result.text()
     else:
         result = await llm.ainvoke(messages)
+        logger.info(f"Analyst result: {result}")
 
     goto = "supervisor"
 

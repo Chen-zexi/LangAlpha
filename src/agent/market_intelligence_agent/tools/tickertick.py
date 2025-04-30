@@ -1,9 +1,8 @@
 from mcp.server.fastmcp import FastMCP
 from typing import List, Optional
-#from src.mcp_server.tickertick_mcp.tickertick import Tickertick
 import requests
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Create the MCP server with a meaningful name
 mcp = FastMCP("TickertickMCP")
@@ -35,7 +34,7 @@ def convert_timestamp_ms_to_iso(response):
     for story in response['stories']:
         if 'time' in story:
             timestamp_sec = story['time'] / 1000
-            story['time'] = datetime.fromtimestamp(timestamp_sec, datetime.UTC).isoformat()
+            story['time'] = datetime.fromtimestamp(timestamp_sec, timezone.utc).isoformat()
     return response
 
 def get_ticker_news(ticker, limit=30):
