@@ -3,11 +3,7 @@ import re
 from datetime import datetime
 import asyncio
 
-# If true async file I/O is needed later:
-# import aiofiles
-
 from langchain_core.prompts import PromptTemplate
-# Use typing Dict instead of AgentState if it's just a dictionary
 from typing import Dict, List, Any
 import logging
 
@@ -20,14 +16,12 @@ def _read_prompt_file(prompt_name: str) -> str:
     try:
         with open(file_path, 'r') as f:
             template = f.read()
-        # Escape literal braces for PromptTemplate format method
         template = template.replace("{", "{{").replace("}", "}}")
-        # Replace `<<VAR>>` with `{VAR}` for PromptTemplate variables
         template = re.sub(r"<<([^>>]+)>>", r"{\1}", template)
         return template
     except FileNotFoundError:
         logger.error(f"Prompt file not found: {file_path}")
-        raise # Re-raise for clearer error handling upstream
+        raise 
 
 # Make the main function async
 async def apply_prompt_template(prompt_name: str, state: Dict[str, Any]) -> list:
@@ -64,19 +58,6 @@ async def apply_prompt_template(prompt_name: str, state: Dict[str, Any]) -> list
             return prompt
         else:
             logger.warning(f"No last message found for {prompt_name} prompt construction. Using system prompt only.")
-            return [{"role": "system", "content": system_prompt}] # System prompt only
-
-    else:  # supervisor, planner, analyst, coordinator, reporter
-        # These agents seem to expect system prompt + full message history
-        history_dicts = []
-        for msg in messages:
-             # Convert common Langchain message types to dict format
-             if hasattr(msg, 'type') and hasattr(msg, 'content'):
-                 role = "user" if msg.type == "human" else "assistant" if msg.type == "ai" else msg.type
-                 history_dicts.append({"role": role, "content": str(msg.content)})
-             elif isinstance(msg, dict) and "role" in msg and "content" in msg:
-                 history_dicts.append(msg) # Already in dict format
-             else:
-                 logger.warning(f"Skipping unsupported message format in history for {prompt_name}: {type(msg)}")
-
-        return [{"role": "system", "content": system_prompt}] + history_dicts
+            return [{"role": "system", "content": system_prompt}]
+    else:  # supervisor, planner, coordinator, reporter
+        return [{"role": "system", "content": system_prompt}] + messages
