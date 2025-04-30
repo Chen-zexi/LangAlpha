@@ -5,14 +5,18 @@ from typing import Optional, ClassVar, Type
 from langchain.tools import BaseTool
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use import Agent as BrowserAgent
-from market_intelligence_agent.tools.decorators import create_logged_tool
-from market_intelligence_agent.agents.llm import create_basic_llm
+from ..tools.decorators import create_logged_tool
+from ..agents.llm import create_basic_llm
+from ..config import CHROME_INSTANCE_PATH
 
+import os
 
 expected_browser = None
-
-
-    
+chrome_instance_path = CHROME_INSTANCE_PATH
+if chrome_instance_path:
+    expected_browser = Browser(
+        config=BrowserConfig(chrome_instance_path=chrome_instance_path)
+    )    
 
 
 

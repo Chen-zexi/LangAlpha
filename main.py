@@ -2,6 +2,7 @@ import asyncio
 import sys
 import os
 import json
+import argparse
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 
@@ -14,8 +15,6 @@ REPORTS_DIR = os.path.join(ASSETS_DIR, 'reports')
 os.makedirs(RAW_RESPONSES_DIR, exist_ok=True)
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
-
-from src.agent.market_intelligence_agent.service.workflow_service import run_workflow
 
 async def main():
     """Main function to prompt for task name, query, run the workflow, and save results."""
@@ -66,4 +65,11 @@ if __name__ == "__main__":
     src_path = os.path.join(project_root, 'src')
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
+    parser = argparse.ArgumentParser(description="Run the Market Intelligence Agent.")
+    parser.add_argument('-dev', '--development', action='store_true', help='Use the development workflow service.')
+    args = parser.parse_args()
+    if args.development:
+        from src.agent.market_intelligence_agent.service.workflow_service_dev import run_workflow
+    else:
+        from src.agent.market_intelligence_agent.service.workflow_service import run_workflow
     asyncio.run(main()) 

@@ -4,10 +4,22 @@ from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
 from datetime import datetime
 
-from market_intelligence_agent.config import TEAM_MEMBERS
+from ..config import TEAM_MEMBERS
 
 # Define routing options
 OPTIONS = TEAM_MEMBERS + ["FINISH"]
+
+
+class Step(BaseModel):
+    task: str
+    agent: str
+    description: str
+    note: str | None = None
+
+class Plan(BaseModel):
+    thought: str
+    title: str
+    steps: List[Step]
 
 
 class Router(TypedDict):
@@ -16,9 +28,8 @@ class Router(TypedDict):
 
 class SupervisorInstructions(BaseModel):
     task: str = Field(description="The task to be performed by the agent")
-    followup: str | None = Field(description="Follow up question to the user")
     focus: str | None = Field(description="The focus of the report")
-    feedback: str | None = Field(description="Feedback and instruction to the agent")
+    context: str | None = Field(description="The context that the agent should consider (i.e data from another agent)")
     next: Router
     
 class CoordinatorInstructions(BaseModel):
@@ -46,6 +57,4 @@ class State(MessagesState):
     coder_credits: int = Field(default=0)
     browser_credits: int = Field(default=0)
     market_credits: int = Field(default=0)
-    research_results: List[AgentResult] = Field(default_factory=list)
-    coder_results: List[AgentResult] = Field(default_factory=list)
     time_range: str

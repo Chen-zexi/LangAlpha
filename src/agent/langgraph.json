@@ -1,7 +1,7 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "market_intelligence_agent": "market_intelligence_agent/graph/builder.py:build_graph"
+    "market_intelligence_agent": "market_intelligence_agent.graph:build_graph"
   },
   "env": "../../.env"
 }

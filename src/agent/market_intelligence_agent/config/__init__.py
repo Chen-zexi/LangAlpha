@@ -12,6 +12,7 @@ from .env import (
     CODING_MODEL,
     CODING_MODEL_PROVIDER,
     # Vision-language LLM
+    CHROME_INSTANCE_PATH,
 )
 
 # Team configuration
@@ -32,4 +33,5 @@ __all__ = [
     "CODING_MODEL_PROVIDER",
     # Other configurations
     "TEAM_MEMBERS",
+    "CHROME_INSTANCE_PATH",
 ]
