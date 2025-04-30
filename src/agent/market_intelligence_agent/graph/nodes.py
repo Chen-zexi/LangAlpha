@@ -13,6 +13,7 @@ from ..config import TEAM_MEMBERS
 from ..config.agents import AGENT_LLM_MAP
 from ..prompts.template import apply_prompt_template
 from .types import State, SupervisorInstructions, CoordinatorInstructions, Plan, AgentResult
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from ..tools.mcp_server_research import execute_with_research_tools
 from ..tools.mcp_server_market import execute_with_market_tools
 
@@ -23,87 +24,108 @@ RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please e
 
 async def research_node(state: State) -> Command[Literal["supervisor"]]:
     """Research node that performs research tasks with proper resource management."""
-    async def research_operation(tools: List[Any], current_state: Dict[str, Any]):
-        prompt_messages = await apply_prompt_template("researcher", current_state)
-
+    prompt_messages = await apply_prompt_template("researcher", state)
+    async with MultiServerMCPClient(
+        {
+            "tavily_search": {
+                "command": "python",
+                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/tavily.py"],
+                "transport": "stdio",
+            },
+            "tickertick": {
+                "command": "python",
+                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/tickertick.py"],
+                "transport": "stdio",
+            }
+        }
+    ) as client:
+        tools = client.get_tools()
         agent = create_react_agent(
             get_llm_by_type(AGENT_LLM_MAP["researcher"]),
             tools=tools,
             response_format=AgentResult
         )
+        input_data = {**state, "messages": prompt_messages}
+        result = await agent.ainvoke(input_data)
+        
+        structured_response = result.get('structured_response')
+        
+        if structured_response:
+            response_dump = structured_response.model_dump()
+        else:
+            logger.warning("Researcher agent did not return a structured_response.")
+            raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
+            response_dump = {"error": "No structured response", "raw_content": raw_content}
 
-        input_data = {**current_state, "messages": prompt_messages}
-        return await agent.ainvoke(input_data)
+        state['researcher_credits'] -= 1
+        goto = "supervisor"
 
-    result = await execute_with_research_tools(research_operation, state)
-
-    structured_response = result.get('structured_response')
-    if structured_response:
-        response_dump = structured_response.model_dump()
-    else:
-        logger.warning("Researcher agent did not return a structured_response.")
-        raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
-        response_dump = {"error": "No structured response", "raw_content": raw_content}
-
-    state['researcher_credits'] -= 1
-    goto = "supervisor"
-
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(
-                    content=json.dumps(response_dump),
-                    name="researcher",
-                )
-            ],
-            "last_agent": "researcher",
-            "researcher_credits": state['researcher_credits'],
-            "next": goto
-        },
-        goto=goto,
-    )
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content=json.dumps(response_dump),
+                        name="researcher",
+                    )
+                ],
+                "last_agent": "researcher",
+                "researcher_credits": state['researcher_credits'],
+                "next": goto
+            },
+            goto=goto,
+        )
     
 async def market_node(state: State) -> Command[Literal["supervisor"]]:
     """Market node that performs market analysis tasks with proper resource management."""
-    async def market_operation(tools: List[Any], current_state: Dict[str, Any]):
-        prompt_messages = await apply_prompt_template("market", current_state)
-
+    prompt_messages = await apply_prompt_template("market", state)
+    async with MultiServerMCPClient(
+        {
+            "market_data": {
+                "command": "python",
+                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/market_data.py"],
+                "transport": "stdio",
+            },
+            "fundamental_data": {
+                "command": "python",
+                "args": ["/Users/chen/Library/Mobile Documents/com~apple~CloudDocs/DS Project/LangAlpha/src/mcp_server/fundamental_data.py"],
+                "transport": "stdio",
+            }
+        }
+    ) as client:
+        tools = client.get_tools()
         agent = create_react_agent(
             get_llm_by_type(AGENT_LLM_MAP["market"]),
             tools=tools,
             response_format=AgentResult
         )
+        input_data = {**state, "messages": prompt_messages}
+        result = await agent.ainvoke(input_data)
+        
+        structured_response = result.get('structured_response')
+        if structured_response:
+            response_dump = structured_response.model_dump()
+        else:
+            logger.warning("Market agent did not return a structured_response.")
+            raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
+            response_dump = {"error": "No structured response", "raw_content": raw_content}
 
-        input_data = {**current_state, "messages": prompt_messages}
-        return await agent.ainvoke(input_data)
+        state['market_credits'] -= 1
+        goto = "supervisor"
 
-    result = await execute_with_market_tools(market_operation, state)
-
-    structured_response = result.get('structured_response')
-    if structured_response:
-        response_dump = structured_response.model_dump()
-    else:
-        logger.warning("Market agent did not return a structured_response.")
-        raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
-        response_dump = {"error": "No structured response", "raw_content": raw_content}
-
-    state['market_credits'] -= 1
-    goto = "supervisor"
-
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(
-                    content=json.dumps(response_dump),
-                    name="market",
-                )
-            ],
-            "last_agent": "market",
-            "market_credits": state['market_credits'],
-            "next": goto
-        },
-        goto=goto,
-    )
+        return Command(
+            update={
+                "messages": [
+                    HumanMessage(
+                        content=json.dumps(response_dump),
+                        name="market",
+                    )
+                ],
+                "last_agent": "market",
+                "market_credits": state['market_credits'],
+                "next": goto
+            },
+            goto=goto,
+        )
 
 
 async def code_node_async(state: State) -> Command[Literal["supervisor"]]:

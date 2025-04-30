@@ -35,7 +35,7 @@ def convert_timestamp_ms_to_iso(response):
     for story in response['stories']:
         if 'time' in story:
             timestamp_sec = story['time'] / 1000
-            story['time'] = datetime.utcfromtimestamp(timestamp_sec).isoformat()
+            story['time'] = datetime.fromtimestamp(timestamp_sec, datetime.UTC).isoformat()
     return response
 
 def get_ticker_news(ticker, limit=30):
