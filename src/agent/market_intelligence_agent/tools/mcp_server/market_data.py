@@ -4,13 +4,13 @@ import json
 import numpy as np
 from datetime import date, timedelta, datetime
 from dotenv import load_dotenv
-from polygon import RESTClient
+from polygon.rest import RESTClient
 from polygon.rest.models import TickerSnapshot, Agg # Import necessary models
 from mcp.server.fastmcp import FastMCP
 from typing import List, Optional, Dict, Any
 # Import trading strategies
 import trading_strategies
-
+from langgraph.config import get_stream_writer
 # Load environment variables
 load_dotenv()
 
@@ -275,6 +275,8 @@ def get_ticker_snapshot(ticker: str) -> Dict[str, Any]:
 
     # Capitalize ticker
     ticker = ticker.upper()
+    writer = get_stream_writer()
+    writer.write(f"Retrieving snapshot for {ticker}")
 
     try:
         # Call the RESTClient method directly
@@ -291,7 +293,7 @@ def get_ticker_snapshot(ticker: str) -> Dict[str, Any]:
 @mcp.tool()
 def get_all_tickers_snapshot(tickers: List[str], include_otc: bool = False) -> List[Dict[str, Any]]:
     """
-    Get the most recent snapshot data for all tickers in a given market.
+    Get the most recent snapshot data for a list of tickers.
 
     Args:
         tickers: A list of ticker symbols to fetch snapshots for.
@@ -307,7 +309,8 @@ def get_all_tickers_snapshot(tickers: List[str], include_otc: bool = False) -> L
 
     # Capitalize all tickers in the list
     capitalized_tickers = [t.upper() for t in tickers]
-
+    writer = get_stream_writer()
+    writer.write(f"Retrieving snapshot for: {capitalized_tickers}")
     try:
         # Call the RESTClient method directly
         snapshot_iterator = rest_client.get_snapshot_all(
@@ -339,6 +342,8 @@ def get_market_movers(direction: str, include_otc: bool = False) -> List[Dict[st
         Returns a list containing an error dictionary if the client is not initialized,
         an error occurs, or the direction is invalid.
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving top {direction}")
     if rest_client is None:
         return [{"error": "Polygon RESTClient is not initialized. Check API Key."}]
     if direction not in ['gainers', 'losers']:
@@ -367,6 +372,8 @@ def get_market_status() -> Dict[str, Any]:
         A dictionary containing the current market status details, converted from client response.
         Returns a dictionary with an 'error' key if the client is not initialized or fetching fails.
     """
+    writer = get_stream_writer()
+    writer.write(f"Checking market status")
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     try:
@@ -408,6 +415,8 @@ def get_trend_following_signals(
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     
+    writer = get_stream_writer()
+    writer.write(f"Calculating trend following signals for {ticker}")
     # Calculate start date based on end_date and num_bars
     # Add buffer of 2x the bars for weekends, holidays, and data availability
     start_dt = datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=num_bars * 2)
@@ -449,6 +458,8 @@ def get_mean_reversion_signals(
         Only trading days (when the market is open) are used for calculations.
         Uses Z-score thresholds of ±1.5 combined with Bollinger Band touches and RSI extremes.
     """
+    writer = get_stream_writer()
+    writer.write(f"Calculating mean reversion signals for {ticker}")
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     
@@ -497,6 +508,8 @@ def get_momentum_signals(
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     
+    writer = get_stream_writer()
+    writer.write(f"Calculating momentum signals for {ticker}")
     # Calculate start date based on end_date and num_bars
     # Add buffer of 2x the bars for weekends, holidays, and data availability
     start_dt = datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=num_bars * 2)
@@ -542,6 +555,8 @@ def get_volatility_signals(
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     
+    writer = get_stream_writer()
+    writer.write(f"Calculating volatility signals for {ticker}")
     # Calculate start date based on end_date and num_bars
     # Add buffer of 2x the bars for weekends, holidays, and data availability
     start_dt = datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=num_bars * 2)
@@ -587,6 +602,8 @@ def get_statistical_arbitrage_signals(
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     
+    writer = get_stream_writer()
+    writer.write(f"Calculating statistical arbitrage signals for {ticker}")
     # Calculate start date based on end_date and num_bars
     # Add buffer of 2x the bars for weekends, holidays, and data availability
     start_dt = datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=num_bars * 2)
@@ -631,6 +648,8 @@ def get_all_trading_signals(
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
     
+    writer = get_stream_writer()
+    writer.write(f"Calculating all trading signals for {ticker}")
     # Calculate start date based on end_date and the largest possible num_bars needed
     # Use 2x buffer for weekends, holidays, and data availability
     # Use max of all strategy minimums to ensure adequate data

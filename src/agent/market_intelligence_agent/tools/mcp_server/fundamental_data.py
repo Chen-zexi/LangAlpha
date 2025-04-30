@@ -3,7 +3,7 @@ from typing import Dict, Any, List
 import pandas as pd
 from yahooquery import Ticker
 from mcp.server.fastmcp import FastMCP
-
+from langgraph.config import get_stream_writer
 
 # ────────────────────────── INTERNAL ────────────────────────── #
 
@@ -207,6 +207,8 @@ def get_event_expectations(ticker: str) -> Dict[str, Any]:
         A dictionary containing information about upcoming earnings dates,
         ex-dividend dates, and analyst consensus estimates.
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving event expectations for {ticker}")
     return event_expectations(ticker)
 
 @mcp.tool()
@@ -221,6 +223,8 @@ def get_fundamental_summary(ticker: str) -> Dict[str, Any]:
         A dictionary containing valuation metrics (P/E, EV/EBITDA), margin data,
         growth rates, and liquidity ratios.
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving fundamental data for {ticker}")
     return fundamental_summary(ticker)
 
 @mcp.tool()
@@ -236,6 +240,8 @@ def get_ownership_sentiment(ticker: str, n: int = 5) -> Dict[str, Any]:
         A dictionary containing insider/institutional ownership percentages,
         analyst recommendations, and recent rating changes.
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving analyst consensus for {ticker}")
     return ownership_sentiment(ticker, n)
 
 @mcp.tool()
@@ -260,6 +266,8 @@ def get_dcf_valuation(
         A dictionary containing intrinsic price per share, current price,
         potential upside percentage, and the inputs used for calculation.
     """
+    writer = get_stream_writer()
+    writer.write(f"Calculating intrinsic value for {ticker}")
     return dcf_valuation(ticker, rf, eq_prem, perp_g, cap_g)
 
 
@@ -276,6 +284,8 @@ def get_comprehensive_dashboard(ticker: str) -> Dict[str, Any]:
         A dictionary containing results from all available analysis methods combined:
         events, fundamentals, ownership, DCF.
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving comprehensive fundamental data for {ticker}")
     return comprehensive_dashboard(ticker)
 
 

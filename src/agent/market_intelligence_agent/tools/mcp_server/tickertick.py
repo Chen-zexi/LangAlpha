@@ -1,4 +1,5 @@
 from mcp.server.fastmcp import FastMCP
+from langgraph.config import get_stream_writer
 from typing import List, Optional
 #from src.mcp_server.tickertick_mcp.tickertick import Tickertick
 import requests
@@ -92,6 +93,8 @@ def get_ticker_news_tool(ticker: str, limit: int = 10) -> dict:
     Returns:
         A dictionary containing news items related to the ticker
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving news for {ticker}")
     return get_ticker_news(ticker, limit)
 
 @mcp.tool()
@@ -106,6 +109,8 @@ def get_broad_ticker_news_tool(ticker: str, limit: int = 10) -> dict:
     Returns:
         A dictionary containing broader news items related to the ticker
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving broader news for {ticker}")
     return get_broad_ticker_news(ticker, limit)
 
 @mcp.tool()
@@ -120,6 +125,8 @@ def get_news_from_source_tool(source: str, limit: int = 10) -> dict:
     Returns:
         A dictionary containing news items from the specified source
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving news from {source}")
     return get_news_from_source(source, limit)
 
 @mcp.tool()
@@ -134,6 +141,8 @@ def get_news_for_multiple_tickers_tool(tickers: List[str], limit: int = 10) -> d
     Returns:
         A dictionary containing news items related to any of the specified tickers
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving news for: {tickers}")
     return get_news_for_multiple_tickers(tickers, limit)
 
 @mcp.tool()
@@ -147,6 +156,8 @@ def get_curated_news_tool(limit: int = 10) -> dict:
     Returns:
         A dictionary containing curated news items
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving curated news")
     return get_curated_news(limit)
 
 @mcp.tool()
@@ -161,6 +172,8 @@ def get_entity_news_tool(entity: str, limit: int = 10) -> dict:
     Returns:
         A dictionary containing news items related to the entity
     """
+    writer = get_stream_writer()
+    writer.write(f"Retrieving news about {entity}")
     return get_entity_news(entity, limit)
 
 @mcp.tool()
@@ -175,6 +188,8 @@ def search_tickers_tool(query: str, limit: int = 5) -> dict:
     Returns:
         A dictionary containing matching ticker symbols
     """
+    writer = get_stream_writer()
+    writer.write(f"Searching for tickers matching {query}")
     return search_tickers(query, limit)
 
 # Add this to run the server with stdio transport when executed directly

@@ -4,7 +4,7 @@ import json
 import numpy as np
 from datetime import date, timedelta, datetime
 from dotenv import load_dotenv
-from polygon import RESTClient
+from polygon.rest import RESTClient
 from polygon.rest.models import TickerSnapshot, Agg # Import necessary models
 from mcp.server.fastmcp import FastMCP
 from typing import List, Optional, Dict, Any

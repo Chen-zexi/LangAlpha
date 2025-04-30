@@ -1,4 +1,4 @@
-FROM langchain/langgraph-api:3.11
+FROM langchain/langgraph-api:3.12
 
 # -- Adding non-package dependency agent --
 ADD . /deps/__outer_agent/agent

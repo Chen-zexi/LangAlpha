@@ -1,6 +1,6 @@
 browser-use==0.1.41
 devtools==0.12.2
-dotenv==0.9.9
+dotenv
 langchain>=0.3.0
 langchain-anthropic==0.3.3
 langchain-aws==0.2.19
@@ -49,6 +49,8 @@ tqdm==4.67.1
 uv==0.6.16
 wrds==3.3.0
 yahooquery==2.3.7
+fastapi
+uvicorn[standard]
 
 
 

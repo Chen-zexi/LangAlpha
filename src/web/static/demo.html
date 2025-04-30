@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangAlpha Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #0071e3;
+            --primary-light: #77aaff;
+            --background-color: #f5f5f7;
+            --card-background: #ffffff;
+            --text-color: #1d1d1f;
+            --secondary-text: #86868b;
+            --border-color: #e5e5e5;
+            --shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+            --success-color: #34c759;
+            --info-color: #5ac8fa;
+            --warning-color: #ff9f0a;
+            
+            /* Agent colors for section highlighting */
+            --coordinator-color: #4ea7de;
+            --planner-color: #d0d958;
+            --supervisor-color: #a4ca7a;
+            --researcher-color: #95c98d;
+            --market-color: #30b0c7;
+            --coder-color: #8fd396;
+            --browser-color: #f28ab5;
+            --analyst-color: #e9d974;
+            --reporter-color: #9c93ed;
+            --user-color: #7f7f7f;
+            --default-agent-color: #5e5ce6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background-color: var(--card-background);
+            padding: 32px 20px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 40px;
+        }
+
+        .main-content {
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .header {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .search-container {
+            background-color: var(--card-background);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .search-input-container {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--background-color);
+            font-size: 16px;
+            color: var(--text-color);
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.3);
+        }
+
+        .search-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 16px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        .search-button:hover {
+            background-color: #0062cc;
+        }
+
+        .search-button:disabled {
+            background-color: var(--primary-light);
+            cursor: not-allowed;
+        }
+
+        .results-container {
+            background-color: var(--card-background);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator {
+            font-size: 14px;
+            color: var(--secondary-text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--secondary-text);
+        }
+
+        .status-dot.active {
+            background-color: var(--success-color);
+        }
+
+        .results-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            border-radius: 8px;
+            background-color: var(--background-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Document-style formatting */
+        .document-container {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            padding: 0 20px;
+        }
+
+        /* Markdown styling */
+        .document-container h1 {
+            font-size: 1.8em;
+            margin-top: 1.5em;
+            margin-bottom: 0.8em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+
+        .document-container h2 {
+            font-size: 1.5em;
+            margin-top: 1.3em;
+            margin-bottom: 0.7em;
+        }
+
+        .document-container h3 {
+            font-size: 1.3em;
+            margin-top: 1.2em;
+            margin-bottom: 0.6em;
+        }
+
+        .document-container p {
+            margin-bottom: 1em;
+        }
+
+        .document-container ul, .document-container ol {
+            margin-bottom: 1em;
+            margin-left: 2em;
+        }
+
+        .document-container li {
+            margin-bottom: 0.5em;
+        }
+
+        .document-container pre {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-bottom: 1em;
+        }
+
+        .document-container code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.9em;
+        }
+
+        .document-container blockquote {
+            border-left: 4px solid var(--border-color);
+            padding-left: 1em;
+            color: var(--secondary-text);
+            margin-bottom: 1em;
+        }
+
+        .document-container table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
+        }
+
+        .document-container table th, .document-container table td {
+            border: 1px solid var(--border-color);
+            padding: 0.5em;
+        }
+
+        .document-container table th {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .document-container hr {
+            border: none;
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 2em 0;
+        }
+
+        /* Section dividers */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5em 0;
+            color: var(--secondary-text);
+            font-size: 0.9em;
+        }
+
+        .section-divider:before, .section-divider:after {
+            content: "";
+            flex-grow: 1;
+            height: 1px;
+            background-color: var(--border-color);
+        }
+
+        .section-divider:before {
+            margin-right: 1em;
+        }
+
+        .section-divider:after {
+            margin-left: 1em;
+        }
+
+        /* Processing indicator */
+        .processing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 1em 0;
+            color: var(--secondary-text);
+            font-style: italic;
+        }
+
+        .processing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            animation: processing-animation 1.5s infinite ease-in-out;
+        }
+
+        .processing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .processing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .processing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes processing-animation {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--secondary-text);
+            text-align: center;
+            padding: 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* System notes */
+        .system-note {
+            font-style: italic;
+            color: var(--secondary-text);
+            text-align: center;
+            margin: 1em 0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="logo">LangAlpha</div>
+            <!-- Sidebar content can be added here in the future -->
+        </div>
+        
+        <div class="main-content">
+            <div>
+                <h1 class="header">Dashboard</h1>
+            </div>
+            
+            <div class="search-container">
+                <div class="search-input-container">
+                    <input
+                        id="query"
+                        class="search-input"
+                        placeholder="Search, ask, or @-mention a tab"
+                        aria-label="Enter your market intelligence query"
+                    >
+                </div>
+                <button id="submit-btn" class="search-button">Submit Query</button>
+            </div>
+            
+            <div class="results-container">
+                <div class="results-header">
+                    <h2>Results</h2>
+                    <div id="status" class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>Ready</span>
+                    </div>
+                </div>
+                
+                <div id="output" class="results-content">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔎</div>
+                        <p>Enter a query above to get market intelligence insights</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Markdown.js library for rendering markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        const submitBtn = document.getElementById('submit-btn');
+        const queryInput = document.getElementById('query');
+        const outputDiv = document.getElementById('output');
+        const statusDiv = document.getElementById('status');
+        const statusDot = document.querySelector('.status-dot');
+        
+        let eventSource = null;
+        let processingIndicator = null;
+        let documentContainer = null;
+        
+        submitBtn.addEventListener('click', async () => {
+            const query = queryInput.value.trim();
+            if (!query) {
+                alert('Please enter a query');
+                return;
+            }
+            
+            // Clear previous output and update status
+            outputDiv.innerHTML = '';
+            updateStatus('Connecting...', 'connecting');
+            submitBtn.disabled = true;
+            
+            // Create document container
+            documentContainer = document.createElement('div');
+            documentContainer.className = 'document-container';
+            outputDiv.appendChild(documentContainer);
+            
+            // Close any existing connection
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            try {
+                // Set up the POST request with EventSource
+                const response = await fetch('/api/run-workflow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        request: { query },
+                        config: {
+                            stream_config: { recursion_limit: 150 }
+                        }
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Error: ${response.status} - ${errorText}`);
+                }
+                
+                // Get the response headers to fetch the API URL for SSE
+                const sseUrl = response.headers.get('Content-Location');
+                if (!sseUrl) {
+                    throw new Error('No streaming URL provided in the response');
+                }
+                
+                // Set up the EventSource for streaming
+                eventSource = new EventSource(sseUrl);
+                updateStatus('Connected. Processing...', 'connected');
+                
+                // Add user query to document
+                appendToDocument('# Query\n\n' + query);
+                appendToDocument('\n\n---\n\n# Processing Results\n');
+                
+                // Show processing indicator
+                showProcessingIndicator('Analyzing query...');
+                
+                eventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('Received data:', data);
+                        
+                        // Update status with agent information
+                        if (data.next_agent) {
+                            updateStatus(`Processing: ${data.next_agent}`, 'active');
+                            updateProcessingIndicator(`${capitalizeFirstLetter(data.next_agent)} is working...`);
+                        }
+                        
+                        // Display message if available
+                        if (data.message) {
+                            const agent_name = data.message.name;
+                            let messageContent = '';
+                            
+                            try {
+                                if (agent_name === 'planner') {
+                                    const planContent = JSON.parse(data.message.content);
+                                    
+                                    messageContent = `## Planning Stage\n\n`;
+                                    messageContent += `### ${planContent.title}\n\n`;
+                                    messageContent += `${planContent.thought}\n\n`;
+                                    messageContent += `### Action Plan\n\n`;
+                                    
+                                    // Add steps as markdown list
+                                    planContent.steps.forEach((step, index) => {
+                                        messageContent += `#### Step ${index + 1}: ${step.task}\n\n`;
+                                        messageContent += `- **Agent:** ${step.agent}\n`;
+                                        messageContent += `- **Description:** ${step.description}\n`;
+                                        messageContent += `- **Note:** ${step.note}\n\n`;
+                                    });
+                                } 
+                                else if (agent_name === 'supervisor') {
+                                    const instructions = JSON.parse(data.message.content);
+                                    messageContent = `## Task Assignment\n\n`;
+                                    messageContent += `**Assigned to:** ${data.next_agent}\n\n`;
+                                    messageContent += `**Task:** ${instructions.task}\n\n`;
+                                }
+                                else if (agent_name === 'researcher') {
+                                    const researchResult = JSON.parse(data.message.content);
+                                    messageContent = `## Research Results\n\n`;
+                                    messageContent += `${researchResult.result_summary}\n\n`;
+                                    
+                                    // Add details if available
+                                    if (researchResult.details) {
+                                        messageContent += `### Details\n\n`;
+                                        messageContent += `${researchResult.details}\n\n`;
+                                    }
+                                }
+                                else if (agent_name === 'coder') {
+                                    const coderResult = JSON.parse(data.message.content);
+                                    messageContent = `## Code Analysis\n\n`;
+                                    messageContent += `${coderResult.result_summary}\n\n`;
+                                }
+                                else if (agent_name === 'market') {
+                                    const marketResult = JSON.parse(data.message.content);
+                                    messageContent = `## Market Data\n\n`;
+                                    messageContent += `${marketResult.result_summary}\n\n`;
+                                }
+                                else if (agent_name === 'analyst') {
+                                    messageContent = `## Analysis\n\n`;
+                                    messageContent += `${data.message.content}\n\n`;
+                                }
+                                else if (agent_name === 'reporter') {
+                                    messageContent = `## Report\n\n`;
+                                    messageContent += `${data.message.content}\n\n`;
+                                }
+                                else if (data.message.content) {
+                                    // For any other agent or if parsing fails
+                                    messageContent = `## ${capitalizeFirstLetter(agent_name || 'Agent')} Output\n\n`;
+                                    messageContent += `${data.message.content}\n\n`;
+                                }
+                            } catch (e) {
+                                // If JSON parsing fails, fallback to displaying raw content
+                                console.warn('Error parsing message content:', e);
+                                messageContent = `## ${capitalizeFirstLetter(agent_name || 'Agent')} Output\n\n`;
+                                messageContent += `${data.message.content}\n\n`;
+                            }
+                            
+                            // Add message content to document
+                            if (messageContent) {
+                                appendToDocument(messageContent);
+                            }
+                            
+                            // Update processing indicator for the next agent
+                            if (data.next_agent) {
+                                updateProcessingIndicator(`${capitalizeFirstLetter(data.next_agent)} is working...`);
+                            }
+                        }
+                        
+                        // Handle final report
+                        if (data.final_report) {
+                            // Remove processing indicator
+                            removeProcessingIndicator();
+                            
+                            // Add final report in markdown format
+                            appendToDocument(`## Final Report\n\n${data.final_report}\n\n`);
+                            
+                            // Add completion note
+                            appendToDocument('\n\n---\n\n*Analysis completed*');
+                            
+                            // Close the connection when the final report is received
+                            eventSource.close();
+                            updateStatus('Completed', 'success');
+                            submitBtn.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Error parsing message:', error);
+                        appendToDocument(`\n\n> Error parsing message: ${error.message}\n\n`);
+                    }
+                };
+                
+                eventSource.onerror = (error) => {
+                    console.error('EventSource error:', error);
+                    appendToDocument('\n\n> Connection error. Please try again.\n\n');
+                    removeProcessingIndicator();
+                    eventSource.close();
+                    updateStatus('Disconnected due to error', 'error');
+                    submitBtn.disabled = false;
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                appendToDocument(`\n\n> Error: ${error.message}\n\n`);
+                updateStatus('Error', 'error');
+                submitBtn.disabled = false;
+            }
+        });
+        
+        // Helper function to append markdown to the document container
+        function appendToDocument(markdown) {
+            if (!documentContainer) return;
+            
+            // Parse markdown to HTML
+            const html = marked.parse(markdown);
+            
+            // Create a temporary div to hold the new content
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Append all child nodes
+            while (tempDiv.firstChild) {
+                documentContainer.appendChild(tempDiv.firstChild);
+            }
+            
+            // Scroll to bottom
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        // Helper function to show processing indicator
+        function showProcessingIndicator(message) {
+            // Remove existing indicator if it exists
+            removeProcessingIndicator();
+            
+            processingIndicator = document.createElement('div');
+            processingIndicator.className = 'processing-indicator';
+            processingIndicator.id = 'processing-indicator';
+            
+            // Add dots
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'processing-dot';
+                processingIndicator.appendChild(dot);
+            }
+            
+            // Add message
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            processingIndicator.appendChild(messageSpan);
+            
+            // Add to document
+            documentContainer.appendChild(processingIndicator);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        // Helper function to update processing indicator
+        function updateProcessingIndicator(message) {
+            if (processingIndicator) {
+                const messageSpan = processingIndicator.querySelector('span');
+                if (messageSpan) {
+                    messageSpan.textContent = message;
+                }
+            } else {
+                showProcessingIndicator(message);
+            }
+        }
+        
+        // Helper function to remove processing indicator
+        function removeProcessingIndicator() {
+            if (processingIndicator) {
+                processingIndicator.remove();
+                processingIndicator = null;
+            }
+        }
+        
+        // Helper function to capitalize first letter
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+        
+        // Helper function to update status with visual indicator
+        function updateStatus(message, status) {
+            statusDiv.querySelector('span:not(.status-dot)').textContent = message;
+            
+            // Remove all status classes
+            statusDot.classList.remove('active', 'connecting', 'error');
+            
+            // Add appropriate class based on status
+            if (status === 'active' || status === 'connected' || status === 'success') {
+                statusDot.classList.add('active');
+            } else if (status === 'error') {
+                statusDot.style.backgroundColor = 'var(--warning-color)';
+            }
+        }
+        
+        // Allow submitting by pressing Enter in the input field
+        queryInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !submitBtn.disabled) {
+                submitBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

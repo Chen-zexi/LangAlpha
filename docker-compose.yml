@@ -1,0 +1,83 @@
+volumes:
+    langgraph-data:
+        driver: local
+services:
+    langgraph-redis:
+        image: redis:6
+        healthcheck:
+            test: redis-cli ping
+            interval: 5s
+            timeout: 1s
+            retries: 5
+    langgraph-postgres:
+        image: postgres:16
+        ports:
+            - "5433:5432"
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+        volumes:
+            - langgraph-data:/var/lib/postgresql/data
+        healthcheck:
+            test: pg_isready -U postgres
+            start_period: 10s
+            timeout: 1s
+            retries: 5
+            interval: 5s
+    langgraph-api:
+        build:
+            context: .
+            dockerfile: src/agent/Dockerfile
+        ports:
+            - "8123:8000"
+        depends_on:
+            langgraph-redis:
+                condition: service_healthy
+            langgraph-postgres:
+                condition: service_healthy
+        env_file:
+            - .env
+        environment:
+            REDIS_URI: redis://langgraph-redis:6379
+            LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+            POSTGRES_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
+            POLYGON_API_KEY: ${POLYGON_API_KEY}
+            BG_JOB_ISOLATED_LOOPS: true
+            PYTHONUNBUFFERED: 1
+            WATCHFILES_FORCE_POLLING: true
+            LANGGRAPH_ALLOW_BLOCKING: true
+        volumes:
+            # Mount the entire agent directory for development
+            - ./src/agent:/deps/__outer_agent/agent
+            # Ensure MCP server files are explicitly mounted
+            - ./src/agent/market_intelligence_agent/tools/mcp_server:/deps/__outer_agent/agent/market_intelligence_agent/tools/mcp_server
+        command: ["langgraph", "dev", "--allow-blocking"]
+        restart: unless-stopped
+        tty: true
+        stdin_open: true
+    web-api:
+        build:
+            context: .
+            dockerfile: src/web/Dockerfile
+        ports:
+            - "8000:8000"
+        depends_on:
+            - langgraph-api
+        env_file:
+            - .env
+        environment:
+            LANGGRAPH_API_URL: http://langgraph-api:8000
+            PORT: 8000
+            HOST: 0.0.0.0
+            LOG_LEVEL: info
+            PYTHONUNBUFFERED: 1
+            WATCHFILES_FORCE_POLLING: true
+        volumes:
+            - ./src/web:/app/web
+            - ./src/agent:/app/agent
+            - ./src/agent/market_intelligence_agent/config:/app/agent/market_intelligence_agent/config
+        command: ["python", "-m", "uvicorn", "web.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/web", "--reload-dir", "/app/agent"]
+        restart: unless-stopped
+        tty: true
+        stdin_open: true

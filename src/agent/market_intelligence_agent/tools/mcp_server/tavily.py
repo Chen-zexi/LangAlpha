@@ -3,6 +3,7 @@ import requests
 import asyncio
 import os
 from typing import List, Optional, Literal
+from langgraph.config import get_stream_writer
 import json
 import httpx
 
@@ -91,6 +92,9 @@ async def search(
     Returns:
         A dictionary containing search results
     """
+    writer = get_stream_writer()
+        
+    writer.write(f"Searching for {query} in {topic}")
     return await async_tavily_search(
         query=query,
         search_depth=search_depth,
