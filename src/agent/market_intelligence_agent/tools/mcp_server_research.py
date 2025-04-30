@@ -3,18 +3,19 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from typing import List, Any, Dict, Callable
 from pathlib import Path
 
-base_path = Path(__file__).parent.parent.parent.parent.parent
+# Get the directory where this script is located
+current_dir = Path(__file__).parent
 
 # Configuration for the MCP servers
 MCP_SERVERS_RESEARCH = {
     "tavily_search": {
         "command": "python",
-        "args": [str(base_path / "src/mcp_server/tavily.py")],
+        "args": [str(current_dir / "mcp_server/tavily.py")],
         "transport": "stdio",
     },
     "tickertick": {
         "command": "python",
-        "args": [str(base_path / "src/mcp_server/tickertick.py")],
+        "args": [str(current_dir / "mcp_server/tickertick.py")],
         "transport": "stdio",
     }
 }

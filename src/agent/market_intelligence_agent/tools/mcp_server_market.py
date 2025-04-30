@@ -2,19 +2,22 @@ import asyncio
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from typing import List, Any, Dict, Callable
 from pathlib import Path
+import os
+import sys
 
-base_path = Path(__file__).parent.parent.parent.parent.parent
+# Get the directory where this script is located
+current_dir = Path(__file__).parent
 
 # Configuration for the MCP servers
 MCP_SERVERS_MARKET = {
     "market_data": {
         "command": "python",
-        "args": [str(base_path / "src/mcp_server/market_data.py")],
+        "args": [str(current_dir / "mcp_server/market_data.py")],
         "transport": "stdio",
     },
     "fundamental_data": {
         "command": "python",
-        "args": [str(base_path / "src/mcp_server/fundamental_data.py")],
+        "args": [str(current_dir / "mcp_server/fundamental_data.py")],
         "transport": "stdio",
     }
 }
