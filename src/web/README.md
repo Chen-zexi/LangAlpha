@@ -9,11 +9,16 @@ The `src/web` directory contains the following key files and directories:
 -   `main.py`: The main FastAPI application file. Defines API endpoints, handles requests, and orchestrates the workflow streaming.
 -   `run_server.py`: A simple script to run the FastAPI server using Uvicorn.
 -   `static/`: Contains static assets for the web interface.
+    -   `css/`: Contains stylesheets for the web app
+       -   `index.css`: Defines UI styles, agent colors, and animations for the main app
+    -   `js/`: Contains JavaScript files that handle client-side functionality
+       -   `index.js`: Handles the main workflow UI, SSE connections, and dynamic rendering
+       -   `report.js`: Manages report display, PDF generation, and navigation
     -   `index.html`: The main interactive index page where users input queries and see the agent workflow.
     -   `report.html`: The page for displaying the final generated investment report.
     -   `history.html` (Optional): Page for viewing past sessions and reports.
     -   `session_history.html` (Optional): Page for viewing details of a specific session.
-    -   (Other assets like CSS or JavaScript files might be placed here if needed).
+-   `templates/`: Contains HTML templates used by the API endpoints.
 -   `requirements.txt`: Lists Python dependencies required for the web API.
 -   `Dockerfile`: Defines the Docker image build process for the web service.
 -   `README.md`: This documentation file.
@@ -99,7 +104,7 @@ The web API integrates with MongoDB to store and retrieve workflow history and g
     -   Retrieves the `report_id` from the URL query parameters.
     -   Fetches the corresponding report data from MongoDB via the `/api/history/report/{report_id}` endpoint.
     -   Renders the report title, query, timestamp, and markdown content using `marked.js` and `DOMPurify`.
-    -   Provides "Back to Results", "Print", and "Download as PDF" (currently triggers print) actions.
+    -   Provides "Back to Results", "Print", and "Download as PDF" (implemented with html2pdf.js library).
     -   The "Back to Results" button navigates back to `index.html`, triggering the restoration of the cached workflow state from `localStorage`.
 
 ## Data Flow Summary
@@ -122,6 +127,117 @@ The web API integrates with MongoDB to store and retrieve workflow history and g
     -   Navigates back to `index.html`.
     -   `index.html` detects the return trip (via `localStorage` flag), restores its previous HTML content and scroll position from `localStorage`, bypassing the "Recent Reports" load.
 11. **Recent Reports**: `index.html` sidebar fetches recent reports from `/api/recent-reports` on initial load (if not returning from `report.html`). Clicking a report link navigates directly to `report.html?report_id={report_id}`.
+
+## UI Components and Styling
+
+### Agent Color Scheme and Icons
+
+Each agent has a dedicated color and styling defined in `static/css/index.css`:
+
+- **Planner**: Light green (#C7F572), iconography uses "P"
+- **Supervisor**: Medium green (#A4CA7A), iconography uses "S"
+- **Researcher**: Darker green (#95C98D), iconography uses "R"
+- **Market**: Blue (#30B0C7), iconography uses "M"
+- **Coder**: Mint green (#8FD396), iconography uses "C"
+- **Browser**: Pink (#F28AB5), iconography uses "B"
+- **Analyst**: Yellow (#FFD60A), iconography uses "A"
+- **Reporter**: Purple (#AF8CFF), iconography uses "R"
+
+These colors are used consistently for agent icons, borders, and highlights throughout the UI.
+
+### Important UI Components
+
+1. **Status Indicator**:
+   - Located in the header of the results container
+   - Updates to show the current state of the workflow (Ready, Processing, Success, Error)
+   - Changes color based on status (gray, blue, green, red)
+
+2. **Agent Message Cards**:
+   - Styled with agent-specific left borders and icons
+   - Display agent outputs with markdown formatting
+   - Handle different content types appropriately (text, code, tables)
+
+3. **Plan Steps Component**:
+   - Expandable/collapsible container for planner's steps
+   - Shows chevron icon that rotates when expanded/collapsed
+   - Displays individual steps with agent icons and task details
+
+4. **Loading Indicators**:
+   - Uses animated typing dots for in-progress states
+   - Different animations for different loading states
+   - Agent-specific loading states with appropriate messaging
+
+5. **Example Queries**:
+   - Shown in the empty state of the results container
+   - Quick-start options for demonstrating the system
+   - Clickable buttons that populate the query input
+
+## Maintenance Tips
+
+### Adding New Agents
+
+If you need to add a new agent to the workflow:
+
+1. Add the agent's color to the theme in `index.html`:
+   ```javascript
+   agent: {
+     newagent: '#HEX_COLOR',
+   }
+   ```
+
+2. Add corresponding CSS classes in `index.css`:
+   ```css
+   .agent-icon-newagent { background-color: #HEX_COLOR; color: white; }
+   .border-agent-newagent { border-color: #HEX_COLOR; }
+   ```
+
+3. Update the message handling in `main.py` to process outputs from the new agent.
+
+4. Add any special UI handling in `index.js` if the agent requires unique display logic.
+
+### Modifying the Plan Steps UI
+
+The Plan Steps component has a specific structure:
+
+1. The handoff message appears before the expandable component.
+2. The expandable header contains "Plan Steps" text and a chevron icon.
+3. The chevron rotates to indicate expansion/collapse state.
+4. Individual plan steps are rendered inside with their own styling.
+
+If modifying this component:
+- Maintain the parent-child relationship between containers
+- Preserve the chevron rotation behavior
+- Keep consistent with the agent color scheme
+
+### Debugging SSE Connections
+
+If you encounter issues with the streaming connection:
+
+1. Check browser console for EventSource errors
+2. Verify the API is returning the correct `Content-Location` header
+3. Look for any CORS issues if accessing from different domains
+4. Check if the stream is timing out (default timeout may need adjustment)
+5. Use the logging in `main.py` to trace message flow
+
+### Common UI Issues and Solutions
+
+1. **Loading Indicators Not Disappearing**:
+   - The code includes `hideAgentProcessing()` to remove old loading indicators
+   - Ensure this function is called when agents complete their work
+
+2. **Duplicate Messages**:
+   - The backend may send the same content in multiple message types
+   - Use conditional checks like: `if (log.type === 'status' && log.content === 'specific message') return;`
+
+3. **Markdown Rendering Issues**:
+   - The app uses marked.js with specific configuration
+   - Content is sanitized with DOMPurify before insertion
+   - Check both libraries' configuration if rendering problems occur
+
+4. **PDF Generation Problems**:
+   - PDF generation uses html2pdf.js
+   - Ensure the content container has properly rendered before generating
+   - Consider alternative libraries like jsPDF if needed
 
 ## Documentation
 
@@ -193,4 +309,38 @@ The streaming API uses a structured message format to communicate agent activiti
 - **Analyst**: Original detailed output is replaced with a standardized message
 - **Reporter**: Final output includes styling for the full investment report
 
-Understanding these message types and their custom handling is essential when making UI changes or debugging the messaging flow. 
+## Key JavaScript Components and Functions
+
+### In `index.js`
+
+1. **SSE Connection Management**:
+   - `submitBtn.addEventListener('click', async () => {...})` - Initiates the workflow
+   - `eventSource = new EventSource(sseUrl)` - Establishes the streaming connection
+   - `eventSource.onmessage = (event) => {...}` - Handles incoming stream messages
+
+2. **Message Rendering**:
+   - `appendLogMessage(log)` - Core function for rendering different message types
+   - `createPlanStepElement(log)` - Helper for formatting individual plan steps
+   - `displayContent(element, markdown)` - Renders markdown content securely
+
+3. **UI State Management**:
+   - `updateStatus(message, status)` - Updates the status indicator
+   - `hideAgentProcessing(agentName)` - Removes loading indicators when agents complete
+   - `hideAllStatusMessages()` - Cleans up when report is ready
+
+4. **Navigation & Storage**:
+   - `savePageStateAndNavigateToReport()` - Caches state and navigates to report view
+   - `checkReturnFromReport()` - Restores state when returning from report view
+   - `reattachEventListeners()` - Ensures interactive elements work after state restoration
+
+### In `report.js`
+
+1. **Report Loading**:
+   - `loadReport(id)` - Fetches report data from the API
+   - `displayReport(report)` - Renders the report content
+
+2. **PDF Generation**:
+   - `downloadButton.addEventListener('click', () => {...})` - Handles PDF creation
+   - Uses html2pdf.js to convert report content to downloadable PDF
+
+Understanding these components and their interactions is essential when making UI changes or debugging message flow. 

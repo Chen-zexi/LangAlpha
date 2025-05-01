@@ -108,9 +108,12 @@ function reattachEventListeners() {
     });
 
     // Reattach view report button functionality
-    const reportButtons = outputDiv.querySelectorAll('button[onclick*="window.location.href=\'report.html\'"]');
+    const reportButtons = outputDiv.querySelectorAll('button[onclick*="savePageStateAndNavigateToReport"]');
     reportButtons.forEach(button => {
-        button.onclick = savePageStateAndNavigate;
+        // Remove the onclick attribute to prevent duplicate handlers
+        button.removeAttribute('onclick');
+        // Add a new event listener
+        button.addEventListener('click', savePageStateAndNavigateToReport);
     });
 }
 
@@ -181,7 +184,7 @@ function displayText(element, text) {
 // Function to format and append log messages
 function appendLogMessage(log) {
     const messageElement = document.createElement('div');
-    messageElement.classList.add('log-message', 'animate-fade-in');
+    messageElement.className = 'log-message animate-fade-in';
 
     if (log.type) {
         messageElement.classList.add(`log-type-${log.type}`);
@@ -293,67 +296,44 @@ function appendLogMessage(log) {
 
             // Special handling for reporter agent - always display the report button when it finishes
             if (log.agent === 'reporter' && log.content.includes('finished the task')) {
-                // Create a special container with the report button
-                const reporterContainer = document.createElement('div');
-                reporterContainer.className = 'mt-2 pl-10 flex items-center justify-between';
+                // Check if we already have a report button to avoid duplicates
+                const existingButtons = document.querySelectorAll('button[onclick*="savePageStateAndNavigateToReport"]');
+                if (existingButtons.length > 0) {
+                    console.log("Report button already exists. Not adding another one.");
+                    displayContent(contentContainer, log.content);
+                } else {
+                    // Create a special container with the report button
+                    const reporterContainer = document.createElement('div');
+                    reporterContainer.className = 'mt-2 pl-10 flex items-center justify-between';
 
-                // Add the standard text on the left
-                const textDiv = document.createElement('div');
-                textDiv.className = 'text-gray-700 dark:text-gray-300';
-                textDiv.textContent = log.content;
-                reporterContainer.appendChild(textDiv);
+                    // Add the standard text on the left
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'text-gray-700 dark:text-gray-300';
+                    textDiv.textContent = log.content;
+                    reporterContainer.appendChild(textDiv);
 
-                // Add the "View Report" button on the right
-                const buttonDiv = document.createElement('div');
-                buttonDiv.className = 'ml-4';
-                buttonDiv.innerHTML = `
-                    <button onclick="savePageStateAndNavigateToReport()" class="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
-                        View Complete Investment Report
-                    </button>
-                `;
-                reporterContainer.appendChild(buttonDiv);
+                    // Add the "View Report" button on the right
+                    const buttonDiv = document.createElement('div');
+                    buttonDiv.className = 'ml-4';
+                    buttonDiv.innerHTML = `
+                        <button onclick="savePageStateAndNavigateToReport()" class="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                            View Complete Investment Report
+                        </button>
+                    `;
+                    reporterContainer.appendChild(buttonDiv);
 
-                // Replace the standard content container with our custom one
-                contentContainer.appendChild(reporterContainer);
+                    // Replace the standard content container with our custom one
+                    contentContainer.appendChild(reporterContainer);
 
-                // Generate a simple report from the agent outputs if one doesn't exist
-                if (!window.finalReportGenerated) {
-                    window.finalReportGenerated = true;
+                    // If the report_id is available in the log, store it
+                    if (log.report_id) {
+                        window.currentReportId = log.report_id;
+                        console.log(`Setting currentReportId to ${log.report_id} from reporter agent output`);
+                    }
 
-                    // Get all content from agent outputs
-                    const allAgentOutputs = Array.from(document.querySelectorAll('[data-log-type="agent_output"]'))
-                        .map(el => {
-                            const agentName = el.getAttribute('data-log-agent') || 'unknown';
-                            const content = el.querySelector('.markdown-content')?.innerText || el.innerText || '';
-                            return `## ${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Analysis\n\n${content}\n\n`;
-                        })
-                        .join('\n');
-
-                    const reportContent = `# Investment Analysis Report\n\n${allAgentOutputs}\n\n*Generated on ${new Date().toLocaleString()}*`;
-
-                    // Save the report to MongoDB directly
-                    fetch('/api/create-report', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            content: reportContent,
-                            title: `Analysis: ${queryInput.value.trim()}`,
-                            metadata: {
-                                query: queryInput.value.trim()
-                            }
-                        }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Report saved to MongoDB:', data);
-                        // Store report ID for navigation
-                        window.currentReportId = data.report_id;
-                        // Refresh recent reports list
-                        loadRecentReports();
-                    })
-                    .catch(error => console.error('Error saving report:', error));
+                    // We no longer need to generate a report here since it should come from the backend
+                    // Just reload the recent reports list
+                    loadRecentReports();
                 }
             }
             else if (log.agent === 'planner') {
@@ -498,41 +478,49 @@ function appendLogMessage(log) {
             break;
 
         case 'final_report':
-            // Hide all status messages when final report arrives
+            // Get the report_id from the message if available
+            if (log.report_id) {
+                // Store the report ID from the backend
+                window.currentReportId = log.report_id;
+                console.log(`Setting currentReportId to ${log.report_id} from final_report message`);
+            }
+            
+            // Create full-width container
+            const reportContainer = document.createElement('div');
+            reportContainer.className = 'p-4 my-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-700';
+            
+            // Display report content
+            const reportContentContainer = document.createElement('div');
+            reportContentContainer.className = 'markdown-content';
+            displayContent(reportContentContainer, log.report);
+            
+            // Check if we already have a report button to avoid duplicates
+            const existingButtons = document.querySelectorAll('button[onclick*="savePageStateAndNavigateToReport"]');
+            if (existingButtons.length === 0) {
+                // Add a "View Report" button only if there isn't one already
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'mt-4 text-right';
+                buttonContainer.innerHTML = `
+                    <button onclick="savePageStateAndNavigateToReport()" class="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                        View Complete Investment Report
+                    </button>
+                `;
+                reportContainer.appendChild(reportContentContainer);
+                reportContainer.appendChild(buttonContainer);
+            } else {
+                console.log("Report button already exists. Not adding another one.");
+                reportContainer.appendChild(reportContentContainer);
+            }
+            
+            messageElement.appendChild(reportContainer);
+            
+            // Clear any agent processing indicators
             hideAllStatusMessages();
-
-            // Save the final report content but don't display directly
-            window.finalReportContent = log.content;
-
-            // Save to MongoDB via API
-            fetch('/api/create-report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content: log.content,
-                    title: `Analysis: ${queryInput.value.trim()}`,
-                    metadata: {
-                        query: queryInput.value.trim()
-                    }
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Final report saved to MongoDB:', data);
-                // Store report ID for navigation
-                window.currentReportId = data.report_id;
-                // Refresh recent reports list
-                loadRecentReports();
-            })
-            .catch(error => console.error('Error saving final report:', error));
-
+            
             // Update status to success
-            updateStatus('Report Ready', 'success');
-
-            // Skip default append - we won't show the report directly anymore
-            return;
+            updateStatus("Analysis completed successfully", "success");
+            
+            break;
 
         case 'error':
             messageElement.className = 'p-4 mb-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md border-l-3 border-l-red-500';
@@ -673,6 +661,13 @@ async function formatChunkForRendering(chunk) {
     const nextAgent = chunk.data.next || null;
     const lastAgent = chunk.data.last_agent || null;
     const finalReport = chunk.data.final_report || null;
+    const reportId = chunk.data.report_id || null;  // Extract report_id if available
+
+    // If we have a report_id in the chunk data, save it globally right away
+    if (reportId) {
+        window.currentReportId = reportId;
+        console.log(`Report ID from chunk data: ${reportId}`);
+    }
 
     // Use the latest message if available
     const latestMessage = messagesData.length > 0 ? messagesData[messagesData.length - 1] : null;
@@ -724,7 +719,8 @@ async function formatChunkForRendering(chunk) {
                     appendLogMessage({
                         type: 'agent_output',
                         agent: agent_name,
-                        content: typeof content_str === 'string' ? content_str : JSON.stringify(content_str)
+                        content: typeof content_str === 'string' ? content_str : JSON.stringify(content_str),
+                        report_id: reportId  // Pass report_id to the agent
                     });
                 }
             } catch (e) {
@@ -735,7 +731,8 @@ async function formatChunkForRendering(chunk) {
                     appendLogMessage({
                         type: 'agent_output',
                         agent: agent_name,
-                        content: content_str
+                        content: content_str,
+                        report_id: reportId  // Pass report_id to the agent
                     });
                 }
             }
@@ -744,7 +741,18 @@ async function formatChunkForRendering(chunk) {
 
     // Handle final report if present
     if (finalReport) {
-        appendLogMessage({ type: 'final_report', content: finalReport });
+        appendLogMessage({ 
+            type: 'final_report', 
+            report: finalReport,  // Changed from content to report for clarity
+            report_id: reportId  // Include the report_id from the backend
+        });
+    }
+    
+    // Handle stream completion message
+    if (chunk.data.type === "stream_complete" && chunk.data.report_id) {
+        // Make sure we have the report ID saved if provided in the completion message
+        window.currentReportId = chunk.data.report_id;
+        console.log(`Stream complete, final report ID: ${chunk.data.report_id}`);
     }
 
     // Ensure we're scrolled to the bottom after adding content
@@ -1086,53 +1094,47 @@ function savePageStateAndNavigate() {
 
 // Function to save state and navigate to report
 function savePageStateAndNavigateToReport() {
-    if (window.currentReportId) {
-        // Navigate to the report page with the stored report ID
-        window.location.href = `/report?report_id=${window.currentReportId}`;
-    } else {
-        // Fallback: Generate a report from agent outputs
-        console.error("No report ID available. Generating fallback report...");
-
-        // Get all content from agent outputs
-        const allAgentOutputs = Array.from(document.querySelectorAll('[data-log-type="agent_output"]'))
-            .map(el => {
-                const agentName = el.getAttribute('data-log-agent') || 'unknown';
-                const content = el.querySelector('.markdown-content')?.innerText || el.innerText || '';
-                return `## ${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Analysis\n\n${content}\n\n`;
-            })
-            .join('\n');
-
-        const reportContent = `# Investment Analysis Report\n\n${allAgentOutputs}\n\n*Generated on ${new Date().toLocaleString()}*`;
-
-        // Save the report to MongoDB
-        fetch('/api/create-report', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                content: reportContent,
-                title: `Analysis: ${queryInput.value.trim()}`,
-                metadata: {
-                    query: queryInput.value.trim()
-                }
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Fallback report saved to MongoDB:', data);
-            // Navigate to the report page with the new report ID
-            if (data.report_id) {
-                window.location.href = `/report?report_id=${data.report_id}`;
-            } else {
-                alert('Error: No report ID returned from server');
-            }
-        })
-        .catch(error => {
-            console.error('Error saving fallback report:', error);
-            alert('Error saving report. Please try again.');
-        });
+    // Check if we have a reportId before attempting to navigate
+    if (!window.currentReportId) {
+        // Try to find report_id attribute in DOM, sometimes it's stored there
+        const reportElements = document.querySelectorAll('[data-report-id]');
+        if (reportElements.length > 0) {
+            window.currentReportId = reportElements[0].getAttribute('data-report-id');
+            console.log(`Found report ID in DOM: ${window.currentReportId}`);
+        }
     }
+    
+    if (!window.currentReportId) {
+        console.error("No report ID available. Cannot navigate to report page.");
+        showToast("Error: Report ID not found. Please try again.");
+        return;
+    }
+    
+    // Save current page state (for when user clicks "Back to Results")
+    localStorage.setItem('returnFromReport', 'true');
+    localStorage.setItem('reportQuery', queryInput.value.trim());
+    localStorage.setItem('scrollPosition', outputDiv.scrollTop);
+    localStorage.setItem('cachedOutputHtml', outputDiv.innerHTML);
+    
+    const logElementsInfo = allLogElements.map(el => {
+        return {
+            className: el.className,
+            type: el.getAttribute('data-log-type') || '',
+            agent: el.getAttribute('data-log-agent') || ''
+        };
+    });
+    localStorage.setItem('cachedLogElements', JSON.stringify(logElementsInfo));
+    
+    // Save current status indicator state
+    localStorage.setItem('statusText', statusIndicator.querySelector('span:not(.status-dot)').textContent);
+    localStorage.setItem('statusClass',
+        statusIndicator.classList.contains('bg-green-50') ? 'success' :
+        statusIndicator.classList.contains('bg-primary-50') ? 'active' :
+        statusIndicator.classList.contains('bg-red-50') ? 'error' : '');
+    
+    console.log(`Navigating to report page with ID: ${window.currentReportId}`);
+    // Navigate to the report using the report ID provided by the backend
+    window.location.href = `/report?report_id=${window.currentReportId}`;
 }
 
 // Function to load recent reports from MongoDB
@@ -1146,9 +1148,9 @@ function loadRecentReports() {
 
     // Clear any existing reports
     recentReportsList.innerHTML = `
-        <li class="mb-1 animate-pulse">
+        <li class="mb-1">
             <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
-                <span class="mr-3">🕒</span>
+                <div class="mr-3 w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-primary-500 dark:border-t-primary-400 rounded-full animate-spin"></div>
                 Loading recent reports...
             </div>
         </li>

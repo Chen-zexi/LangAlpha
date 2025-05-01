@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listeners
     if (backButton) {
         backButton.addEventListener('click', () => {
+            // Set flag to indicate we're returning from the report page
+            // This will trigger the state restoration in index.js
+            localStorage.setItem('returnFromReport', 'true');
+            
             // Return to the main page
             window.location.href = '/';
         });
