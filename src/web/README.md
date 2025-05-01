@@ -90,6 +90,57 @@ The API server will start at http://localhost:8000.
   }
   ```
 
+## Message Types and Frontend Handling
+
+The streaming API uses a structured message format to communicate agent activities and outputs. The frontend handles different message types with specific display logic:
+
+### Message Types
+
+1. **Control Messages**: 
+   - `connection_established` - Initial connection confirmation
+   - `stream_complete` - Stream has ended
+   - These are logged but not displayed to the user
+
+2. **Status Messages**: 
+   - `type: "status"` - Indicates an agent's processing state
+   - Example: "Researcher is gathering information..."
+   - Displayed as in-progress indicators with animated dots
+   - When a new agent takes over, previous status messages may be hidden
+
+3. **Agent Output Messages**:
+   - `type: "agent_output"` - Contains completed work from an agent
+   - Agent-specific formatting:
+     - **Planner**: Shows title and thought process, with expandable plan steps
+     - **Researcher/Market/Coder**: Shows a summary of findings/results
+     - **Analyst**: Shows a standardized message "Analyst has finished generating insight"
+     - **Reporter**: Shows confirmation of task completion before final report
+
+4. **Plan Step Messages**:
+   - `type: "plan_step"` - Contains details about steps in the planner's plan
+   - Displayed in an expandable container under the planner's output
+
+5. **Separator Messages**:
+   - `type: "separator"` - Visual dividers between message sections
+   - Rendered as horizontal rules of varying thickness
+
+6. **Final Report Messages**:
+   - `type: "final_report"` - The complete analysis compiled by the reporter agent
+   - Displayed in a highlighted box with markdown formatting
+   - Triggers UI state changes (success indicators, view report buttons)
+
+7. **Error Messages**:
+   - `type: "error"` - Indicates an error in processing
+   - Displayed prominently with red styling
+
+### Special Agent Handling
+
+- **Planner**: Plan steps are grouped and made expandable/collapsible
+- **Supervisor**: Messages shown inline as status updates, not as agent cards
+- **Analyst**: Original detailed output is replaced with a standardized message
+- **Reporter**: Final output includes styling for the full investment report
+
+Understanding these message types and their custom handling is essential when making UI changes or debugging the messaging flow.
+
 ## Documentation
 
 Interactive API documentation is available at:
