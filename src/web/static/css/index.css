@@ -1,0 +1,190 @@
+/* Styles specific to the index page */
+
+/* Agent colors and icons */
+.agent-icon-planner { background-color: #C7F572; color: #1A1A1A; }
+.agent-icon-supervisor { background-color: #A4CA7A; color: white; }
+.agent-icon-researcher { background-color: #95C98D; color: white; }
+.agent-icon-market { background-color: #30B0C7; color: white; }
+.agent-icon-coder { background-color: #8FD396; color: #1A1A1A; }
+.agent-icon-browser { background-color: #F28AB5; color: white; }
+.agent-icon-analyst { background-color: #FFD60A; color: #1A1A1A; }
+.agent-icon-reporter { background-color: #AF8CFF; color: white; }
+
+/* Border colors */
+.border-agent-planner { border-color: #C7F572; }
+.border-agent-supervisor { border-color: #A4CA7A; }
+.border-agent-researcher { border-color: #95C98D; }
+.border-agent-market { border-color: #30B0C7; }
+.border-agent-coder { border-color: #8FD396; }
+.border-agent-browser { border-color: #F28AB5; }
+.border-agent-analyst { border-color: #FFD60A; }
+.border-agent-reporter { border-color: #AF8CFF; }
+
+/* Typing animation */
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Custom scrollbar */
+.results-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.results-content::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.results-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+@keyframes typingDot {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.8; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Animation classes */
+.animate-typing-dot { animation: typingDot 1.5s infinite ease-in-out; }
+.animate-fade-in { animation: fadeIn 0.3s ease-in; }
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
+.animate-pulse { animation: pulse 2s infinite; }
+
+/* Layout components */
+.sidebar {
+    width: 280px;
+    background-color: var(--card-background);
+    border-right: 1px solid var(--border-color);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.sidebar-content {
+    padding: 24px;
+}
+
+.main-content {
+    margin-left: 280px;
+    padding: 24px;
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Query input section */
+.query-section {
+    position: sticky;
+    bottom: 0;
+    padding: 16px;
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.query-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    color: var(--text-primary);
+    font-size: 16px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.query-input:focus {
+    border-color: var(--primary-color);
+}
+
+.submit-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.submit-button:hover {
+    background-color: var(--primary-dark);
+}
+
+.submit-button:disabled {
+    background-color: var(--border-color);
+    cursor: not-allowed;
+}
+
+/* Results area */
+.results-area {
+    height: calc(100vh - 180px);
+    overflow-y: auto;
+    padding: 16px;
+}
+
+/* Agent message styling */
+.agent-message {
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 8px;
+    background-color: var(--card-background);
+    box-shadow: var(--shadow-sm);
+    border-left: 4px solid transparent;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.agent-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.agent-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+.agent-name {
+    font-weight: 600;
+    font-size: 16px;
+} 

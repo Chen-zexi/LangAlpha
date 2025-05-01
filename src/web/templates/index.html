@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangAlpha | AI-Powered Investment Insights</title>
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#EFF6FF',
+                            100: '#DBEAFE',
+                            200: '#BFDBFE',
+                            300: '#93C5FD',
+                            400: '#60A5FA',
+                            500: '#3B82F6',
+                            600: '#2563EB',
+                            700: '#1D4ED8',
+                            800: '#1E40AF',
+                            900: '#1E3A8A',
+                        },
+                        agent: {
+                            coordinator: '#5AC8F5',
+                            planner: '#C7F572',
+                            supervisor: '#A4CA7A',
+                            researcher: '#95C98D',
+                            market: '#30B0C7',
+                            coder: '#8FD396',
+                            browser: '#F28AB5',
+                            analyst: '#FFD60A',
+                            reporter: '#AF8CFF',
+                        }
+                    },
+                    animation: {
+                        'typing-dot': 'typingDot 1.5s infinite ease-in-out',
+                        'fade-in': 'fadeIn 0.3s ease-in',
+                        'fade-in-up': 'fadeInUp 0.5s ease-out',
+                        'pulse': 'pulse 2s infinite',
+                    },
+                    keyframes: {
+                        typingDot: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-3px)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulse: {
+                            '0%, 100%': { opacity: '0.8', transform: 'scale(0.8)' },
+                            '50%': { opacity: '1', transform: 'scale(1.2)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/index.css">
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .typing-dot:nth-child(1) { animation-delay: 0s; }
+            .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+            .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+            
+            .results-content::-webkit-scrollbar {
+                width: 6px;
+            }
+            
+            .results-content::-webkit-scrollbar-track {
+                @apply bg-transparent;
+            }
+            
+            .results-content::-webkit-scrollbar-thumb {
+                @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+            }
+            
+            .markdown-content h1 {
+                @apply text-2xl font-semibold mt-6 mb-3 pb-1 border-b border-gray-200 dark:border-gray-700;
+            }
+            
+            .markdown-content h2 {
+                @apply text-xl font-semibold mt-5 mb-3;
+            }
+            
+            .markdown-content h3 {
+                @apply text-lg font-semibold mt-4 mb-2;
+            }
+            
+            .markdown-content p {
+                @apply mb-4;
+            }
+            
+            .markdown-content ul, .markdown-content ol {
+                @apply mb-4 ml-6;
+            }
+            
+            .markdown-content li {
+                @apply mb-1;
+            }
+            
+            .markdown-content code {
+                @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
+            }
+            
+            .markdown-content pre {
+                @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto mb-4 font-mono text-sm;
+            }
+            
+            .markdown-content blockquote {
+                @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 text-gray-600 dark:text-gray-400 mb-4;
+            }
+            
+            .markdown-content a {
+                @apply text-primary-600 dark:text-primary-400 hover:underline;
+            }
+            
+            .markdown-content table {
+                @apply w-full mb-4 border-collapse;
+            }
+            
+            .markdown-content th, .markdown-content td {
+                @apply border border-gray-300 dark:border-gray-700 px-3 py-2;
+            }
+            
+            .markdown-content th {
+                @apply bg-gray-100 dark:bg-gray-800;
+            }
+        }
+    </style>
+    
+    <!-- Markdown parsing and sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 shadow-md bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed top-0 left-0 h-full hidden lg:block overflow-y-auto">
+            <div class="p-5">
+                <div class="flex items-center mb-8">
+                    <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold">L</div>
+                    <span class="ml-2 text-xl font-semibold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">LangAlpha</span>
+                </div>
+                
+                <div class="mb-8">
+                    <h3 class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Main Menu</h3>
+                    <ul>
+                        <li class="mb-1">
+                            <a href="#" class="flex items-center p-3 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium">
+                                <span class="mr-3">🔍</span>
+                                AI Research
+                            </a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <span class="mr-3">📊</span>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <span class="mr-3">📈</span>
+                                Market Trend
+                            </a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <span class="mr-3">💼</span>
+                                Companies
+                            </a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <span class="mr-3">📰</span>
+                                News & Insights
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Recent Searches</h3>
+                    <ul id="recent-reports-list">
+                        <li class="mb-1 animate-pulse">
+                            <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
+                                <span class="mr-3">🕒</span>
+                                Loading recent reports...
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="w-full lg:ml-64 p-5">
+            <div class="max-w-5xl mx-auto">
+                <header class="mb-6 py-3 sticky top-0 bg-gray-50 dark:bg-gray-900 z-10">
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-semibold">AI Research and Insights</h1>
+                        <div id="status" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
+                            <span class="status-dot w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></span>
+                            <span>Ready</span>
+                        </div>
+                    </div>
+                </header>
+                
+                <!-- Search Input Container -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 mb-6 p-6">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold mb-1">Ask About Investments</h2>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Enter a query about stocks, markets, companies, or investment strategies</p>
+                    </div>
+                    <div class="relative mb-4">
+                        <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                        <input
+                            id="query"
+                            class="w-full px-10 py-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:border-primary-500 outline-none transition-all duration-300"
+                            placeholder="E.g., 'Analyze recent performance of TSLA stock' or 'Compare tech sector ETFs'"
+                            aria-label="Enter your market intelligence query"
+                        >
+                    </div>
+                    <button id="submit-btn" class="w-full flex items-center justify-center py-3 px-4 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 relative overflow-hidden">
+                        <div class="flex items-center justify-center gap-2 z-10">
+                            <span>Get Investment Insights</span>
+                        </div>
+                    </button>
+                </div>
+                
+                <!-- Results Container -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 mb-8 overflow-hidden">
+                    <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                        <h2 class="text-lg font-semibold">Agent workflow</h2>
+                        <div id="status-indicator" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
+                            <span class="status-dot w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></span>
+                            <span>Ready</span>
+                        </div>
+                    </div>
+                    
+                    <div id="output" class="results-content min-h-[400px] overflow-y-auto">
+                        <!-- Empty State -->
+                        <div class="empty-state flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in">
+                            <div class="text-6xl mb-6 bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent opacity-90">📊</div>
+                            <h3 class="text-xl font-semibold mb-3">Your Financial Analysis Hub</h3>
+                            <p class="text-gray-600 dark:text-gray-400 max-w-md mb-8">Enter a finance query above to get AI-powered investment insights and market intelligence</p>
+                            
+                            <div class="flex flex-wrap gap-3 justify-center">
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Analyze NVIDIA stock performance')">Analyze NVIDIA stock</div>
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Compare Apple and Microsoft financials')">Compare AAPL vs MSFT</div>
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Explain recent crypto market trends')">Crypto trends</div>
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Analyze impact of interest rates on REITs')">Interest rates & REITs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Back to top button -->
+    <button id="backToTop" class="fixed bottom-6 right-6 w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-5 transition-all duration-300 z-50 hover:bg-primary-700">
+        ↑
+    </button>
+
+    <!-- External JavaScript -->
+    <script src="/static/js/index.js"></script>
+</body>
+</html>

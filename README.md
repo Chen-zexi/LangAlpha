@@ -73,7 +73,38 @@ Below is an image demonstrate the current agent workflow
 ## Trading Strategy:
 - See [counter-trend-trading-strategy colab](https://colab.research.google.com/drive/1Wo1f5SvZ3M9YjUx7gl4q2rSIo7PMegBN?usp=sharing#scrollTo=1kA-HcwGkK9Z) for details.
 
+## MongoDB Integration
 
+The application uses MongoDB to store streaming messages and generated reports. This allows for:
+
+1. History tracking: Users can view their past queries and the conversations.
+2. Report storage: All generated reports are stored for later reference.
+
+### MongoDB Structure
+
+- **Collections**:
+  - `messages`: Stores all stream messages including user queries, assistant responses, and system notifications.
+  - `reports`: Stores the final generated reports.
+
+### Environment Variables
+
+MongoDB configuration is controlled via the following environment variables:
+
+```
+MONGODB_URI=mongodb://admin:password@mongodb:27017/
+MONGODB_DB=langalpha
+```
+
+### Accessing History
+
+The application provides the following endpoints for accessing historical data:
+
+- `/history`: A UI page that lists all previous sessions.
+- `/history/{session_id}`: A UI page that shows a specific session with its messages and reports.
+- `/api/history/sessions`: API endpoint that returns a list of all sessions.
+- `/api/history/messages/{session_id}`: API endpoint that returns all messages for a specific session.
+- `/api/history/reports/{session_id}`: API endpoint that returns all reports for a specific session.
+- `/api/history/report/{report_id}`: API endpoint that returns a specific report by ID.
 
 ## Repository Structure
 ```

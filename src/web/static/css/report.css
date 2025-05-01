@@ -1,0 +1,115 @@
+/* Styles specific to the report page */
+
+.report-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #0070E0, #42A1FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+.logo-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: var(--spacing-sm);
+    background: linear-gradient(135deg, #0070E0, #42A1FF);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+.actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-normal) ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.button:hover {
+    background-color: var(--primary-dark);
+}
+
+.button.secondary {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}
+
+.button.secondary:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.button.primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.button.primary:hover {
+    background-color: var(--primary-dark);
+}
+
+.report-info {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background-color: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.report-info h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.report-info p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: var(--spacing-md);
+}
+
+.report-content {
+    background-color: var(--card-background);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    margin-bottom: var(--spacing-xl);
+} 

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangAlpha | Session History</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/history.css">
+    
+    <!-- Bootstrap CSS (for cards and layout) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="header">
+            <div class="logo-container">
+                <div class="logo-icon">L</div>
+                <div class="logo">LangAlpha</div>
+            </div>
+            <button id="back-button" class="button secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Back to Dashboard
+            </button>
+        </div>
+
+        <h1 class="mb-4">Session History</h1>
+        
+        <div id="loading-sessions" class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading sessions...</p>
+        </div>
+        
+        <div id="sessions-container" class="row g-4">
+            <!-- Sessions will be loaded here -->
+        </div>
+        
+        <div id="no-sessions" class="alert alert-info mt-4 d-none">
+            No sessions found. Start a new conversation to create a session.
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- External JavaScript -->
+    <script src="/static/js/history.js"></script>
+</body>
+</html> 

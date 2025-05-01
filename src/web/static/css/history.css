@@ -1,0 +1,75 @@
+/* Styles for history and session history pages */
+
+.message {
+    margin-bottom: 15px;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.message-system {
+    background-color: #f8f9fa;
+    border-left: 5px solid #6c757d;
+}
+
+.message-user {
+    background-color: #e3f2fd;
+    border-left: 5px solid #0d6efd;
+}
+
+.message-assistant {
+    background-color: #f0f8ff;
+    border-left: 5px solid #20c997;
+}
+
+.message-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.message-time {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.message-content {
+    white-space: pre-wrap;
+}
+
+.nav-tabs {
+    margin-bottom: 20px;
+}
+
+.report-container {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.report-content {
+    white-space: pre-wrap;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .message-system {
+        background-color: #212529;
+        border-left-color: #adb5bd;
+    }
+    
+    .message-user {
+        background-color: #1a374d;
+        border-left-color: #0d6efd;
+    }
+    
+    .message-assistant {
+        background-color: #1a2f38;
+        border-left-color: #20c997;
+    }
+    
+    .report-container {
+        background-color: #2c2c2e;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+} 

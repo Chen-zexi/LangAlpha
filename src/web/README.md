@@ -1,94 +1,228 @@
-# Market Intelligence Agent Web API
+# LangAlpha Web Interface
 
-This module provides a FastAPI-based web API for the Market Intelligence Agent workflow. It serves as the backend for web applications to interact with the agent system.
+This directory contains the web interface for the LangAlpha investment analysis platform.
+
+## Project Structure
+
+```
+src/web/
+├── static/             # Static assets
+│   ├── assets/         # Visual assets
+│   │   └── img/        # Images and icons
+│   ├── css/            # Stylesheets
+│   │   ├── main.css    # Common styles for all pages
+│   │   ├── index.css   # Styles specific to index page
+│   │   ├── report.css  # Styles specific to report page
+│   │   └── history.css # Styles specific to history pages
+│   └── js/             # JavaScript files
+│       ├── index.js    # Scripts for index page
+│       ├── report.js   # Scripts for report page
+│       ├── session-history.js # Scripts for session history page
+│       └── history.js  # Scripts for history listing page
+├── templates/          # HTML templates
+│   ├── index.html      # Main page
+│   ├── report.html     # Report viewer
+│   ├── session_history.html # Session history page
+│   └── history.html    # Sessions listing page
+└── main.py             # FastAPI application and API endpoints
+```
+
+## Technology Stack
+
+- **Backend**: FastAPI (Python)
+- **Frontend**: HTML, CSS, JavaScript
+- **CSS Libraries**: 
+  - TailwindCSS (via CDN)
+  - Bootstrap (for certain components)
+- **JS Libraries**:
+  - Marked.js (for Markdown parsing)
+  - DOMPurify (for HTML sanitization)
+
+## Development
+
+### Running the Application
+
+To run the application:
+
+```bash
+# From project root
+python -m src.web.main
+```
+
+The application will be available at http://localhost:8000.
+
+### Frontend Structure
+
+The frontend follows a conventional structure:
+
+1. **HTML Templates**: Located in `/templates` directory, these are served by FastAPI with Jinja2.
+2. **CSS**: Separated into modular files by page/function in the `/static/css` directory.
+3. **JavaScript**: Organized by page in the `/static/js` directory.
+4. **Assets**: Images and other static assets are stored in `/static/assets/img`.
+
+### API Endpoints
+
+The application provides several API endpoints:
+
+- `/api/run-workflow`: Start a new research workflow
+- `/api/run-workflow/stream/{run_id}`: Stream results from a running workflow
+- `/api/create-report`: Create a new report
+- `/api/recent-reports`: Get recent reports
+- `/api/history/sessions`: Get all sessions
+- `/api/history/messages/{session_id}`: Get messages for a specific session
+- `/api/history/reports/{session_id}`: Get reports for a specific session
+- `/api/history/report/{report_id}`: Get a specific report
+
+### Page Routes
+
+The application serves the following pages:
+
+- `/` or `/index`: Main application page
+- `/report?report_id=...`: View a specific report
+- `/history`: View all sessions
+- `/history/{session_id}`: View details of a specific session
+
+## File Structure
+
+The `src/web` directory contains the following key files and directories:
+
+-   `main.py`: The main FastAPI application file. Defines API endpoints, handles requests, and orchestrates the workflow streaming.
+-   `run_server.py`: A simple script to run the FastAPI server using Uvicorn.
+-   `static/`: Contains static assets for the web interface.
+    -   `index.html`: The main interactive index page where users input queries and see the agent workflow.
+    -   `report.html`: The page for displaying the final generated investment report.
+    -   `history.html` (Optional): Page for viewing past sessions and reports.
+    -   `session_history.html` (Optional): Page for viewing details of a specific session.
+    -   (Other assets like CSS or JavaScript files might be placed here if needed).
+-   `requirements.txt`: Lists Python dependencies required for the web API.
+-   `Dockerfile`: Defines the Docker image build process for the web service.
+-   `README.md`: This documentation file.
 
 ## Setup
 
 ### Option 1: Running with Docker (Recommended)
 
-1. Make sure you have Docker and Docker Compose installed.
-
-2. From the project root directory, run:
-
-```bash
-docker-compose up -d
-```
-
-This will start all services including:
-- LangGraph Redis service
-- LangGraph PostgreSQL database
-- LangGraph API service
-- Web API service
-
-The Web API will be available at http://localhost:8000.
+1.  Make sure you have Docker and Docker Compose installed.
+2.  From the project root directory, run: `docker-compose up -d`
+3.  This starts all services, including the Web API at `http://localhost:8000`.
 
 ### Option 2: Running Locally
 
-1. Install the required dependencies:
-
-```bash
-cd src/web
-pip install -r requirements.txt
-```
-
-2. Make sure the LangGraph API service is running (defined in `docker-compose.yml`):
-
-```bash
-docker-compose up -d langgraph-redis langgraph-postgres langgraph-api
-```
-
-3. Set the environment variable for the LangGraph API URL (default is http://localhost:8123):
-
-```bash
-export LANGGRAPH_API_URL=http://localhost:8123
-```
-
-4. Run the FastAPI server:
-
-```bash
-# From project root directory
-python -m src.web.run_server
-```
-
-The API server will start at http://localhost:8000.
+1.  Install dependencies: `cd src/web && pip install -r requirements.txt`
+2.  Ensure the LangGraph API service is running (e.g., via `docker-compose up -d langgraph-api langgraph-redis langgraph-postgres`).
+3.  Set environment variables (especially `LANGGRAPH_API_URL`, `MONGODB_URI`, `MONGODB_DB_NAME`). See `.env.example` in the project root.
+4.  Run the server from the project root: `python -m src.web.run_server`
+5.  The API server will start at `http://localhost:8000`.
 
 ## API Endpoints
 
-### Run Workflow
+The FastAPI application (`main.py`) provides the following endpoints:
 
-- **URL**: `/api/run-workflow`
-- **Method**: `POST`
-- **Body**:
-  ```json
-  {
-    "query": "Your market intelligence question here"
-  }
-  ```
-- **Optional Config**:
-  ```json
-  {
-    "researcher_credits": 6,
-    "market_credits": 6,
-    "coder_credits": 0,
-    "browser_credits": 3,
-    "stream_config": {
-      "recursion_limit": 150
-    }
-  }
-  ```
-- **Response**: Server-sent events (SSE) stream with agent updates
+### Workflow Execution
 
-### Health Check
+-   **POST `/api/run-workflow`**:
+    -   Initiates the market intelligence workflow based on the provided query.
+    -   **Request Body**: `{ "request": { "query": "Your query here" }, "config": { ...optional config... } }`
+    -   **Response**: Returns a 200 OK status with a `Content-Location` header pointing to the streaming endpoint (e.g., `/api/run-workflow/stream/{run_id}`).
+-   **GET `/api/run-workflow/stream/{run_id}`**:
+    -   Streams the workflow results using Server-Sent Events (SSE).
+    -   Clients connect to this endpoint using the `run_id` obtained from the POST request.
+    -   Streams JSON objects containing agent logs, state transitions, and the final report.
 
-- **URL**: `/api/health`
-- **Method**: `GET`
-- **Response**:
-  ```json
-  {
-    "status": "healthy",
-    "service": "market_intelligence_api"
-  }
-  ```
+### Report and History Management (MongoDB)
+
+-   **POST `/api/create-report`**:
+    -   Endpoint called by the frontend (`index.html`) when the reporter agent finishes, ensuring the report is saved to MongoDB even if not explicitly sent in the stream.
+    -   **Request Body**: `{ "content": "Report markdown", "title": "Report title", "metadata": { "query": "Original query" } }`
+    -   **Response**: `{ "success": true, "report_id": "mongo_db_object_id" }`
+-   **GET `/api/recent-reports`**:
+    -   Fetches a list of the most recent reports stored in MongoDB.
+    -   Used by `index.html` to populate the "Recent Searches" sidebar.
+    -   **Query Parameter**: `limit` (optional, default 5)
+    -   **Response**: `{ "reports": [ { "_id": "...", "title": "...", "timestamp": "...", "metadata": {...} }, ... ] }`
+-   **GET `/api/history/report/{report_id}`**:
+    -   Fetches the details of a specific report by its MongoDB `_id`.
+    -   Used by `report.html` to display the report content.
+    -   **Response**: The report document from MongoDB (JSON).
+-   **(Other History Endpoints)**: `/api/history/sessions`, `/api/history/messages/{session_id}`, `/api/history/reports/{session_id}` are defined for potential future history browsing features.
+
+### Utility
+
+-   **GET `/api/health`**: Standard health check endpoint.
+-   **GET `/`**, **GET `/index`**: Redirect to the main index page (`static/index.html`).
+-   **GET `/report`**: Renders the report page (`static/report.html`), optionally taking a `report_id` query parameter.
+
+## MongoDB Integration
+
+The web API integrates with MongoDB to store and retrieve workflow history and generated reports.
+
+-   **Database Models**: Defined in `src/database/models/`:
+    -   `messages.py`: Defines the structure for storing individual messages (user queries, agent outputs, system events) associated with a session.
+    -   `reports.py`: Defines the structure for storing the final generated reports, including content, title, timestamp, and metadata (like the original query).
+-   **Database Utils**: `src/database/utils/mongo_client.py` handles the connection to the MongoDB instance using environment variables (`MONGODB_URI`, `MONGODB_DB_NAME`).
+-   **Data Stored**:
+    -   **Reports Collection**: Stores the final `Report` objects generated by the workflow. Each report includes a `session_id`, `timestamp`, `title`, markdown `content`, and `metadata` (containing the original user `query`).
+    -   **Messages Collection**: Stores `Message` objects representing the flow of communication within a workflow session (user input, agent steps, system messages). Each message is linked by `session_id`.
+
+## Frontend Logic (`index.html` and `report.html`)
+
+-   **`index.html`**:
+    -   Handles user query input and initiates the workflow via `/api/run-workflow`.
+    -   Connects to the SSE stream endpoint provided in the response header.
+    -   Parses incoming SSE messages and dynamically renders the agent workflow steps using JavaScript (`appendLogMessage`, `formatChunkForRendering`).
+    -   Handles different message types (status, agent output, plan steps, errors) with specific UI elements and styling.
+    -   Manages UI state (e.g., processing indicators, button states).
+    -   Fetches and displays recent reports from `/api/recent-reports` in the sidebar.
+    -   Handles navigation to the `report.html` page when the "View Complete Investment Report" button is clicked, passing the `report_id`.
+    -   Uses `localStorage` temporarily to cache the workflow state (HTML content, scroll position) when navigating *to* the report page, allowing seamless return using the "Back to Results" button on the report page.
+-   **`report.html`**:
+    -   Retrieves the `report_id` from the URL query parameters.
+    -   Fetches the corresponding report data from MongoDB via the `/api/history/report/{report_id}` endpoint.
+    -   Renders the report title, query, timestamp, and markdown content using `marked.js` and `DOMPurify`.
+    -   Provides "Back to Results", "Print", and "Download as PDF" (currently triggers print) actions.
+    -   The "Back to Results" button navigates back to `index.html`, triggering the restoration of the cached workflow state from `localStorage`.
+
+## Data Flow Summary
+
+1.  **User Query**: User enters a query in `index.html`.
+2.  **Workflow Initiation**: Frontend sends POST request to `/api/run-workflow`.
+3.  **Streaming**: Backend initiates LangGraph workflow, gets a `run_id`, and returns the stream URL (`/api/run-workflow/stream/{run_id}`) in the `Content-Location` header.
+4.  **SSE Connection**: Frontend connects to the stream URL via EventSource.
+5.  **Agent Processing**: Backend streams workflow updates (agent steps, status changes) as JSON objects via SSE. Messages and events are saved to the `messages` collection in MongoDB.
+6.  **Frontend Rendering**: `index.html` receives SSE messages and renders the workflow progress dynamically.
+7.  **Report Generation & Saving**: When the reporter agent finishes:
+    -   Frontend (`index.html`) sends a POST request to `/api/create-report` with the generated report content.
+    -   Backend saves the report to the `reports` collection in MongoDB and returns the `report_id`.
+    -   Frontend stores this `report_id` (`window.currentReportId`).
+8.  **View Report**: User clicks "View Complete Investment Report" in `index.html`.
+    -   Frontend saves its current state (HTML, scroll position) to `localStorage`.
+    -   Frontend navigates to `report.html?report_id={report_id}`.
+9.  **Report Display**: `report.html` fetches the report data from `/api/history/report/{report_id}` using the ID from the URL and renders it.
+10. **Return to Workflow**: User clicks "Back to Results" in `report.html`.
+    -   Navigates back to `index.html`.
+    -   `index.html` detects the return trip (via `localStorage` flag), restores its previous HTML content and scroll position from `localStorage`, bypassing the "Recent Reports" load.
+11. **Recent Reports**: `index.html` sidebar fetches recent reports from `/api/recent-reports` on initial load (if not returning from `report.html`). Clicking a report link navigates directly to `report.html?report_id={report_id}`.
+
+## Documentation
+
+Interactive API documentation is available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## index Interface
+
+The main index interface is available at `http://localhost:8000/` or `http://localhost:8000/static/index.html`.
+
+## Environment Variables
+
+Key environment variables (set in `.env` file or system environment):
+
+-   `LANGGRAPH_API_URL`: URL of the LangGraph API service (default: `http://localhost:8123`).
+-   `MONGODB_URI`: Connection string for your MongoDB instance.
+-   `MONGODB_DB_NAME`: Name of the database to use in MongoDB.
+-   `PORT`: Port for the web API server (default: 8000).
+-   `HOST`: Host for the web API server (default: 0.0.0.0).
+-   `LOG_LEVEL`: Logging level (default: info).
 
 ## Message Types and Frontend Handling
 
@@ -139,55 +273,4 @@ The streaming API uses a structured message format to communicate agent activiti
 - **Analyst**: Original detailed output is replaced with a standardized message
 - **Reporter**: Final output includes styling for the full investment report
 
-Understanding these message types and their custom handling is essential when making UI changes or debugging the messaging flow.
-
-## Documentation
-
-Interactive API documentation is available at:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-## Demo Interface
-
-A simple demo interface is available at http://localhost:8000/ or http://localhost:8000/static/demo.html.
-
-## Environment Variables
-
-You can customize the application behavior with these environment variables:
-
-- `LANGGRAPH_API_URL`: URL of the LangGraph API service (default: http://localhost:8123)
-- `PORT`: Port for the web API server (default: 8000)
-- `HOST`: Host for the web API server (default: 0.0.0.0)
-- `LOG_LEVEL`: Logging level (default: info)
-
-These can be set in a `.env` file at the project root or as environment variables.
-
-## Notes for Frontend Development
-
-The workflow endpoint uses server-sent events (SSE) for streaming agent responses. 
-Here's an example of how to consume this stream in JavaScript:
-
-```javascript
-const eventSource = new EventSource('/api/run-workflow');
-
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('New agent update:', data);
-  
-  // Process agent messages, state changes, etc.
-  if (data.message) {
-    console.log('Agent message:', data.message);
-  }
-  
-  // Check for final report
-  if (data.final_report) {
-    console.log('Final report received:', data.final_report);
-    eventSource.close(); // Close the connection when complete
-  }
-};
-
-eventSource.onerror = (error) => {
-  console.error('EventSource error:', error);
-  eventSource.close();
-};
-``` 
+Understanding these message types and their custom handling is essential when making UI changes or debugging the messaging flow. 

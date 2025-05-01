@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangAlpha | Investment Report</title>
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/report.css">
+    <!-- Markdown parsing and sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <!-- Print styles -->
+    <style>
+        @media print {
+            body {
+                background-color: white;
+            }
+            .actions, .header button {
+                display: none;
+            }
+            .report-container {
+                max-width: 100%;
+                padding: 0;
+            }
+            .report-content {
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <header class="header">
+            <div class="logo-container">
+                <div class="logo-icon">L</div>
+                <div class="logo">LangAlpha</div>
+            </div>
+            <div class="actions">
+                <button id="back-button" class="button secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Back to Results
+                </button>
+                <button id="print-button" class="button secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 9V2H18V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 18H4C3.46957 18 2.96086 17.7893 2.58579 17.4142C2.21071 17.0391 2 16.5304 2 16V11C2 10.4696 2.21071 9.96086 2.58579 9.58579C2.96086 9.21071 3.46957 9 4 9H20C20.5304 9 21.0391 9.21071 21.4142 9.58579C21.7893 9.96086 22 10.4696 22 11V16C22 16.5304 21.7893 17.0391 21.4142 17.4142C21.0391 17.7893 20.5304 18 20 18H18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M18 14H6V22H18V14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Print
+                </button>
+                <button id="download-button" class="button primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Download as PDF
+                </button>
+            </div>
+        </header>
+
+        <div class="report-info">
+            <h1 id="report-title">Investment Analysis Report</h1>
+            <p>Query: <span id="report-query">Loading...</span></p>
+            <p>Generated: <span id="report-timestamp">Loading...</span></p>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-8">
+            <div class="inline-block w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+            <p class="mt-4 text-lg">Loading report...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="bg-red-100 text-red-700 p-4 rounded-lg mb-4 hidden"></div>
+
+        <!-- Report Content -->
+        <div id="report-content" class="report-content markdown-content hidden"></div>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="/static/js/report.js"></script>
+</body>
+</html> 
