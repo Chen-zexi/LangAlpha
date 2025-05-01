@@ -284,24 +284,6 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
     else:
         logger.info(f"Using provided session ID: {session_id} for query: '{query}'")
     
-    # Save user query as a message
-    user_message: Message = {
-        "session_id": session_id,
-        "timestamp": datetime.now(),
-        "role": "user",
-        "content": query,
-        "type": "text",
-        "metadata": {
-            "thread_id": thread_info["thread_id"]
-        },
-        "ui_state": None  # Initialize UI state as None
-    }
-    try:
-        save_message(user_message)
-        logger.debug(f"Saved user message to MongoDB: {query}")
-    except Exception as e:
-        logger.error(f"Failed to save user message to MongoDB: {e}")
-    
     try:
         # Send an initial message to confirm the connection is established
         initial_message = json.dumps({
@@ -311,27 +293,9 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         })
         yield f"data: {initial_message}\n\n"
         
-        # Save system message for connection
-        system_message: Message = {
-            "session_id": session_id,
-            "timestamp": datetime.now(),
-            "role": "system",
-            "content": "Connection established. Starting analysis...",
-            "type": "event",
-            "metadata": {
-                "event": "connection_established",
-                "thread_id": thread_info["thread_id"]
-            },
-            "ui_state": None  # Initialize UI state as None
-        }
-        try:
-            save_message(system_message)
-        except Exception as e:
-            logger.error(f"Failed to save system message to MongoDB: {e}")
-        
-        # Track the final report content
+        # Track the final report content and planner title
         final_report_content = None
-        report_id = None
+        planner_title = f"Analysis for: {query}"  # Default title based on query
         
         async for chunk in lg_client.runs.stream(
             thread_info["thread_id"],
@@ -358,34 +322,34 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
             chunk_data = json.loads(formatted_chunk)
             chunk_data["session_id"] = session_id
             
+            # Extract planner title if available
+            if "messages" in chunk_data and chunk_data["messages"]:
+                for message in chunk_data["messages"]:
+                    if message and message.get("name") == "planner":
+                        try:
+                            content = message.get("content", "")
+                            if isinstance(content, str):
+                                content_dict = json.loads(content)
+                            else:
+                                content_dict = content
+                                
+                            if isinstance(content_dict, dict) and "title" in content_dict:
+                                planner_title = content_dict["title"]
+                                logger.info(f"Extracted planner title: {planner_title}")
+                                # Add the title to the chunk data for frontend use
+                                chunk_data["planner_title"] = planner_title
+                        except (json.JSONDecodeError, TypeError, AttributeError) as e:
+                            logger.warning(f"Could not extract planner title: {e}")
+            
+            formatted_chunk = json.dumps(chunk_data)
+            
             # Check if this chunk contains a final report
             if "final_report" in chunk_data and chunk_data["final_report"]:
                 final_report_content = chunk_data["final_report"]
                 logger.info(f"Final report detected in stream chunk for session {session_id}")
-                
-                # Save the report to MongoDB here and add the report_id to the streaming response
-                # This ensures we only save it once and the frontend gets the ID
-                try:
-                    report: Report = {
-                        "session_id": session_id,
-                        "timestamp": datetime.now(),
-                        "title": f"Analysis for: {query}",
-                        "content": final_report_content,
-                        "metadata": {
-                            "thread_id": thread_info["thread_id"],
-                            "query": query
-                        }
-                    }
-                    report_id = save_report(report)
-                    logger.info(f"Saved final report to MongoDB with ID: {report_id}")
-                    
-                    # Add the report_id to the chunk data so frontend knows it
-                    chunk_data["report_id"] = str(report_id)
-                except Exception as e:
-                    logger.error(f"Failed to save final report to MongoDB: {e}")
             
             # Also check for reporter agent completion which might indicate report is ready
-            if not report_id and chunk_data.get("logs"):
+            if chunk_data.get("logs"):
                 for log in chunk_data["logs"]:
                     if log.get("agent") == "reporter" and log.get("content") and "finished the task" in log.get("content"):
                         logger.info(f"Reporter agent finished task for session {session_id}")
@@ -411,152 +375,48 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                                     else:
                                         final_report_content = str(reporter_content)
                                         logger.info(f"Using reporter non-string content as report for session {session_id}")
-                                    
-                                    # Save the final report here
-                                    if final_report_content:
-                                        try:
-                                            report: Report = {
-                                                "session_id": session_id,
-                                                "timestamp": datetime.now(),
-                                                "title": f"Analysis for: {query}",
-                                                "content": final_report_content,
-                                                "metadata": {
-                                                    "thread_id": thread_info["thread_id"],
-                                                    "query": query
-                                                }
-                                            }
-                                            report_id = save_report(report)
-                                            logger.info(f"Saved extracted final report to MongoDB with ID: {report_id}")
-                                            
-                                            # Add the report_id to the chunk data
-                                            chunk_data["report_id"] = str(report_id)
-                                        except Exception as e:
-                                            logger.error(f"Failed to save extracted final report to MongoDB: {e}")
                                 except Exception as e:
                                     logger.error(f"Error extracting report from reporter message: {e}")
             
-            # Save message to MongoDB based on chunk type
-            try:
-                # Extract message type and content
-                if "type" in chunk_data:
-                    message_type = chunk_data.get("type")
-                    
-                    # Handle different message types
-                    if message_type == "agent_output":
-                        agent_message: Message = {
-                            "session_id": session_id,
-                            "timestamp": datetime.now(),
-                            "role": "assistant",
-                            "content": chunk_data.get("message", ""),
-                            "type": "agent_message",
-                            "metadata": {
-                                "agent": chunk_data.get("agent", "unknown"),
-                                "thread_id": thread_info["thread_id"]
-                            },
-                            "ui_state": {
-                                "agent": chunk_data.get("agent", "unknown"),
-                                "element_type": "agent_output"
-                            }
-                        }
-                        save_message(agent_message)
-                    
-                    elif message_type == "final_report":
-                        # Store the final report content for later use
-                        # Note: We already saved the report to MongoDB above, so we just
-                        # save this as a message for UI state reconstruction
-                        final_report_content = chunk_data.get("report", "")
-                        
-                        # Save report message
-                        report_message: Message = {
-                            "session_id": session_id,
-                            "timestamp": datetime.now(),
-                            "role": "assistant",
-                            "content": "Final report generated",
-                            "type": "report_notification",  # Changed from 'report' to 'report_notification'
-                            "metadata": {
-                                "thread_id": thread_info["thread_id"],
-                                "report_id": str(report_id) if report_id else None
-                            },
-                            "ui_state": {
-                                "element_type": "final_report"
-                            }
-                        }
-                        save_message(report_message)
-                        
-                    elif message_type in ["status", "error", "progress", "plan_step"]:
-                        system_message: Message = {
-                            "session_id": session_id,
-                            "timestamp": datetime.now(),
-                            "role": "system",
-                            "content": chunk_data.get("message", "") or chunk_data.get("content", ""),
-                            "type": message_type,
-                            "metadata": {
-                                "thread_id": thread_info["thread_id"],
-                                "agent": chunk_data.get("agent", None)
-                            },
-                            "ui_state": {
-                                "element_type": message_type,
-                                "agent": chunk_data.get("agent", None)
-                            }
-                        }
-                        save_message(system_message)
-            
-            except Exception as e:
-                logger.error(f"Failed to save message to MongoDB: {e}")
-                
-            # Update the formatted chunk with the latest data (including report_id if available)
-            formatted_chunk = json.dumps(chunk_data)
             yield f"data: {formatted_chunk}\n\n"
-        
-        # We don't save the final report here anymore as we save it when we detect it in the stream 
-        # This helps prevent duplicate reports
-        if not final_report_content:
-            logger.warning(f"No final report content detected for session {session_id}")
-        
-        # Send final completion message
+            
+        # Send a final message to indicate the stream is complete
         final_message = json.dumps({
             "type": "stream_complete",
-            "message": "Workflow completed.",
+            "message": "Analysis stream complete.",
             "session_id": session_id,
-            "report_id": str(report_id) if report_id else None
+            "planner_title": planner_title  # Include the planner title in the final message
         })
         yield f"data: {final_message}\n\n"
         
     except Exception as e:
-        error_message = f"Error in workflow stream: {str(e)}"
-        logger.error(error_message, exc_info=True)
+        logger.error(f"Error streaming workflow results: {e}", exc_info=True)
         
+        # Save error message to MongoDB for critical error tracking
         try:
-            # Send error message to client
-            error_data = json.dumps({
-                "type": "error",
-                "message": error_message,
-                "session_id": session_id
-            })
-            yield f"data: {error_data}\n\n"
-            
-            # Save error message to MongoDB
-            error_msg: Message = {
+            error_database_message: Message = {
                 "session_id": session_id,
                 "timestamp": datetime.now(),
                 "role": "system",
-                "content": error_message,
+                "content": f"Error: {str(e)}",
                 "type": "error",
                 "metadata": {
-                    "thread_id": thread_info["thread_id"] if thread_info else None,
-                    "error": str(e),
-                    "traceback": getattr(e, "__traceback__", None)
-                },
-                "ui_state": {
-                    "element_type": "error"
+                    "thread_id": thread_info["thread_id"],
+                    "error_details": str(e)
                 }
             }
-            save_message(error_msg)
-        except Exception as inner_e:
-            logger.error(f"Error sending error message to client: {inner_e}")
-            
-    finally:
-        logger.info(f"Workflow stream completed for session {session_id}")
+            save_message(error_database_message)
+        except Exception as db_error:
+            logger.error(f"Failed to save error message to MongoDB: {db_error}")
+        
+        # Send error to client
+        error_message = json.dumps({
+            "error": "An error occurred while streaming workflow results.",
+            "details": str(e),
+            "type": "stream_error",
+            "session_id": session_id
+        })
+        yield f"data: {error_message}\n\n"
 
 @app.post("/api/run-workflow")
 async def run_workflow_post(request: Request, config: WorkflowConfig = WorkflowConfig()):
@@ -675,33 +535,28 @@ async def create_report_endpoint(request: Request):
     Create a report from the frontend data and save it to MongoDB.
     
     This endpoint is called directly from the frontend when a report is generated.
-    It now checks if a report with the same session ID already exists to avoid duplicates.
     """
     try:
         data = await request.json()
         
         # Extract data with defaults
         content = data.get("content", "")
-        title = data.get("title", "Investment Analysis Report")
+        
+        # Use planner title if provided, otherwise use default title or query-based title
+        planner_title = data.get("planner_title")
+        query = data.get("metadata", {}).get("query", "")
+        
+        if planner_title:
+            title = planner_title
+        else:
+            title = data.get("title", f"Analysis for: {query}")
+        
         metadata = data.get("metadata", {})
         
         # Generate a session ID if not provided
         session_id = data.get("session_id", f"session_{uuid.uuid4()}")
         
-        # Check if a report already exists for this session
-        existing_reports = get_reports_by_session(session_id)
-        
-        # If reports exist for this session, return the most recent one
-        if existing_reports:
-            most_recent = max(existing_reports, key=lambda r: r.get("timestamp", datetime.min))
-            report_id = str(most_recent["_id"])
-            logger.info(f"Report already exists for session {session_id}, returning existing ID: {report_id}")
-            return JSONResponse(
-                content={"success": True, "report_id": report_id, "already_exists": True},
-                status_code=200
-            )
-        
-        # Create report object for a new report
+        # Create report object
         report = {
             "session_id": session_id,
             "timestamp": datetime.now(),
@@ -712,7 +567,7 @@ async def create_report_endpoint(request: Request):
         
         # Save to database
         report_id = save_report(report)
-        logger.info(f"Created report with ID: {report_id} from frontend request")
+        logger.info(f"Created report with ID: {report_id} from frontend request, using title: {title}")
         
         # Return success with the report ID
         return JSONResponse(
