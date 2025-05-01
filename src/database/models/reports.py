@@ -31,17 +31,41 @@ def get_reports_collection() -> Collection:
 
 def save_report(report: Report) -> str:
     """
-    Save a report to the database.
+    Save a report to the database. Checks for duplicate reports before saving.
     
     Args:
         report (Report): Report to save
         
     Returns:
-        str: ID of the inserted report
+        str: ID of the inserted report or existing report if duplicate found
     """
     collection = get_reports_collection()
-    result = collection.insert_one(report)
-    return str(result.inserted_id)
+    
+    # Check if a similar report already exists for this session/query
+    # We'll check based on session_id (if available) and content similarity
+    existing_report = None
+    if "session_id" in report and report["session_id"]:
+        # First try to find by session_id 
+        session_reports = list(collection.find({"session_id": report["session_id"]}))
+        
+        # If we have reports for this session, check content similarity
+        if session_reports:
+            for existing in session_reports:
+                # If content is identical or very similar (first 100 chars match), consider it a duplicate
+                if (report["content"] == existing["content"] or 
+                    (len(report["content"]) > 100 and 
+                     len(existing["content"]) > 100 and
+                     report["content"][:100] == existing["content"][:100])):
+                    existing_report = existing
+                    break
+    
+    # If no duplicate found, insert the new report
+    if existing_report is None:
+        result = collection.insert_one(report)
+        return str(result.inserted_id)
+    else:
+        # Return the ID of the existing report
+        return str(existing_report["_id"])
 
 
 def get_report(report_id: str) -> Optional[Report]:

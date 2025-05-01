@@ -295,7 +295,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         
         # Track the final report content and planner title
         final_report_content = None
-        planner_title = f"Analysis for: {query}"  # Default title based on query
+        planner_title = f"{query}"  # Default title based on query
         
         async for chunk in lg_client.runs.stream(
             thread_info["thread_id"],
@@ -694,10 +694,7 @@ async def session_history_page(request: Request, session_id: str):
     return templates.TemplateResponse("session_history.html", {"request": request, "session_id": session_id})
 
 
-# Modify the existing streaming endpoint to save messages to MongoDB
-# ... existing code ...
 
-# The function that streams messages should be updated to save messages to MongoDB
 async def stream_graph_response(input_text: str, session_id: str, streaming_handler=None):
     """
     This function should be updated to save each message to MongoDB as it's received
@@ -705,10 +702,6 @@ async def stream_graph_response(input_text: str, session_id: str, streaming_hand
     # ... existing code ...
     
     try:
-        # ... existing streaming code ...
-        
-        # Save each message to MongoDB
-        # This should be added in the appropriate place in the existing streaming logic
         message_data: Message = {
             "session_id": session_id,
             "timestamp": datetime.now(),
@@ -719,7 +712,6 @@ async def stream_graph_response(input_text: str, session_id: str, streaming_hand
         }
         save_message(message_data)
         
-        # ... rest of existing code ...
     except Exception as e:
         logging.error(f"Error in stream_graph_response: {str(e)}")
         raise

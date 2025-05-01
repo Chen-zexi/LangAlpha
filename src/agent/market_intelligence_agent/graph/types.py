@@ -18,7 +18,7 @@ class Step(BaseModel):
 
 class Plan(BaseModel):
     thought: str
-    title: str
+    title: str = Field(description="The title of the report")
     steps: List[Step]
 
 

@@ -331,56 +331,8 @@ function appendLogMessage(log) {
                 // Replace the standard content container with our custom one
                 contentContainer.appendChild(reporterContainer);
 
-                // Update status to success when reporter finishes
+                // Update status to success when reporter finishes - make sure the status indicator is updated
                 updateStatus('Report Ready', 'success');
-
-                // Generate a simple report from the agent outputs if one doesn't exist
-                // and we haven't already created or received a final report
-                if (!window.finalReportGenerated && !window.finalReportContent && !window.currentReportId) {
-                    window.finalReportGenerated = true;
-
-                    // Get all content from agent outputs
-                    const allAgentOutputs = Array.from(document.querySelectorAll('[data-log-type="agent_output"]'))
-                        .map(el => {
-                            const agentName = el.getAttribute('data-log-agent') || 'unknown';
-                            const content = el.querySelector('.markdown-content')?.innerText || el.innerText || '';
-                            return `## ${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Analysis\n\n${content}\n\n`;
-                        })
-                        .join('\n');
-
-                    const reportContent = `# Investment Analysis Report\n\n${allAgentOutputs}\n\n*Generated on ${new Date().toLocaleString()}*`;
-                    
-                    // Save the report to MongoDB directly only if we don't already have a report ID
-                    if (!window.currentReportId) {
-                        fetch('/api/create-report', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                content: reportContent,
-                                title: `Analysis: ${queryInput.value.trim()}`,
-                                planner_title: window.plannerTitle, // Pass planner title if available
-                                metadata: {
-                                    query: queryInput.value.trim()
-                                }
-                            }),
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Report saved to MongoDB:', data);
-                            // Store report ID for navigation
-                            window.currentReportId = data.report_id;
-                            // Refresh recent reports list
-                            loadRecentReports();
-                        })
-                        .catch(error => console.error('Error saving report:', error));
-                    } else {
-                        console.log('Report already exists with ID:', window.currentReportId);
-                    }
-                } else {
-                    console.log('Report generation skipped - already generated');
-                }
             }
             else if (log.agent === 'planner') {
                 // Store the planner output for potential plan steps
@@ -566,8 +518,11 @@ function appendLogMessage(log) {
             // Save the final report content but don't display directly
             window.finalReportContent = log.content;
             
-            // Set that we have a report in memory
+            // Set that we have a report in memory to prevent duplicates
             window.finalReportGenerated = true;
+
+            // Always update status to success when final report is received
+            updateStatus('Report Ready', 'success');
 
             // Save to MongoDB via API only if we don't already have a report ID
             if (!window.currentReportId) {
@@ -578,7 +533,7 @@ function appendLogMessage(log) {
                     },
                     body: JSON.stringify({
                         content: log.content,
-                        title: `Analysis: ${queryInput.value.trim()}`,
+                        title: `${queryInput.value.trim()}`,
                         planner_title: window.plannerTitle, // Pass planner title if available
                         metadata: {
                             query: queryInput.value.trim()
@@ -597,9 +552,6 @@ function appendLogMessage(log) {
             } else {
                 console.log('Report already exists with ID:', window.currentReportId);
             }
-
-            // Update status to success
-            updateStatus('Report Ready', 'success');
 
             // Skip default append - we won't show the report directly anymore
             return;
@@ -945,6 +897,12 @@ submitBtn.addEventListener('click', async () => {
                             }
                         }
 
+                        // Check if the reporter has finished the task and update status to success
+                        if (log.type === 'agent_output' && log.agent === 'reporter' && log.content.includes('finished the task')) {
+                            // Ensure status indicator is updated to "Report Ready" with success status
+                            updateStatus('Report Ready', 'success');
+                        }
+
                         if (log.type === 'status' &&
                             (log.content.includes('Supervisor is evaluating') ||
                              log.content.includes('Supervisor assigned'))) {
@@ -973,7 +931,10 @@ submitBtn.addEventListener('click', async () => {
                     // Update status indicator in header only
                     const lastStatusLog = data.logs.slice().reverse().find(log => log.type === 'status');
                     if (lastStatusLog) {
-                        updateStatus(lastStatusLog.content, 'active');
+                        // Only update status if not already set to "Report Ready"
+                        if (!statusIndicator.classList.contains('bg-green-50')) {
+                            updateStatus(lastStatusLog.content, 'active');
+                        }
                     }
 
                     // Ensure scrolling to bottom after adding content
@@ -1280,13 +1241,14 @@ function loadRecentReports() {
             // Add each report to the list
             data.reports.forEach(report => {
                 const reportDate = new Date(report.timestamp).toLocaleString();
-                const queryText = report.metadata && report.metadata.query
-                    ? report.metadata.query
-                    : (report.title || 'Investment Analysis');
+                
+                // Prioritize the report title over the query text
+                const displayTitle = report.title || 
+                    (report.metadata && report.metadata.query ? report.metadata.query : 'Investment Analysis');
 
-                const shortQuery = queryText.length > 30
-                    ? queryText.substring(0, 30) + '...'
-                    : queryText;
+                const shortTitle = displayTitle.length > 30
+                    ? displayTitle.substring(0, 30) + '...'
+                    : displayTitle;
 
                 const reportItem = document.createElement('li');
                 reportItem.className = 'mb-1';
@@ -1294,7 +1256,7 @@ function loadRecentReports() {
                     <a href="/report?report_id=${report._id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
                         <span class="mr-3">📄</span>
                         <div class="flex flex-col">
-                            <span class="text-sm">${shortQuery}</span>
+                            <span class="text-sm">${shortTitle}</span>
                             <span class="text-xs text-gray-500">${reportDate}</span>
                         </div>
                     </a>
