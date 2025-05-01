@@ -22,7 +22,6 @@ async def initialize_coder_agent():
     return create_react_agent(
         get_llm_by_type(AGENT_LLM_MAP["coder"]),
         tools=tools,
-        prompt=lambda state: apply_prompt_template("coder", state),
         response_format=AgentResult
     )
 
@@ -37,6 +36,5 @@ async def get_browser_agent():
     browser_agent = create_react_agent(
         get_llm_by_type(AGENT_LLM_MAP["browser"]),
         tools=[browser_tool],
-        prompt=lambda state: apply_prompt_template("browser", state),
     )
     return browser_agent

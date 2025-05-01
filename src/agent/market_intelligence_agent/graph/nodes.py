@@ -1,6 +1,7 @@
 import logging
 import json
 import asyncio
+import os
 from typing import Literal, List, Any, Dict
 from pathlib import Path
 from langchain_core.messages import HumanMessage, AIMessage
@@ -78,12 +79,16 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
 async def market_node(state: State) -> Command[Literal["supervisor"]]:
     """Market node that performs market analysis tasks with proper resource management."""
     prompt_messages = await apply_prompt_template("market", state)
+    
+    polygon_api_key = os.getenv('POLYGON_API_KEY')
+
     async with MultiServerMCPClient(
         {
             "market_data": {
                 "command": "python",
                 "args": [str(source_dir / "tools" / "market_data.py")],
                 "transport": "stdio",
+                "env": {"POLYGON_API_KEY": polygon_api_key}
             },
             "fundamental_data": {
                 "command": "python",
@@ -128,7 +133,7 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
         )
 
 
-async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
+async def coder_node(state: State) -> Command[Literal["supervisor"]]:
     """Async Code node that executes Python code."""
     agent = await get_coder_agent()
 
@@ -170,16 +175,6 @@ async def code_node_async(state: State) -> Command[Literal["supervisor"]]:
     )
 
 
-def code_node(state: State) -> Command[Literal["supervisor"]]:
-    """Node for the coder agent that executes Python code."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return loop.run_until_complete(code_node_async(state))
-        else:
-            return loop.run_until_complete(code_node_async(state))
-    except RuntimeError:
-        return asyncio.run(code_node_async(state))
 
 async def browser_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the browser agent that performs web browsing tasks."""
@@ -284,11 +279,9 @@ async def analyst_node(state: State, response_api = True) -> Command[Literal["su
     if response_api:
         tool = {"type": "web_search_preview"}
         result = await llm.ainvoke(messages, tools=[tool])
-        logger.info(f"Analyst result: {result}")
         result = result.text()
     else:
         result = await llm.ainvoke(messages)
-        logger.info(f"Analyst result: {result}")
 
     goto = "supervisor"
 

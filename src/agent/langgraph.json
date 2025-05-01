@@ -1,9 +1,9 @@
 {
   "dockerfile_lines": [],
-  "dependencies": ["."],
+  "dependencies": ["pyproject.toml"],
   "graphs": {
     "market_intelligence_agent": "market_intelligence_agent.graph:build_graph"
   },
   "env": "../../.env",
-  "python_version": "3.11"
+  "python_version": "3.12"
 }

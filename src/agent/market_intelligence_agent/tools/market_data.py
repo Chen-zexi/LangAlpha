@@ -3,16 +3,15 @@ import pandas as pd
 import json
 import numpy as np
 from datetime import date, timedelta, datetime
-from dotenv import load_dotenv
 from polygon.rest import RESTClient
 from polygon.rest.models import TickerSnapshot, Agg # Import necessary models
 from mcp.server.fastmcp import FastMCP
 from typing import List, Optional, Dict, Any
 # Import trading strategies
 import trading_strategies
+import logging
 
 # Load environment variables
-load_dotenv()
 
 # Initialize FastMCP server
 mcp = FastMCP("Polygon")
@@ -21,13 +20,13 @@ mcp = FastMCP("Polygon")
 POLYGON_API_KEY = os.getenv('POLYGON_API_KEY')
 rest_client = None
 if not POLYGON_API_KEY:
-    print("Warning: POLYGON_API_KEY environment variable not set. Polygon tools will likely fail.")
+    logging.warning("Warning: POLYGON_API_KEY environment variable not set. Polygon tools will likely fail.")
 else:
     try:
         rest_client = RESTClient(api_key=POLYGON_API_KEY)
-        print("Polygon RESTClient initialized successfully.")
+        logging.info("Polygon RESTClient initialized successfully.")
     except Exception as e:
-        print(f"Error initializing Polygon RESTClient: {e}")
+        logging.error(f"Error initializing Polygon RESTClient: {e}")
         # Client remains None, tools should check for this
 
 
