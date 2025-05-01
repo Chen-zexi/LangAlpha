@@ -39,8 +39,70 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (downloadButton) {
         downloadButton.addEventListener('click', () => {
-            // Trigger print for now (could be replaced with actual PDF download)
-            window.print();
+            // Use html2pdf.js to generate a PDF containing only the report content
+            const reportContent = document.getElementById('report-content');
+            
+            if (!reportContent || reportContent.innerHTML.trim() === '') {
+                console.error('No report content found');
+                alert('No report content available to download');
+                return;
+            }
+            
+            const originalButtonText = downloadButton.innerHTML;
+            
+            // Show a loading spinner in the button
+            downloadButton.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Preparing PDF...
+            `;
+            downloadButton.disabled = true;
+            
+            // Get the report title for the filename
+            const reportTitle = document.getElementById('report-title').textContent || 'Investment Report';
+            const fileName = reportTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
+            
+            // Configure PDF options with proper fonts and styles 
+            const options = {
+                margin: 15,
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    letterRendering: true
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait',
+                    compress: true
+                }
+            };
+            
+            // Generate PDF directly from the actual content element
+            // This avoids issues with hidden containers
+            html2pdf()
+                .from(reportContent)
+                .set(options)
+                .save()
+                .then(() => {
+                    // Restore original button text
+                    downloadButton.innerHTML = originalButtonText;
+                    downloadButton.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error generating PDF:', error);
+                    // Show error in button
+                    downloadButton.innerHTML = 'Error creating PDF';
+                    setTimeout(() => {
+                        downloadButton.innerHTML = originalButtonText;
+                        downloadButton.disabled = false;
+                    }, 3000);
+                });
         });
     }
     
@@ -80,12 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (reportQuery && report.metadata && report.metadata.query) {
             reportQuery.textContent = report.metadata.query;
         } else if (reportQuery) {
-            reportQuery.parentElement.classList.add('hidden');
+            reportQuery.parentElement.style.display = 'none';
         }
         
         if (reportTimestamp && report.timestamp) {
             const date = new Date(report.timestamp);
             reportTimestamp.textContent = date.toLocaleString();
+        } else if (reportTimestamp) {
+            reportTimestamp.parentElement.style.display = 'none';
         }
         
         // Display report content with markdown parsing
@@ -103,12 +167,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadingIndicator) return;
         
         if (isLoading) {
-            loadingIndicator.classList.remove('hidden');
-            if (reportContent) reportContent.classList.add('hidden');
-            if (errorMessage) errorMessage.classList.add('hidden');
+            loadingIndicator.style.display = 'block';
+            if (reportContent) reportContent.style.display = 'none';
+            if (errorMessage) errorMessage.style.display = 'none';
         } else {
-            loadingIndicator.classList.add('hidden');
-            if (reportContent) reportContent.classList.remove('hidden');
+            loadingIndicator.style.display = 'none';
+            if (reportContent) reportContent.style.display = 'block';
         }
     }
     
@@ -116,9 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!errorMessage) return;
         
         errorMessage.textContent = message;
-        errorMessage.classList.remove('hidden');
+        errorMessage.style.display = 'block';
         
-        if (loadingIndicator) loadingIndicator.classList.add('hidden');
-        if (reportContent) reportContent.classList.add('hidden');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (reportContent) reportContent.style.display = 'none';
     }
 }); 

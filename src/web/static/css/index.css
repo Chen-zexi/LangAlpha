@@ -187,4 +187,92 @@
 .agent-name {
     font-weight: 600;
     font-size: 16px;
+}
+
+@layer utilities {
+    .agent-icon-planner { @apply bg-agent-planner text-gray-800; }
+    .agent-icon-supervisor { @apply bg-agent-supervisor text-white; }
+    .agent-icon-researcher { @apply bg-agent-researcher text-white; }
+    .agent-icon-market { @apply bg-agent-market text-white; }
+    .agent-icon-coder { @apply bg-agent-coder text-gray-800; }
+    .agent-icon-browser { @apply bg-agent-browser text-white; }
+    .agent-icon-analyst { @apply bg-agent-analyst text-gray-800; }
+    .agent-icon-reporter { @apply bg-agent-reporter text-white; }
+
+    .border-agent-planner { @apply border-agent-planner; }
+    .border-agent-supervisor { @apply border-agent-supervisor; }
+    .border-agent-researcher { @apply border-agent-researcher; }
+    .border-agent-market { @apply border-agent-market; }
+    .border-agent-coder { @apply border-agent-coder; }
+    .border-agent-browser { @apply border-agent-browser; }
+    .border-agent-analyst { @apply border-agent-analyst; }
+    .border-agent-reporter { @apply border-agent-reporter; }
+
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    .results-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .results-content::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    .results-content::-webkit-scrollbar-thumb {
+        @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    }
+
+    .markdown-content h1 {
+        @apply text-2xl font-semibold mt-6 mb-3 pb-1 border-b border-gray-200 dark:border-gray-700;
+    }
+
+    .markdown-content h2 {
+        @apply text-xl font-semibold mt-5 mb-3;
+    }
+
+    .markdown-content h3 {
+        @apply text-lg font-semibold mt-4 mb-2;
+    }
+
+    .markdown-content p {
+        @apply mb-4;
+    }
+
+    .markdown-content ul, .markdown-content ol {
+        @apply mb-4 ml-6;
+    }
+
+    .markdown-content li {
+        @apply mb-1;
+    }
+
+    .markdown-content code {
+        @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
+    }
+
+    .markdown-content pre {
+        @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto mb-4 font-mono text-sm;
+    }
+
+    .markdown-content blockquote {
+        @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 text-gray-600 dark:text-gray-400 mb-4;
+    }
+
+    .markdown-content a {
+        @apply text-primary-600 dark:text-primary-400 hover:underline;
+    }
+
+    .markdown-content table {
+        @apply w-full mb-4 border-collapse;
+    }
+
+    .markdown-content th, .markdown-content td {
+        @apply border border-gray-300 dark:border-gray-700 px-3 py-2;
+    }
+
+    .markdown-content th {
+        @apply bg-gray-100 dark:bg-gray-800;
+    }
 } 

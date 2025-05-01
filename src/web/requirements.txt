@@ -2,6 +2,7 @@ fastapi>=0.100.0
 dotenv
 uvicorn[standard]>=0.23.0
 pydantic>=2.0.0
+pydantic-settings>=2.0.0
 langgraph-sdk>=0.1.61
 python-dotenv>=1.0.0
 pymongo>=4.3.0

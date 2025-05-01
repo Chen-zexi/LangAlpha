@@ -66,84 +66,13 @@
     </script>
 
     <!-- External CSS -->
-    <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/index.css">
-    
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .typing-dot:nth-child(1) { animation-delay: 0s; }
-            .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-            .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-            
-            .results-content::-webkit-scrollbar {
-                width: 6px;
-            }
-            
-            .results-content::-webkit-scrollbar-track {
-                @apply bg-transparent;
-            }
-            
-            .results-content::-webkit-scrollbar-thumb {
-                @apply bg-gray-300 dark:bg-gray-600 rounded-full;
-            }
-            
-            .markdown-content h1 {
-                @apply text-2xl font-semibold mt-6 mb-3 pb-1 border-b border-gray-200 dark:border-gray-700;
-            }
-            
-            .markdown-content h2 {
-                @apply text-xl font-semibold mt-5 mb-3;
-            }
-            
-            .markdown-content h3 {
-                @apply text-lg font-semibold mt-4 mb-2;
-            }
-            
-            .markdown-content p {
-                @apply mb-4;
-            }
-            
-            .markdown-content ul, .markdown-content ol {
-                @apply mb-4 ml-6;
-            }
-            
-            .markdown-content li {
-                @apply mb-1;
-            }
-            
-            .markdown-content code {
-                @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
-            }
-            
-            .markdown-content pre {
-                @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto mb-4 font-mono text-sm;
-            }
-            
-            .markdown-content blockquote {
-                @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 text-gray-600 dark:text-gray-400 mb-4;
-            }
-            
-            .markdown-content a {
-                @apply text-primary-600 dark:text-primary-400 hover:underline;
-            }
-            
-            .markdown-content table {
-                @apply w-full mb-4 border-collapse;
-            }
-            
-            .markdown-content th, .markdown-content td {
-                @apply border border-gray-300 dark:border-gray-700 px-3 py-2;
-            }
-            
-            .markdown-content th {
-                @apply bg-gray-100 dark:bg-gray-800;
-            }
-        }
-    </style>
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.css">
+
     <!-- Markdown parsing and sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div class="flex min-h-screen">
@@ -208,13 +137,9 @@
         <!-- Main Content -->
         <main class="w-full lg:ml-64 p-5">
             <div class="max-w-5xl mx-auto">
-                <header class="mb-6 py-3 sticky top-0 bg-gray-50 dark:bg-gray-900 z-10">
+                <header class="mb-6 py-3 bg-gray-50 dark:bg-gray-900 z-10">
                     <div class="flex justify-between items-center">
                         <h1 class="text-2xl font-semibold">AI Research and Insights</h1>
-                        <div id="status" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
-                            <span class="status-dot w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></span>
-                            <span>Ready</span>
-                        </div>
                     </div>
                 </header>
                 
@@ -241,8 +166,8 @@
                 </div>
                 
                 <!-- Results Container -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 mb-8 overflow-hidden">
-                    <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 mb-8">
+                    <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-20 shadow-sm rounded-t-xl">
                         <h2 class="text-lg font-semibold">Agent workflow</h2>
                         <div id="status-indicator" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
                             <span class="status-dot w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></span>
@@ -261,7 +186,7 @@
                                 <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Analyze NVIDIA stock performance')">Analyze NVIDIA stock</div>
                                 <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Compare Apple and Microsoft financials')">Compare AAPL vs MSFT</div>
                                 <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Explain recent crypto market trends')">Crypto trends</div>
-                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Analyze impact of interest rates on REITs')">Interest rates & REITs</div>
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors" onclick="setExampleQuery('Gather the latest update about Trump\'s tariff')">Tariff update</div>
                             </div>
                         </div>
                     </div>

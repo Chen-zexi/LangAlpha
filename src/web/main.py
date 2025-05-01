@@ -160,7 +160,7 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
                         if isinstance(content, dict):
                             log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Plan Title: {content.get('title', 'N/A')}"})
                             log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Thought: {content.get('thought', 'N/A')}"})
-                            log_messages.append({"type": "status", "content": f"Planner handed off the following plan to the supervisor:"})
+
                             for step in content.get('steps', []):
                                  log_messages.append({"type": "plan_step", "agent": step.get('agent'), "content": {
                                      "Task": step.get('task'),
