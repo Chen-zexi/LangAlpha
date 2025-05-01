@@ -43,16 +43,12 @@ services:
             LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
             POSTGRES_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
             POLYGON_API_KEY: ${POLYGON_API_KEY}
-            BG_JOB_ISOLATED_LOOPS: true
             PYTHONUNBUFFERED: 1
-            WATCHFILES_FORCE_POLLING: true
-            LANGGRAPH_ALLOW_BLOCKING: true
+            WATCHFILES_FORCE_POLLING: "true"
         volumes:
-            # Mount the entire agent directory for development
-            - ./src/agent:/deps/__outer_agent/agent
-            # Ensure MCP server files are explicitly mounted
-            - ./src/agent/market_intelligence_agent/tools/mcp_server:/deps/__outer_agent/agent/market_intelligence_agent/tools/mcp_server
-        command: ["langgraph", "dev", "--allow-blocking"]
+            - ./src/agent:/app/agent
+            - ./src/agent/market_intelligence_agent:/app/market_intelligence_agent
+        command: ["langgraph", "dev", "-no-reload"]
         restart: unless-stopped
         tty: true
         stdin_open: true
@@ -74,10 +70,23 @@ services:
             PYTHONUNBUFFERED: 1
             WATCHFILES_FORCE_POLLING: true
         volumes:
-            - ./src/web:/app/web
-            - ./src/agent:/app/agent
-            - ./src/agent/market_intelligence_agent/config:/app/agent/market_intelligence_agent/config
-        command: ["python", "-m", "uvicorn", "web.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/web", "--reload-dir", "/app/agent"]
+            - ./src/web:/app/web:cached
+            - ./src/web/static:/app/web/static:cached
+            - ./src/agent:/app/agent:cached
+            - ./src/agent/market_intelligence_agent/config:/app/agent/market_intelligence_agent/config:cached
+        command: [
+            "python", "-m", "uvicorn", 
+            "web.main:app", 
+            "--host", "0.0.0.0", 
+            "--port", "8000", 
+            "--reload", 
+            "--reload-delay", "0.1",
+            "--reload-dir", "/app/web", 
+            "--reload-include", "*.html",
+            "--reload-include", "*.css",
+            "--reload-include", "*.js",
+            "--reload-exclude", "__pycache__"
+        ]
         restart: unless-stopped
         tty: true
         stdin_open: true

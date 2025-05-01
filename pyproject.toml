@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "LangAlpha"
 version = "0.1.0"
 description = "LangAlpha"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 authors = [
     { name = "Alan Chen", email = "zc2610@nyu.edu" },
 ]
