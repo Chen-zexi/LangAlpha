@@ -941,11 +941,35 @@ submitBtn.addEventListener('click', async () => {
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 } else if (data.error) {
                     console.error("Received error from stream:", data.error);
-                    appendLogMessage({ type: 'error', content: `Analysis Error: ${data.details || data.error}` });
-                    eventSource.close();
-                    updateStatus('Error', 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
+                    
+                    // Special handling for JSON decode errors
+                    if (data.details && data.details.includes('invalid escaped character in string')) {
+                        console.warn("JSON decode error detected. This is likely due to an invalid character in the data stream.");
+                        appendLogMessage({ 
+                            type: 'error', 
+                            content: `Data format error: The system encountered an issue with special characters in the response. The analysis will continue, but some information may be missing.` 
+                        });
+                        
+                        // Don't close the event source for this specific error - allow the stream to continue
+                        if (data.type === 'stream_error') {
+                            // Only close if it's a critical stream error
+                            eventSource.close();
+                            updateStatus('Error', 'error');
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
+                        } else if (data.type === 'chunk_error') {
+                            // For chunk errors, just log and continue
+                            console.warn("Continuing stream despite chunk error");
+                            updateStatus('Processing with warnings', 'active');
+                        }
+                    } else {
+                        // Handle other errors normally
+                        appendLogMessage({ type: 'error', content: `Analysis Error: ${data.details || data.error}` });
+                        eventSource.close();
+                        updateStatus('Error', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
+                    }
                 } else {
                     // If data doesn't match expected format, show error and debug info
                     console.warn("Received unexpected data format:", data);

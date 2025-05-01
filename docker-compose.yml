@@ -100,17 +100,8 @@ services:
             - ./src/agent/market_intelligence_agent/config:/app/agent/market_intelligence_agent/config:cached
             - ./src/database:/app/database:cached
         command: [
-            "python", "-m", "uvicorn", 
-            "web.main:app", 
-            "--host", "0.0.0.0", 
-            "--port", "8000", 
-            "--reload", 
-            "--reload-delay", "0.1",
-            "--reload-dir", "/app/web", 
-            "--reload-include", "*.html",
-            "--reload-include", "*.css",
-            "--reload-include", "*.js",
-            "--reload-exclude", "__pycache__"
+            "sh", "-c", 
+            "cd /app/web && mkdir -p ./static/css && npm install && npx update-browserslist-db@latest && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch & python -m uvicorn web.main:app --host 0.0.0.0 --port 8000 --reload --reload-delay 0.1 --reload-dir /app/web --reload-include '*.html' --reload-include '*.css' --reload-include '*.js' --reload-exclude '__pycache__'"
         ]
         restart: unless-stopped
         tty: true

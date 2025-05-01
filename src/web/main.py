@@ -247,6 +247,19 @@ async def format_chunk_for_streaming(chunk):
         last_agent = chunk.data.get("last_agent", None)
         final_report = chunk.data.get("final_report", None)
 
+        # Sanitize any potentially problematic messages to avoid JSON encoding errors
+        if messages_data:
+            for i, msg in enumerate(messages_data):
+                if isinstance(msg, dict) and 'content' in msg and isinstance(msg['content'], str):
+                    # Replace problematic escape sequences in content strings
+                    try:
+                        # Test if the content can be JSON serialized
+                        json.dumps(msg['content'])
+                    except (TypeError, json.JSONDecodeError):
+                        # If it fails, sanitize the string by replacing problematic characters
+                        msg['content'] = msg['content'].replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+                        logger.warning(f"Sanitized problematic content in message from {msg.get('name', 'unknown')}")
+
         # Use the latest message if available
         latest_message = messages_data[-1] if messages_data else None
 
@@ -265,9 +278,21 @@ async def format_chunk_for_streaming(chunk):
         }
 
         # Convert to JSON string using custom encoder for datetime objects
-        json_data = json.dumps(sse_data, cls=DateTimeEncoder)
-        logger.debug(f"Streaming chunk size: {len(json_data)} bytes")
-        return json_data
+        try:
+            json_data = json.dumps(sse_data, cls=DateTimeEncoder)
+            logger.debug(f"Streaming chunk size: {len(json_data)} bytes")
+            return json_data
+        except json.JSONDecodeError as json_err:
+            logger.error(f"JSON encoding error: {json_err}. Sanitizing data and retrying.")
+            # Attempt to sanitize the entire structure by converting to string and back
+            safe_sse_data = {
+                "logs": log_messages,
+                "next": next_agent,
+                "last_agent": last_agent,
+                "final_report": "Content sanitized due to encoding error" if final_report else None,
+                "messages": []  # Omit messages that might contain problematic content
+            }
+            return json.dumps(safe_sse_data, cls=DateTimeEncoder)
     except Exception as e:
         logger.error(f"Error formatting chunk for streaming: {e}", exc_info=True)
         return json.dumps({"error": f"Error formatting chunk: {str(e)}"})
@@ -316,69 +341,96 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
             },
             stream_mode=["values", "custom"]
         ):
-            formatted_chunk = await format_chunk_for_streaming(chunk)
-            
-            # Add session_id to the chunk for client-side tracking
-            chunk_data = json.loads(formatted_chunk)
-            chunk_data["session_id"] = session_id
-            
-            # Extract planner title if available
-            if "messages" in chunk_data and chunk_data["messages"]:
-                for message in chunk_data["messages"]:
-                    if message and message.get("name") == "planner":
-                        try:
-                            content = message.get("content", "")
-                            if isinstance(content, str):
-                                content_dict = json.loads(content)
-                            else:
-                                content_dict = content
-                                
-                            if isinstance(content_dict, dict) and "title" in content_dict:
-                                planner_title = content_dict["title"]
-                                logger.info(f"Extracted planner title: {planner_title}")
-                                # Add the title to the chunk data for frontend use
-                                chunk_data["planner_title"] = planner_title
-                        except (json.JSONDecodeError, TypeError, AttributeError) as e:
-                            logger.warning(f"Could not extract planner title: {e}")
-            
-            formatted_chunk = json.dumps(chunk_data)
-            
-            # Check if this chunk contains a final report
-            if "final_report" in chunk_data and chunk_data["final_report"]:
-                final_report_content = chunk_data["final_report"]
-                logger.info(f"Final report detected in stream chunk for session {session_id}")
-            
-            # Also check for reporter agent completion which might indicate report is ready
-            if chunk_data.get("logs"):
-                for log in chunk_data["logs"]:
-                    if log.get("agent") == "reporter" and log.get("content") and "finished the task" in log.get("content"):
-                        logger.info(f"Reporter agent finished task for session {session_id}")
-                        
-                        # If we don't already have a final report, generate one from the latest messages
-                        if not final_report_content and len(chunk_data.get("messages", [])) > 0:
-                            # Use the latest content as the report
-                            latest_message = chunk_data["messages"][-1]
-                            if latest_message and "content" in latest_message:
+            try:
+                formatted_chunk = await format_chunk_for_streaming(chunk)
+                
+                # Try to parse and enhance the chunk
+                try:
+                    chunk_data = json.loads(formatted_chunk)
+                    chunk_data["session_id"] = session_id
+                    
+                    # Extract planner title if available
+                    if "messages" in chunk_data and chunk_data["messages"]:
+                        for message in chunk_data["messages"]:
+                            if message and message.get("name") == "planner":
                                 try:
-                                    # Try to parse the content if it's JSON
-                                    reporter_content = latest_message["content"]
-                                    if isinstance(reporter_content, str):
+                                    content = message.get("content", "")
+                                    if isinstance(content, str):
                                         try:
-                                            reporter_json = json.loads(reporter_content)
-                                            if isinstance(reporter_json, dict) and "report" in reporter_json:
-                                                final_report_content = reporter_json["report"]
-                                                logger.info(f"Extracted report from reporter JSON content for session {session_id}")
+                                            content_dict = json.loads(content)
                                         except json.JSONDecodeError:
-                                            # If not JSON, use as-is
-                                            final_report_content = reporter_content
-                                            logger.info(f"Using reporter raw content as report for session {session_id}")
+                                            # Try to extract title with regex if JSON parsing fails
+                                            import re
+                                            title_match = re.search(r'"title"\s*:\s*"([^"]+)"', content)
+                                            if title_match:
+                                                content_dict = {"title": title_match.group(1)}
+                                            else:
+                                                content_dict = {}
                                     else:
-                                        final_report_content = str(reporter_content)
-                                        logger.info(f"Using reporter non-string content as report for session {session_id}")
-                                except Exception as e:
-                                    logger.error(f"Error extracting report from reporter message: {e}")
+                                        content_dict = content
+                                        
+                                    if isinstance(content_dict, dict) and "title" in content_dict:
+                                        planner_title = content_dict["title"]
+                                        logger.info(f"Extracted planner title via regex: {planner_title}")
+                                        # Add the title to the chunk data for frontend use
+                                        chunk_data["planner_title"] = planner_title
+                                except (json.JSONDecodeError, TypeError, AttributeError) as e:
+                                    logger.warning(f"Could not extract planner title: {e}")
+                    
+                    formatted_chunk = json.dumps(chunk_data)
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"Error processing chunk: {json_err}")
+                    # If we can't process the chunk, just send the original formatted chunk
+                    # We've already handled errors in format_chunk_for_streaming
+                
+                # Send the formatted chunk to the client
+                yield f"data: {formatted_chunk}\n\n"
+                
+                # Check if this chunk contains a final report
+                if chunk_data.get("final_report"):
+                    final_report_content = chunk_data["final_report"]
+                    logger.info(f"Final report detected in stream chunk for session {session_id}")
+                
+                # Also check for reporter agent completion which might indicate report is ready
+                if chunk_data.get("logs"):
+                    for log in chunk_data["logs"]:
+                        if log.get("agent") == "reporter" and log.get("content") and "finished the task" in log.get("content"):
+                            logger.info(f"Reporter agent finished task for session {session_id}")
+                            
+                            # If we don't already have a final report, generate one from the latest messages
+                            if not final_report_content and len(chunk_data.get("messages", [])) > 0:
+                                # Use the latest content as the report
+                                latest_message = chunk_data["messages"][-1]
+                                if latest_message and "content" in latest_message:
+                                    try:
+                                        # Try to parse the content if it's JSON
+                                        reporter_content = latest_message["content"]
+                                        if isinstance(reporter_content, str):
+                                            try:
+                                                reporter_json = json.loads(reporter_content)
+                                                if isinstance(reporter_json, dict) and "report" in reporter_json:
+                                                    final_report_content = reporter_json["report"]
+                                                    logger.info(f"Extracted report from reporter JSON content for session {session_id}")
+                                            except json.JSONDecodeError:
+                                                # If not JSON, use as-is
+                                                final_report_content = reporter_content
+                                                logger.info(f"Using reporter raw content as report for session {session_id}")
+                                        else:
+                                            final_report_content = str(reporter_content)
+                                            logger.info(f"Using reporter non-string content as report for session {session_id}")
+                                    except Exception as e:
+                                        logger.error(f"Error extracting report from reporter message: {e}")
             
-            yield f"data: {formatted_chunk}\n\n"
+            except Exception as e:
+                logger.error(f"Error processing chunk: {e}", exc_info=True)
+                # Send error information to client but continue processing other chunks
+                error_data = json.dumps({
+                    "error": "Error processing chunk",
+                    "details": str(e),
+                    "type": "chunk_error",
+                    "session_id": session_id
+                })
+                yield f"data: {error_data}\n\n"
             
         # Send a final message to indicate the stream is complete
         final_message = json.dumps({
