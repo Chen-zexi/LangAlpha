@@ -27,8 +27,8 @@ Examples are generated in different phase of the development. Result may vary.
 *   **AI/LLM Frameworks:** LangChain, LangGraph
 *   **Core Agent Workflow:** Implemented in `src/agent/market_intelligence_agent` using LangGraph
 *   **Data Sources & Tools:**
-    *   **Market/Fundamental Data:** Polygon, Yahoo Finance (via `src/mcp_server/market_data.py`, `src/mcp_server/fundamental_data.py`)
-    *   **News/Web Research:** Tavily Search, Tickertick News API (via `src/mcp_server/tavily.py`, `src/mcp_server/tickertick.py`)
+    *   **Market/Fundamental Data:** Polygon, Yahoo Finance (via `tools/market_data.py`, `tools/fundamental_data.py`)
+    *   **News/Web Research:** Tavily Search, Tickertick News API (via `tools/tavily.py`, `tools/tickertick.py`)
     *   **Web Browsing:** Playwright (integrated via `browser` agent)
     *   **Code Execution:** Local Python/Bash environment (via `coder` agent)
     *   **Database:** We use mongoDB to store the query history and the analysis result in production phase
@@ -134,7 +134,45 @@ git clone https://github.com/Chen-zexi/LangAlpha.git
 cd LangAlpha
 ```
 
-### 2. Environment Setup
+### 2. Docker Setup with Web UI (Recommended)
+
+This project is configured to run using Docker Compose, which simplifies the setup of the application, database, and other langraph services.
+
+1.  **Install Docker and Docker Compose:** Ensure you have Docker Desktop (or Docker Engine + Docker Compose) installed on your system. You can download it from the [official Docker website](https://www.docker.com/products/docker-desktop/).
+
+2.  **Configure Environment Variables:**
+    *   Copy the example environment file:
+        ```bash
+        cp .env.example .env
+        ```
+    *   Edit the `.env` file and replace the placeholder values (`replace_with_your...`) with your actual API keys and database credentials. **Crucially**, ensure the `MONGODB_URI` is set correctly for Docker networking (e.g., `mongodb://admin:password@mongodb:27017/`). The default value in `.env.example` should work if you don't change the service name or credentials in `docker-compose.yml`.
+
+3.  **Build and Run with Docker Compose:**
+    *   Navigate to the project's root directory (where `docker-compose.yml` is located).
+    *   Run the following command:
+        ```bash
+        docker-compose up --build -d
+        ```
+        *   `--build`: Forces Docker Compose to rebuild the images if the Dockerfiles or related source code have changed.
+        *   `-d`: Runs the containers in detached mode (in the background).
+    *   This command will:
+        *   Build the Docker images for the `web`, `database`, and other langraph services specified in `docker-compose.yml`.
+        *   Start the containers for all services.
+        *   Set up the necessary network connections between the services.
+
+4.  **Access the Application:** Once the containers are running, you should be able to access the web application by navigating to `http://localhost:8000` (or the port specified in `docker-compose.yml` and the web service configuration) in your web browser.
+ 
+    **Note:** Browser is not supported in Web UI. Please use the local version instead.
+
+5.  **Stopping the Application:**
+    *   To stop the running containers, navigate to the project root and run:
+        ```bash
+        docker-compose down
+        ```
+
+### Manual Setup without Web UI and Docker
+
+#### 1. Environment Setup
 
 It is recommended to use `uv` for managing Python virtual environments and packages.
 
@@ -169,43 +207,8 @@ You can also install the dependencies manually.
 pip install -r requirements.txt
 ```
 
-### 3. Docker Setup (Recommended)
 
-This project is configured to run using Docker Compose, which simplifies the setup of the application, database, and any other required services.
-
-1.  **Install Docker and Docker Compose:** Ensure you have Docker Desktop (or Docker Engine + Docker Compose) installed on your system. You can download it from the [official Docker website](https://www.docker.com/products/docker-desktop/).
-
-2.  **Configure Environment Variables:**
-    *   Copy the example environment file:
-        ```bash
-        cp .env.example .env
-        ```
-    *   Edit the `.env` file and replace the placeholder values (`replace_with_your...`) with your actual API keys and database credentials. **Crucially**, ensure the `MONGODB_URI` is set correctly for Docker networking (e.g., `mongodb://admin:password@mongodb:27017/`). The default value in `.env.example` should work if you don't change the service name or credentials in `docker-compose.yml`.
-
-3.  **Build and Run with Docker Compose:**
-    *   Navigate to the project's root directory (where `docker-compose.yml` is located).
-    *   Run the following command:
-        ```bash
-        docker-compose up --build -d
-        ```
-        *   `--build`: Forces Docker Compose to rebuild the images if the Dockerfiles or related source code have changed.
-        *   `-d`: Runs the containers in detached mode (in the background).
-    *   This command will:
-        *   Build the Docker images for the `web`, `database` (if defined), and any other services specified in `docker-compose.yml`.
-        *   Start the containers for all services.
-        *   Set up the necessary network connections between the services.
-
-4.  **Access the Application:** Once the containers are running, you should be able to access the web application by navigating to `http://localhost:8000` (or the port specified in `docker-compose.yml` and the web service configuration) in your web browser.
-
-5.  **Stopping the Application:**
-    *   To stop the running containers, navigate to the project root and run:
-        ```bash
-        docker-compose down
-        ```
-
-### 4. Manual Setup (Alternative)
-
-If you prefer not to use Docker:
+#### 2. Run the Application
 
 1.  **Set up API Keys:**
     *   Create a `.env` file if you haven't already:
