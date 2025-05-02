@@ -2,7 +2,7 @@ import logging
 import json
 import asyncio
 import os
-from typing import Literal, List, Any, Dict
+from typing import Literal, List, Any, Dict, Optional
 from pathlib import Path
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.types import Command
@@ -12,9 +12,9 @@ from langgraph.prebuilt import create_react_agent
 from ..agents import get_coder_agent, get_browser_agent
 from ..agents.llm import get_llm_by_type
 from ..config import TEAM_MEMBERS
-from ..config.agents import AGENT_LLM_MAP
+from ..config.agents import get_agent_llm_map
 from ..prompts.template import apply_prompt_template
-from .types import State, SupervisorInstructions, CoordinatorInstructions, Plan, AgentResult
+from .types import State, SupervisorInstructions, CoordinatorInstructions, Plan, AgentResult, LLMConfigs
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 logger = logging.getLogger(__name__)
@@ -23,8 +23,33 @@ RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please e
 
 source_dir = Path(__file__).parent.parent
 
+# Helper function to get the agent LLM map from state with a fallback
+def _get_map_from_state(state: State) -> Dict[str, Any]:
+    agent_llm_map = state.get('agent_llm_map')
+    if not agent_llm_map:
+        logger.warning("agent_llm_map not found in state. Using default MEDIUM budget map.")
+        return get_agent_llm_map("medium") 
+    return agent_llm_map
+
+# Helper function to get the LLM configs from state
+def _get_llm_configs_from_state(state: State) -> Optional[Dict[str, Any]]:
+    llm_configs_obj = state.get('llm_configs')
+    if isinstance(llm_configs_obj, LLMConfigs): # If it's the Pydantic model
+        return llm_configs_obj.model_dump()
+    elif isinstance(llm_configs_obj, dict): # If it's already a dict
+        return llm_configs_obj
+    else:
+        logger.info(f"type: {type(llm_configs_obj)}")
+        logger.info(f"llm_configs: {llm_configs_obj}")
+        logger.warning("llm_configs not found or invalid in state. LLM creation will use defaults.")
+        return None
+
 async def research_node(state: State) -> Command[Literal["supervisor"]]:
     """Research node that performs research tasks with proper resource management."""
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    researcher_llm_type = agent_llm_map.get("researcher", "economic") # Determine type
+
     prompt_messages = await apply_prompt_template("researcher", state)
     async with MultiServerMCPClient(
         {
@@ -41,8 +66,9 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
         }
     ) as client:
         tools = client.get_tools()
+        researcher_llm = get_llm_by_type(researcher_llm_type, llm_configs) # Pass configs
         agent = create_react_agent(
-            get_llm_by_type(AGENT_LLM_MAP["researcher"]),
+            researcher_llm, 
             tools=tools,
             response_format=AgentResult
         )
@@ -58,7 +84,10 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
             raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
             response_dump = {"error": "No structured response", "raw_content": raw_content}
 
-        state['researcher_credits'] -= 1
+        # Ensure researcher_credits key exists before decrementing
+        current_credits = state.get('researcher_credits', 0)
+        state['researcher_credits'] = max(0, current_credits - 1)
+        
         goto = "supervisor"
 
         return Command(
@@ -78,6 +107,10 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
     
 async def market_node(state: State) -> Command[Literal["supervisor"]]:
     """Market node that performs market analysis tasks with proper resource management."""
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    market_llm_type = agent_llm_map.get("market", "economic") # Determine type
+    
     prompt_messages = await apply_prompt_template("market", state)
     
     polygon_api_key = os.getenv('POLYGON_API_KEY')
@@ -98,8 +131,9 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
         }
     ) as client:
         tools = client.get_tools()
+        market_llm = get_llm_by_type(market_llm_type, llm_configs) # Pass configs
         agent = create_react_agent(
-            get_llm_by_type(AGENT_LLM_MAP["market"]),
+            market_llm,
             tools=tools,
             response_format=AgentResult
         )
@@ -114,7 +148,10 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
             raw_content = result.get('messages', [AIMessage(content="Error: No structured response.")])[-1].content
             response_dump = {"error": "No structured response", "raw_content": raw_content}
 
-        state['market_credits'] -= 1
+        # Ensure market_credits key exists before decrementing
+        current_credits = state.get('market_credits', 0)
+        state['market_credits'] = max(0, current_credits - 1)
+
         goto = "supervisor"
 
         return Command(
@@ -135,7 +172,17 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
 
 async def coder_node(state: State) -> Command[Literal["supervisor"]]:
     """Async Code node that executes Python code."""
-    agent = await get_coder_agent()
+    agent_llm_map = _get_map_from_state(state) 
+    # We pass the type to get_coder_agent, which now internally handles getting the right LLM based on state configs
+    coder_llm_type = agent_llm_map.get("coder", "coding") 
+    logger.info(f"Using coder LLM type: {coder_llm_type}")
+    # get_coder_agent implicitly uses get_llm_by_type, which needs llm_configs
+    # We need to update get_coder_agent to accept llm_configs or modify get_llm_by_type lookup
+    # Easiest is likely to modify get_coder_agent call signature again or handle inside get_coder_agent.
+    # For now, assuming get_coder_agent will be refactored or uses a global/contextual lookup.
+    # Let's assume we modify get_coder_agent to accept llm_configs
+    llm_configs = _get_llm_configs_from_state(state)
+    agent = await get_coder_agent(llm_type=coder_llm_type, llm_configs=llm_configs) # Hypothetical modification
 
     prompt_messages = await apply_prompt_template("coder", state)
     input_data = {**state, "messages": prompt_messages}
@@ -157,7 +204,9 @@ async def coder_node(state: State) -> Command[Literal["supervisor"]]:
         response_dump = {"error": "No structured response", "raw_content": raw_content}
 
     goto = "supervisor"
-    state['coder_credits'] -= 1
+    # Ensure coder_credits key exists before decrementing
+    current_credits = state.get('coder_credits', 0)
+    state['coder_credits'] = max(0, current_credits - 1)
 
     return Command(
         update={
@@ -178,14 +227,23 @@ async def coder_node(state: State) -> Command[Literal["supervisor"]]:
 
 async def browser_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the browser agent that performs web browsing tasks."""
-    agent = await get_browser_agent()
+    agent_llm_map = _get_map_from_state(state)
+    browser_llm_type = agent_llm_map.get("browser", "economic") 
+    logger.info(f"Using browser LLM type: {browser_llm_type}")
+    # Similar challenge as coder_node
+    # Assuming get_browser_agent is modified to accept llm_configs
+    llm_configs = _get_llm_configs_from_state(state)
+    agent = await get_browser_agent(llm_type=browser_llm_type, llm_configs=llm_configs) # Hypothetical modification
 
     prompt_messages = await apply_prompt_template("browser", state)
     input_data = {**state, "messages": prompt_messages}
 
     result = await agent.ainvoke(input_data)
 
-    state['browser_credits'] -= 1
+    # Ensure browser_credits key exists before decrementing
+    current_credits = state.get('browser_credits', 0)
+    state['browser_credits'] = max(0, current_credits - 1)
+    
     goto = "supervisor"
 
     final_content = "Error: No message content found."
@@ -214,11 +272,13 @@ async def browser_node(state: State) -> Command[Literal["supervisor"]]:
 
 async def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     """Supervisor node that decides which agent should act next."""
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    supervisor_llm_type = agent_llm_map.get("supervisor", "basic") # Determine type
+    
     messages = await apply_prompt_template("supervisor", state)
-    llm = (
-        get_llm_by_type(AGENT_LLM_MAP["supervisor"])
-        .with_structured_output(SupervisorInstructions)
-    )
+    supervisor_llm = get_llm_by_type(supervisor_llm_type, llm_configs) # Pass configs
+    llm = supervisor_llm.with_structured_output(SupervisorInstructions)
     response = await llm.ainvoke(messages)
 
     goto = response.next["next"]
@@ -243,12 +303,20 @@ async def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end
     )
 
 
-async def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
+async def planner_node(state: State, use_web_search: bool = False) -> Command[Literal["supervisor", "__end__"]]:
     """Planner node that generates the full plan."""
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    planner_llm_type = agent_llm_map.get("planner", "basic") # Determine type
+    
     messages = await apply_prompt_template("planner", state)
-    llm = get_llm_by_type(AGENT_LLM_MAP["planner"]).with_structured_output(Plan)
-    tool = {"type": "web_search_preview"}
-    full_plan_obj = await llm.ainvoke(messages, tools=[tool])
+    planner_llm = get_llm_by_type(planner_llm_type, llm_configs) # Pass configs
+    llm = planner_llm.with_structured_output(Plan)
+    if use_web_search:
+        tool = {"type": "web_search_preview"}
+        full_plan_obj = await llm.ainvoke(messages, tools=[tool])
+    else:
+        full_plan_obj = await llm.ainvoke(messages)
 
     goto = "supervisor"
     full_plan_json = ""
@@ -272,16 +340,21 @@ async def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]
         goto=goto,
     )
     
-async def analyst_node(state: State, response_api = True) -> Command[Literal["supervisor"]]:
+async def analyst_node(state: State, use_web_search: bool = False) -> Command[Literal["supervisor"]]:
     """Analyst node that generates analysis."""
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    analyst_llm_type = agent_llm_map.get("analyst", "basic") # Determine type
+    
     messages = await apply_prompt_template("analyst", state)
-    llm = get_llm_by_type(AGENT_LLM_MAP["analyst"])
-    if response_api:
+    analyst_llm = get_llm_by_type(analyst_llm_type, llm_configs) # Pass configs
+    if use_web_search:
         tool = {"type": "web_search_preview"}
-        result = await llm.ainvoke(messages, tools=[tool])
+        result = await analyst_llm.ainvoke(messages, tools=[tool])
         result = result.text()
     else:
-        result = await llm.ainvoke(messages)
+        result_obj = await analyst_llm.ainvoke(messages)
+        result = result_obj.content if hasattr(result_obj, 'content') else str(result_obj)
 
     goto = "supervisor"
 
@@ -297,9 +370,14 @@ async def analyst_node(state: State, response_api = True) -> Command[Literal["su
 
 async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     """Coordinator node that communicates with customers."""
-    logger.info(f"Budget for LLM: {AGENT_LLM_MAP.get('budget', 'Not Set')}")
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    coordinator_llm_type = agent_llm_map.get("coordinator", "basic") # Determine type
+    
+    logger.info(f"Budget for LLM: {agent_llm_map.get('budget', 'Not Set')}")
     messages = await apply_prompt_template("coordinator", state)
-    llm = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).with_structured_output(CoordinatorInstructions)
+    coordinator_llm = get_llm_by_type(coordinator_llm_type, llm_configs) # Pass configs
+    llm = coordinator_llm.with_structured_output(CoordinatorInstructions) 
     response = await llm.ainvoke(messages)
     goto = "__end__"
     if response.handoff_to_planner:
@@ -319,9 +397,13 @@ async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"
 
 async def reporter_node(state: State) -> Command[Literal["__end__"]]:
     """Reporter node that writes a final report."""
+    agent_llm_map = _get_map_from_state(state)
+    llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
+    reporter_llm_type = agent_llm_map.get("reporter", "basic") # Determine type
+    
     messages = await apply_prompt_template("reporter", state)
-    llm = get_llm_by_type(AGENT_LLM_MAP["reporter"])
-    response = await llm.ainvoke(messages)
+    reporter_llm = get_llm_by_type(reporter_llm_type, llm_configs) # Pass configs
+    response = await reporter_llm.ainvoke(messages)
 
     final_report_content = response.content if hasattr(response, 'content') else str(response)
 

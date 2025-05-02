@@ -1,10 +1,24 @@
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Dict, Any
 from pydantic import Field, BaseModel
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
 from datetime import datetime
 
 from ..config import TEAM_MEMBERS
+
+# --- Start: Model Configuration Structure ---
+class ModelConfig(BaseModel):
+    model: str
+    provider: str
+    # Add any other LLM params you might want to configure later, e.g., temperature
+    # temperature: Optional[float] = None 
+
+class LLMConfigs(BaseModel):
+    reasoning: ModelConfig
+    basic: ModelConfig
+    coding: ModelConfig
+    economic: ModelConfig
+# --- End: Model Configuration Structure ---
 
 # Define routing options
 OPTIONS = TEAM_MEMBERS + ["FINISH"]
@@ -58,3 +72,5 @@ class State(MessagesState):
     browser_credits: int = Field(default=0)
     market_credits: int = Field(default=0)
     time_range: str
+    agent_llm_map: Dict[str, Any] | None = Field(default=None)
+    llm_configs: Optional[LLMConfigs] = Field(default=None)

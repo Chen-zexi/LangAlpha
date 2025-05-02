@@ -1,40 +1,33 @@
-from langgraph.prebuilt import create_react_agent
 import logging
+from langgraph.prebuilt import create_react_agent
+from typing import Literal, Dict, Any, Optional
 
 from ..graph.types import AgentResult
-
-from ..prompts import apply_prompt_template
 from ..tools import (
     bash_tool,
     python_repl_tool,
     browser_tool,
 )
 from .llm import get_llm_by_type
-from ..config.agents import AGENT_LLM_MAP
 
 logger = logging.getLogger(__name__)
 
-# --- Global Cache for Agent ---
-_initialized_coder_agent = None
 
-async def initialize_coder_agent():
+async def get_coder_agent(llm_type: Literal["basic", "reasoning", "economic", "coding"], llm_configs: Optional[Dict[str, Any]] = None):
     tools = [bash_tool, python_repl_tool]
+    coder_llm = get_llm_by_type(llm_type, llm_configs)
     return create_react_agent(
-        get_llm_by_type(AGENT_LLM_MAP["coder"]),
+        coder_llm,
         tools=tools,
         response_format=AgentResult
     )
 
-async def get_coder_agent():
-    """Get the initialized coder agent, creating it if necessary."""
-    global _initialized_coder_agent
-    if _initialized_coder_agent is None:
-        _initialized_coder_agent = await initialize_coder_agent()
-    return _initialized_coder_agent
 
-async def get_browser_agent():
+async def get_browser_agent(llm_type: Literal["basic", "reasoning", "economic", "coding"], llm_configs: Optional[Dict[str, Any]] = None):
+    logger.debug(f"Creating browser agent with LLM type: {llm_type}")
+    browser_llm = get_llm_by_type(llm_type, llm_configs)
     browser_agent = create_react_agent(
-        get_llm_by_type(AGENT_LLM_MAP["browser"]),
+        browser_llm,
         tools=[browser_tool],
     )
     return browser_agent

@@ -3,10 +3,10 @@ import asyncio
 from pydantic import BaseModel, Field
 from typing import Optional, ClassVar, Type
 from langchain.tools import BaseTool
+from langchain_openai import ChatOpenAI
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use import Agent as BrowserAgent
 from ..tools.decorators import create_logged_tool
-from ..agents.llm import create_basic_llm
 from ..config import CHROME_INSTANCE_PATH
 
 import os
@@ -39,7 +39,7 @@ class BrowserTool(BaseTool):
         """Run the browser task synchronously."""
         self._agent = BrowserAgent(
             task=instruction,  # Will be set per request
-            llm=create_basic_llm(model="gpt-4.1", provider="OPENAI"),
+            llm=ChatOpenAI(model="gpt-4.1", api_key=os.getenv("OPENAI_API_KEY")),
             browser=expected_browser,
         )
         try:
