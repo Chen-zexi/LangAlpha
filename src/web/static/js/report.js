@@ -1,6 +1,23 @@
 // JavaScript for the report.html page
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Configure marked.js for consistent rendering with index.js
+    marked.setOptions({
+        breaks: true,
+        gfm: true,
+        headerIds: true,
+        highlight: function(code, lang) {
+            if (hljs && lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (e) {
+                    console.error('Highlight.js error:', e);
+                }
+            }
+            return code;
+        }
+    });
+    
     // Get report ID from URL query parameters
     const urlParams = new URLSearchParams(window.location.search);
     const reportId = urlParams.get('report_id');
@@ -130,6 +147,135 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Helper function to diagnose markdown content issues
+    function diagnoseMarkdownIssues(content) {
+        console.group('Markdown Diagnostics');
+        
+        // Check for common markdown elements
+        const hasHeadings = /^#+\s+.+$/m.test(content);
+        console.log('Contains headings:', hasHeadings);
+        
+        const hasBoldOrItalic = /(\*\*|\*|__|\b_\b).+(\*\*|\*|__|\b_\b)/m.test(content);
+        console.log('Contains bold/italic:', hasBoldOrItalic);
+        
+        const hasLists = /^\s*[\-\*\+]\s+.+$/m.test(content);
+        console.log('Contains lists:', hasLists);
+        
+        // Improved table detection with more patterns
+        const tablePattern1 = /^\|.+\|$/m.test(content);
+        const tablePattern2 = /^\|\s*[-:]+\s*\|$/m.test(content);
+        const tablePattern3 = /\| +[^|]+ +\|/m.test(content);
+        const hasTables = tablePattern1 || tablePattern2 || tablePattern3;
+        console.log('Contains tables:', hasTables);
+        console.log('- Table pattern 1 (header row):', tablePattern1);
+        console.log('- Table pattern 2 (separator row):', tablePattern2);
+        console.log('- Table pattern 3 (content row):', tablePattern3);
+        
+        const hasCodeBlocks = /```[\s\S]+?```/m.test(content);
+        console.log('Contains code blocks:', hasCodeBlocks);
+        
+        // Check for code block wrapping the whole content
+        const isWrappedInCodeBlock = /^```[\s\S]+```$/m.test(content);
+        console.log('Content is wrapped in code block:', isWrappedInCodeBlock);
+        
+        // Check for special characters that might cause issues
+        const hasSpecialChars = /[<>&'"\\]/.test(content);
+        console.log('Contains potentially problematic special chars:', hasSpecialChars);
+        
+        // Check for possibly escaped characters (JSON encoding issues)
+        const hasEscapedChars = /\\[nrt"']/.test(content);
+        console.log('Contains escaped characters:', hasEscapedChars);
+        
+        // Check for possibly incomplete markdown
+        const hasIncompleteMarkdown = (
+            /\*\*[^*]+$/.test(content) || // Unclosed bold
+            /\*[^*]+$/.test(content) ||   // Unclosed italic
+            /```[^`]+$/.test(content)     // Unclosed code block
+        );
+        console.log('Contains potentially incomplete markdown:', hasIncompleteMarkdown);
+        
+        // See if there are any HTML-like tags that might be causing problems
+        const hasHtmlLikeTags = /<[a-z]+(\s+[a-z]+="[^"]*")*\s*>/i.test(content);
+        console.log('Contains HTML-like tags:', hasHtmlLikeTags);
+        
+        console.groupEnd();
+        
+        return {
+            hasHeadings,
+            hasBoldOrItalic,
+            hasLists,
+            hasTables,
+            hasCodeBlocks,
+            isWrappedInCodeBlock,
+            hasSpecialChars,
+            hasEscapedChars,
+            hasIncompleteMarkdown,
+            hasHtmlLikeTags
+        };
+    }
+    
+    // Helper function to fix common markdown issues often seen with different models
+    function preprocessMarkdown(content) {
+        if (!content) return content;
+        
+        // Fix common issues with markdown content from different models
+        let processed = content;
+        
+        // NEW: Remove markdown code block wrapping if it exists
+        // Check if the entire content is a code block with markdown language
+        const markdownCodeBlockPattern = /^```markdown\s+([\s\S]+?)\s+```$/;
+        const codeBlockMatch = processed.match(markdownCodeBlockPattern);
+        
+        if (codeBlockMatch) {
+            console.log('Found entire content wrapped in ```markdown``` code block, unwrapping it');
+            processed = codeBlockMatch[1];
+        }
+        
+        // 1. Handle escaped newlines that should be actual newlines (common in JSON)
+        processed = processed.replace(/\\n/g, '\n');
+        
+        // 2. Fix escaped quotes
+        processed = processed.replace(/\\"/g, '"');
+        
+        // 3. Fix escaped backslashes
+        processed = processed.replace(/\\\\/g, '\\');
+        
+        // 4. Fix improperly escaped code blocks
+        processed = processed.replace(/\\`\\`\\`/g, '```');
+        
+        // 5. Fix markdown headings that might not have proper spacing
+        processed = processed.replace(/^(#+)([^\s])/gm, '$1 $2');
+        
+        // NEW: Fix double heading syntax (## becomes # #)
+        // This bug happens because of markdown within markdown processing
+        processed = processed.replace(/^# #/gm, '##');
+        processed = processed.replace(/^# #{2}/gm, '###');
+        processed = processed.replace(/^# #{3}/gm, '####');
+        processed = processed.replace(/^# #{4}/gm, '#####');
+        processed = processed.replace(/^# #{5}/gm, '######');
+        
+        // NEW: Check and fix table formatting issues that cause horizontal scrolling
+        // This detects markdown tables and adds special handling
+        const hasMarkdownTables = /^\|.+\|$/m.test(processed);
+        if (hasMarkdownTables) {
+            console.log('Detected markdown tables, adding responsive table wrapper styling');
+            // We'll handle this after parsing, by adding a CSS class
+        }
+        
+        // 6. Fix HTML-like tags that might get stripped by DOMPurify
+        // Replace them with markdown equivalents before the parsing happens
+        processed = processed.replace(/<b>(.*?)<\/b>/g, '**$1**');
+        processed = processed.replace(/<i>(.*?)<\/i>/g, '*$1*');
+        processed = processed.replace(/<h([1-6])>(.*?)<\/h\1>/g, (match, level, content) => {
+            return '#'.repeat(parseInt(level)) + ' ' + content;
+        });
+        
+        console.log('Preprocessed markdown content:', 
+            processed !== content ? 'Changes applied' : 'No changes needed');
+        
+        return processed;
+    }
+    
     function displayReport(report) {
         // Set title
         document.title = `LangAlpha | ${report.title || 'Investment Report'}`;
@@ -154,12 +300,75 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Display report content with markdown parsing
         if (reportContent && report.content) {
-            // Parse markdown and sanitize HTML
-            const parsedContent = DOMPurify.sanitize(marked.parse(report.content));
-            reportContent.innerHTML = parsedContent;
+            // DEBUG: Log raw content and parsed content to help diagnose rendering issues
+            console.log('Raw report content:', report.content);
             
-            // Add markdown content class for styling
-            reportContent.classList.add('markdown-content');
+            // Diagnose potential markdown issues
+            diagnoseMarkdownIssues(report.content);
+            
+            try {
+                // Preprocess the markdown to fix common issues
+                const processedContent = preprocessMarkdown(report.content);
+                
+                // Parse markdown and sanitize HTML
+                const parsedContent = DOMPurify.sanitize(marked.parse(processedContent));
+                console.log('Parsed HTML content:', parsedContent);
+                
+                // Add the content to the DOM
+                reportContent.innerHTML = parsedContent;
+                
+                // Add markdown content class for styling
+                reportContent.classList.add('markdown-content');
+                
+                // Post-process rendered HTML to fix remaining issues
+                fixRenderedContent(reportContent);
+            } catch (error) {
+                console.error('Error parsing markdown:', error);
+                // Fallback: Display sanitized raw content
+                reportContent.textContent = report.content;
+                reportContent.classList.add('raw-content', 'whitespace-pre-wrap', 'p-4');
+            }
+        }
+    }
+    
+    // New function to fix rendered content after it's added to the DOM
+    function fixRenderedContent(contentElement) {
+        // Fix tables to be responsive and not create horizontal scrolling
+        const tables = contentElement.querySelectorAll('table');
+        if (tables.length > 0) {
+            console.log(`Found ${tables.length} tables, applying responsive styling`);
+            
+            tables.forEach((table, index) => {
+                // Create a wrapper div with overflow handling
+                const wrapper = document.createElement('div');
+                wrapper.className = 'overflow-x-auto max-w-full my-4';
+                
+                // Move the table into the wrapper
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+                
+                // Add styling to the table
+                table.className = 'min-w-full table-auto border-collapse';
+                
+                // Add styling to table cells if needed
+                const cells = table.querySelectorAll('th, td');
+                cells.forEach(cell => {
+                    cell.className = (cell.tagName === 'TH') 
+                        ? 'px-4 py-2 bg-gray-100 dark:bg-gray-700 font-semibold border border-gray-200 dark:border-gray-600' 
+                        : 'px-4 py-2 border border-gray-200 dark:border-gray-600';
+                });
+            });
+        }
+        
+        // Fix code blocks to ensure they don't create horizontal scrolling
+        const codeBlocks = contentElement.querySelectorAll('pre code');
+        if (codeBlocks.length > 0) {
+            console.log(`Found ${codeBlocks.length} code blocks, applying overflow handling`);
+            
+            codeBlocks.forEach(codeBlock => {
+                const pre = codeBlock.parentNode;
+                pre.className = 'overflow-x-auto max-w-full my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-md';
+            });
         }
     }
     

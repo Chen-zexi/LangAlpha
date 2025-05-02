@@ -3,7 +3,7 @@ import logging
 import asyncio
 import json
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Literal
 from pathlib import Path
 import uuid
 
@@ -19,6 +19,7 @@ from langgraph_sdk import get_client
 
 
 from agent.market_intelligence_agent.config import TEAM_MEMBERS
+from agent.market_intelligence_agent.config.agents import get_agent_llm_map
 
 # Import MongoDB models
 from database.models.messages import Message, save_message, get_messages_by_session, clear_messages_by_session
@@ -114,6 +115,17 @@ class WorkflowRequest(BaseModel):
 class StreamConfig(BaseModel):
     recursion_limit: int = 150
 
+class ModelConfig(BaseModel):
+    model: str
+    provider: str
+    # Add any other LLM params you might want to configure later, e.g., temperature
+    # temperature: Optional[float] = None 
+
+class LLMConfigs(BaseModel):
+    reasoning: ModelConfig
+    basic: ModelConfig
+    coding: ModelConfig
+    economic: ModelConfig
 class WorkflowConfig(BaseModel):
     team_members: Optional[Dict[str, Any]] = None
     researcher_credits: int = 6
@@ -121,6 +133,8 @@ class WorkflowConfig(BaseModel):
     coder_credits: int = 0
     browser_credits: int = 3
     stream_config: Optional[StreamConfig] = StreamConfig()
+    budget: Optional[Literal["low", "medium", "high"]] = "low"
+    llm_configs: Optional[LLMConfigs] = None
 
 # LangGraph client setup
 async def get_lg_client_and_thread():
@@ -299,7 +313,13 @@ async def format_chunk_for_streaming(chunk):
 
 async def stream_workflow_results(query: str, config: WorkflowConfig, session_id: str = None):
     """Stream results from the LangGraph workflow."""
-    logger.info(f"Starting workflow stream for query: '{query}'")
+    logger.info(f"Starting workflow stream for query: '{query}' with budget: {config.budget}")
+    # Log if custom LLM configs are provided
+    if config.llm_configs:
+        logger.info(f"Using custom LLM configurations provided in request.")
+    else:
+        logger.info(f"No custom LLM configurations provided, will use defaults based on env vars.")
+        
     lg_client, thread_info = await get_lg_client_and_thread()
     
     # Generate a session ID for this workflow run if not provided
@@ -309,6 +329,30 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
     else:
         logger.info(f"Using provided session ID: {session_id} for query: '{query}'")
     
+    # Determine the agent LLM map based on the requested budget
+    agent_llm_map = get_agent_llm_map(config.budget)
+    logger.debug(f"Using agent LLM map: {agent_llm_map}")
+    
+    # Prepare llm_configs for the state (use provided or None)
+    # Log the raw config object for debugging
+    if config.llm_configs:
+        logger.info(f"Raw llm_configs object: {config.llm_configs}")
+        logger.info(f"llm_configs object type: {type(config.llm_configs)}")
+        logger.info(f"Config reasoning model: {config.llm_configs.reasoning.model}")
+        logger.info(f"Config reasoning provider: {config.llm_configs.reasoning.provider}")
+    else:
+        logger.info(f"No llm_configs provided in config object: {config}")
+        
+    # Convert Pydantic model to dict if it exists, otherwise pass None
+    llm_configs_dict = config.llm_configs.model_dump() if config.llm_configs else None
+    if llm_configs_dict:
+        logger.debug(f"Passing LLM configs to state: {llm_configs_dict}")
+        # Log each model configuration separately for better debugging
+        for llm_type, llm_config in llm_configs_dict.items():
+            logger.info(f"LLM config for {llm_type}: {llm_config}")
+    else:
+        logger.warning("No LLM configs provided, using defaults")
+
     try:
         # Send an initial message to confirm the connection is established
         initial_message = json.dumps({
@@ -335,6 +379,8 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                 "market_credits": config.market_credits,
                 "coder_credits": config.coder_credits,
                 "browser_credits": config.browser_credits,
+                "agent_llm_map": agent_llm_map, 
+                "llm_configs": llm_configs_dict, # Pass the specific LLM configs 
             },
             config={
                 "recursion_limit": config.stream_config.recursion_limit
@@ -471,15 +517,30 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         yield f"data: {error_message}\n\n"
 
 @app.post("/api/run-workflow")
-async def run_workflow_post(request: Request, config: WorkflowConfig = WorkflowConfig()):
-    """
-    Run the market intelligence agent workflow with the provided query.
-    
-    This endpoint initiates the workflow and returns a reference to the stream endpoint.
-    """
+async def run_workflow(request: Request):
+    """Run the LangGraph workflow using the specified workflow type and request params."""
     try:
+        # Log the raw request body for debugging
         body = await request.json()
-        logger.info(f"Received workflow request: {body}")
+        logger.info(f"Received workflow request with body: {body}")
+        
+        # Parse the request body
+        request_data = body.get("request", {})
+        config_data = body.get("config", {})
+        
+        # Log config_data specifically
+        logger.info(f"Extracted config_data: {config_data}")
+        
+        # Validate with pydantic
+        # Note: This will raise validation errors if the data doesn't match the model
+        config = WorkflowConfig(**config_data)
+        
+        # Log the validated config
+        logger.info(f"Validated WorkflowConfig: {config}")
+        
+        # Create stream settings
+        stream_config = config_data.get("stream_config", {})
+        max_recursion_limit = stream_config.get("recursion_limit", 150)
         
         # Extract query from the request body
         if "request" in body and "query" in body["request"]:
@@ -567,19 +628,18 @@ async def index():
 
 @app.get("/report")
 async def report(request: Request, report_id: str = None):
-    """Render the report page."""
-    if not report_id:
-        # If no report_id is provided, redirect to home
-        return RedirectResponse(url="/")
-    
-    # We'll pass the report_id to the template, which will fetch the report data via API
-    return templates.TemplateResponse("report.html", {"request": request, "report_id": report_id})
+    """Serve the report page."""
+    return templates.TemplateResponse("report.html", {"request": request})
+
+@app.get("/settings")
+async def settings(request: Request):
+    """Serve the settings page."""
+    return templates.TemplateResponse("settings.html", {"request": request})
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    logger.debug("Health check endpoint accessed")
-    return {"status": "healthy", "service": "market_intelligence_api"}
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
 @app.post("/api/create-report")
 async def create_report_endpoint(request: Request):
@@ -828,18 +888,20 @@ async def get_recent_reports_endpoint(limit: int = 5):
     Returns:
         JSONResponse: List of recent reports with their IDs
     """
+    logger.info(f"Fetching {limit} recent reports")
     try:
-        recent_reports = get_recent_reports(limit)
+        # Corrected: Call the function from database.models
+        reports = get_recent_reports(limit) # Changed from recent_reports
         
         # Convert MongoDB ObjectId to string and datetime to ISO format for JSON serialization
-        for report in recent_reports:
+        for report in reports: # Changed from recent_reports
             if '_id' in report:
                 report['_id'] = str(report['_id'])
             if 'timestamp' in report and isinstance(report['timestamp'], datetime):
                 report['timestamp'] = report['timestamp'].isoformat()
         
         return JSONResponse(
-            content={"reports": recent_reports},
+            content={"reports": reports}, # Changed from recent_reports
             status_code=200
         )
     except Exception as e:

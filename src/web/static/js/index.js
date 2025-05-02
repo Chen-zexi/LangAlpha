@@ -1,6 +1,34 @@
 // JavaScript for the index.html page
 
+// Initialize core variables
+let eventSource = null;
+let currentAgentProcessing = null;
+let statusMessages = [];
+let allLogElements = [];
+
+// Default config values (matching .env.example)
+const DEFAULT_LLM_CONFIGS = {
+    reasoning: { model: 'gpt-4o', provider: 'OPENAI' },
+    basic:     { model: 'gpt-4o-mini', provider: 'OPENAI' },
+    coding:    { model: 'gpt-4o', provider: 'OPENAI' },
+    economic:  { model: 'gpt-4o-mini', provider: 'OPENAI' }
+};
+
+const DEFAULT_WORKFLOW_CONFIG = {
+    budget: 'low', // Match the default set in web/main.py WorkflowConfig
+    llm_configs: DEFAULT_LLM_CONFIGS
+};
+
+// Initialize config state
+let currentWorkflowConfig = null;
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM fully loaded and parsed.");
+
+    // Load workflow configuration
+    currentWorkflowConfig = loadWorkflowConfig();
+    console.log("Loaded workflow config on page load:", currentWorkflowConfig);
+
     // Configure marked for security and code highlighting
     marked.setOptions({
         breaks: true,
@@ -51,15 +79,50 @@ const queryInput = document.getElementById('query');
 const outputDiv = document.getElementById('output');
 const statusIndicator = document.getElementById('status-indicator');
 
-let eventSource = null;
-let currentAgentProcessing = null;
-let statusMessages = [];
-let allLogElements = [];
-
 // Add global variables to track planner output and steps
 window.currentPlannerOutput = null;
 window.currentPlanStepsContainer = null;
 window.plannerTitle = null; // Track the planner title
+
+// --- Start: Configuration Functions ---
+
+// Load config from localStorage or use defaults
+function loadWorkflowConfig() {
+    const savedConfig = localStorage.getItem('workflowConfig');
+    if (savedConfig) {
+        try {
+            const parsed = JSON.parse(savedConfig);
+            // More thorough validation to ensure the object has the required properties
+            if (parsed && 
+                parsed.budget && 
+                parsed.llm_configs &&
+                parsed.llm_configs.reasoning && 
+                parsed.llm_configs.reasoning.model && 
+                parsed.llm_configs.reasoning.provider &&
+                parsed.llm_configs.basic && 
+                parsed.llm_configs.basic.model && 
+                parsed.llm_configs.basic.provider &&
+                parsed.llm_configs.coding && 
+                parsed.llm_configs.coding.model && 
+                parsed.llm_configs.coding.provider &&
+                parsed.llm_configs.economic && 
+                parsed.llm_configs.economic.model && 
+                parsed.llm_configs.economic.provider) {
+                
+                console.log("Loaded valid workflow config from localStorage:", parsed);
+                return parsed;
+            } else {
+                console.warn("Saved config found but missing required properties. Using defaults.");
+            }
+        } catch (e) {
+            console.error("Error parsing saved workflow config:", e);
+        }
+    }
+    console.log("Using default workflow config");
+    return JSON.parse(JSON.stringify(DEFAULT_WORKFLOW_CONFIG)); // Deep copy default
+}
+
+// --- End: Configuration Functions ---
 
 // Function to check if we're returning from the report page
 function checkReturnFromReport() {
@@ -788,6 +851,14 @@ submitBtn.addEventListener('click', async () => {
         return;
     }
 
+    // Check if currentWorkflowConfig is available and reload if necessary
+    console.log("Current workflow config before submission:", currentWorkflowConfig);
+    if (!currentWorkflowConfig || !currentWorkflowConfig.llm_configs) {
+        console.warn("currentWorkflowConfig missing or incomplete, loading from localStorage");
+        currentWorkflowConfig = loadWorkflowConfig();
+        console.log("Reloaded workflow config:", currentWorkflowConfig);
+    }
+
     // Update button UI to show processing state
     submitBtn.innerHTML = `
         <div class="flex items-center justify-center gap-2 z-10">
@@ -824,18 +895,52 @@ submitBtn.addEventListener('click', async () => {
     }
 
     try {
-        // Set up the POST request with EventSource
+        // Prepare the config payload, ensuring the LLM configs are properly structured
+        const configPayload = {
+            budget: currentWorkflowConfig.budget || 'low',
+            stream_config: { recursion_limit: 150 }
+        };
+        
+        // Only include llm_configs if it exists and has the required properties
+        if (currentWorkflowConfig && currentWorkflowConfig.llm_configs) {
+            // Create a clean copy with proper capitalization for providers
+            configPayload.llm_configs = {
+                reasoning: {
+                    model: currentWorkflowConfig.llm_configs.reasoning.model,
+                    provider: currentWorkflowConfig.llm_configs.reasoning.provider.toUpperCase()
+                },
+                basic: {
+                    model: currentWorkflowConfig.llm_configs.basic.model,
+                    provider: currentWorkflowConfig.llm_configs.basic.provider.toUpperCase()
+                },
+                coding: {
+                    model: currentWorkflowConfig.llm_configs.coding.model,
+                    provider: currentWorkflowConfig.llm_configs.coding.provider.toUpperCase()
+                },
+                economic: {
+                    model: currentWorkflowConfig.llm_configs.economic.model,
+                    provider: currentWorkflowConfig.llm_configs.economic.provider.toUpperCase()
+                }
+            };
+        }
+        
+        // Log the exact structure being sent to the backend
+        console.log("Sending workflow request with config:", JSON.stringify(configPayload));
+
+        // Create the actual request object
+        const requestBody = {
+            request: { query },
+            config: configPayload
+        };
+        
+        console.log("Full request body:", JSON.stringify(requestBody));
+
         const response = await fetch('/api/run-workflow', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                request: { query },
-                config: {
-                    stream_config: { recursion_limit: 150 }
-                }
-            }),
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {

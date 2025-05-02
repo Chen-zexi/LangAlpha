@@ -31,7 +31,7 @@ Examples are generated in different phase of the development. Result may vary.
     *   **News/Web Research:** Tavily Search, Tickertick News API (via `src/mcp_server/tavily.py`, `src/mcp_server/tickertick.py`)
     *   **Web Browsing:** Playwright (integrated via `browser` agent)
     *   **Code Execution:** Local Python/Bash environment (via `coder` agent)
-    *   **Database:** We will use mongoDB to store the query history and the analysis result in production phase
+    *   **Database:** We use mongoDB to store the query history and the analysis result in production phase
 *   **Environment Management:** `uv`
 
 ## Core Functionality: Market Intelligence Agent Workflow
@@ -73,39 +73,6 @@ Below is an image demonstrate the current agent workflow
 ## Trading Strategy:
 - See [counter-trend-trading-strategy colab](https://colab.research.google.com/drive/1Wo1f5SvZ3M9YjUx7gl4q2rSIo7PMegBN?usp=sharing#scrollTo=1kA-HcwGkK9Z) for details.
 
-## MongoDB Integration
-
-The application uses MongoDB to store streaming messages and generated reports. This allows for:
-
-1. History tracking: Users can view their past queries and the conversations.
-2. Report storage: All generated reports are stored for later reference.
-
-### MongoDB Structure
-
-- **Collections**:
-  - `messages`: Stores all stream messages including user queries, assistant responses, and system notifications.
-  - `reports`: Stores the final generated reports.
-
-### Environment Variables
-
-MongoDB configuration is controlled via the following environment variables:
-
-```
-MONGODB_URI=mongodb://admin:password@mongodb:27017/
-MONGODB_DB=langalpha
-```
-
-### Accessing History
-
-The application provides the following endpoints for accessing historical data:
-
-- `/history`: A UI page that lists all previous sessions.
-- `/history/{session_id}`: A UI page that shows a specific session with its messages and reports.
-- `/api/history/sessions`: API endpoint that returns a list of all sessions.
-- `/api/history/messages/{session_id}`: API endpoint that returns all messages for a specific session.
-- `/api/history/reports/{session_id}`: API endpoint that returns all reports for a specific session.
-- `/api/history/report/{report_id}`: API endpoint that returns a specific report by ID.
-
 ## Repository Structure
 ```
 LangAlpha/
@@ -128,6 +95,15 @@ LangAlpha/
 |    |         ├── service/                 # Service implementations
 |    |         ├── crawler/                 # Web crawlers
 |    |         └── __init__.py              # Package initialization
+|    ├── database/                         # Database setup and utilities
+|    |    ├── models/                       # Database models/schemas
+|    |    ├── utils/                        # Database utility functions
+|    |    └── Dockerfile                    # Dockerfile for database service
+|    ├── web/                              # Frontend Web Application (FastAPI)
+|    |    ├── static/                       # Static assets (CSS, JS)
+|    |    ├── templates/                    # HTML templates
+|    |    ├── main.py                       # Main FastAPI application
+|    |    └── Dockerfile                    # Dockerfile for web service
 |    ├── data_tool/                      # Tools for data retriving
 |    |    ├── data_providers/             
 |    |    |    ├── connect_wrds.py          # code to connect wrds
@@ -193,44 +169,92 @@ You can also install the dependencies manually.
 pip install -r requirements.txt
 ```
 
+### 3. Docker Setup (Recommended)
 
-### 3. Set up API Keys
-1. Create a `.env` file.
+This project is configured to run using Docker Compose, which simplifies the setup of the application, database, and any other required services.
 
-```bash
-cp .env.example .env
-```
+1.  **Install Docker and Docker Compose:** Ensure you have Docker Desktop (or Docker Engine + Docker Compose) installed on your system. You can download it from the [official Docker website](https://www.docker.com/products/docker-desktop/).
 
-2. Define required API keys in your `.env` file.
+2.  **Configure Environment Variables:**
+    *   Copy the example environment file:
+        ```bash
+        cp .env.example .env
+        ```
+    *   Edit the `.env` file and replace the placeholder values (`replace_with_your...`) with your actual API keys and database credentials. **Crucially**, ensure the `MONGODB_URI` is set correctly for Docker networking (e.g., `mongodb://admin:password@mongodb:27017/`). The default value in `.env.example` should work if you don't change the service name or credentials in `docker-compose.yml`.
 
-### 4. Run the project
+3.  **Build and Run with Docker Compose:**
+    *   Navigate to the project's root directory (where `docker-compose.yml` is located).
+    *   Run the following command:
+        ```bash
+        docker-compose up --build -d
+        ```
+        *   `--build`: Forces Docker Compose to rebuild the images if the Dockerfiles or related source code have changed.
+        *   `-d`: Runs the containers in detached mode (in the background).
+    *   This command will:
+        *   Build the Docker images for the `web`, `database` (if defined), and any other services specified in `docker-compose.yml`.
+        *   Start the containers for all services.
+        *   Set up the necessary network connections between the services.
 
-1. Run the project with uv
-```bash
-uv run main.py
-```
+4.  **Access the Application:** Once the containers are running, you should be able to access the web application by navigating to `http://localhost:8000` (or the port specified in `docker-compose.yml` and the web service configuration) in your web browser.
 
-2. Run the project with langraph studio
+5.  **Stopping the Application:**
+    *   To stop the running containers, navigate to the project root and run:
+        ```bash
+        docker-compose down
+        ```
 
-```bash
-# Install langgraph-cli
-pip install langgraph-cli
+### 4. Manual Setup (Alternative)
 
-# Navigate to the src/agent directory
-cd src/agent
+If you prefer not to use Docker:
 
-# Run the langgraph studio
-langgraph dev --allow-blocking
+1.  **Set up API Keys:**
+    *   Create a `.env` file if you haven't already:
+        ```bash
+        cp .env.example .env
+        ```
+    *   Edit the `.env` file and fill in your required API keys and credentials.
 
-# Run the main.py with dev mode
-uv run main.py -dev
-```
-Response will be saved in `assets/reports` folder in markdown format.
+2.  **Choose How to Run:**
+
+    *   **Option A: Run with Web UI (FastAPI):**
+        ```bash
+        uv run src/web/run_server.py
+        ```
+        Then access the application in your browser (usually `http://localhost:8000`).
+
+    *   **Option B: Run CML Version (Agent Workflow Only):**
+        *   **Standard CML:**
+            ```bash
+            uv run main.py 
+            ``` 
+            _(Note: Adjust path if needed, e.g., `uv run src/main.py` depending on your entry point)_
+            The CML version will typically prompt you for input in the terminal. Results are often saved to `assets/reports`.
+
+        *   **CML with LangGraph Studio (for Debugging/Visualization):**
+            ```bash
+            # Install langgraph-cli if you haven't
+            uv pip install langgraph-cli
+
+            # Navigate to the agent directory
+            cd src/agent 
+
+            # Start the LangGraph Studio server
+            langgraph dev & # Run in background
+
+            # Navigate back to the project root
+            # cd ../.. 
+
+            # Run the main CML script in development mode, connecting to the studio
+            uv run main.py -dev 
+            ```
+            Access the LangGraph Studio interface in your browser (usually `http://localhost:1984`) to visualize the agent workflow.
+
 ## Contributors and contributions: 
 **Alan** zc2610@nyu.edu
 - Langraph pipeline (Market Intelligence Workflow)
 - Data tool integration
 - Repo management
+- Frontend interface and web development
 
 **Tyler** tan4742@nyu.edu
 - Ginzu interface (valuation model from Professor Aswath Damodaran) 

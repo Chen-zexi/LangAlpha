@@ -69,7 +69,7 @@ services:
         volumes:
             - ./src/agent:/app/agent
             - ./src/agent/market_intelligence_agent:/app/market_intelligence_agent
-        command: ["langgraph", "dev", "-no-reload"]
+        command: ["langgraph", "dev", "-allow-blocking"]
         restart: unless-stopped
         tty: true
         stdin_open: true
