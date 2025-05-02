@@ -5,18 +5,20 @@ Report model for storing final generated reports.
 from datetime import datetime
 from typing import Dict, List, Optional, Any, TypedDict
 from pymongo.collection import Collection
+from pymongo import ReturnDocument # Import ReturnDocument for upsert
 
 from ..utils.mongo_client import get_database
 
 
 class Report(TypedDict):
     """TypedDict for a generated report."""
-    session_id: str
+    session_id: str # This will be our primary identifier
     timestamp: datetime
     title: str
     content: str
     metadata: Optional[Dict[str, Any]]
-    
+    # We no longer need a separate _id field if session_id is the primary key
+
 
 def get_reports_collection() -> Collection:
     """
@@ -29,73 +31,84 @@ def get_reports_collection() -> Collection:
     return db.reports
 
 
-def save_report(report: Report) -> str:
+def save_report(report: Report) -> Optional[Report]:
     """
-    Save a report to the database. Checks for duplicate reports before saving.
+    Save a report to the database using session_id as the identifier (upsert).
+    If a report with the session_id exists, it will be updated. Otherwise, it will be inserted.
     
     Args:
-        report (Report): Report to save
+        report (Report): Report to save or update
         
     Returns:
-        str: ID of the inserted report or existing report if duplicate found
+        Optional[Report]: The saved or updated report document, or None on error.
     """
     collection = get_reports_collection()
     
-    # Check if a similar report already exists for this session/query
-    # We'll check based on session_id (if available) and content similarity
-    existing_report = None
-    if "session_id" in report and report["session_id"]:
-        # First try to find by session_id 
-        session_reports = list(collection.find({"session_id": report["session_id"]}))
-        
-        # If we have reports for this session, check content similarity
-        if session_reports:
-            for existing in session_reports:
-                # If content is identical or very similar (first 100 chars match), consider it a duplicate
-                if (report["content"] == existing["content"] or 
-                    (len(report["content"]) > 100 and 
-                     len(existing["content"]) > 100 and
-                     report["content"][:100] == existing["content"][:100])):
-                    existing_report = existing
-                    break
+    # Use session_id as the filter for the upsert operation
+    session_id = report.get("session_id")
+    if not session_id:
+        # Log an error or raise an exception, session_id is required
+        print("Error: session_id is required to save a report.") # Replace with logger
+        return None
+
+    # Perform an upsert operation
+    # This will update the document if one with the session_id exists, or insert it if not.
+    # We use $set to update fields and $setOnInsert to set timestamp only on creation.
+    result = collection.find_one_and_update(
+        {"session_id": session_id},
+        {
+            "$set": {
+                "title": report.get("title"),
+                "content": report.get("content"),
+                "metadata": report.get("metadata"),
+                "last_updated": datetime.now() # Add/update last_updated timestamp
+            },
+            "$setOnInsert": {
+                "session_id": session_id,
+                "timestamp": report.get("timestamp", datetime.now()) # Set initial timestamp on insert
+            }
+        },
+        upsert=True,
+        return_document=ReturnDocument.AFTER # Return the modified document
+    )
     
-    # If no duplicate found, insert the new report
-    if existing_report is None:
-        result = collection.insert_one(report)
-        return str(result.inserted_id)
-    else:
-        # Return the ID of the existing report
-        return str(existing_report["_id"])
+    # 'result' will contain the document after the update/insert
+    return result
 
 
-def get_report(report_id: str) -> Optional[Report]:
+def get_report(session_id: str) -> Optional[Report]:
     """
-    Get a specific report by ID.
+    Get a specific report by session_id.
     
     Args:
-        report_id (str): Report ID
+        session_id (str): Session ID of the report to retrieve.
         
     Returns:
         Optional[Report]: The report or None if not found
     """
-    from bson.objectid import ObjectId
+    # Remove ObjectId import as we are using session_id
+    # from bson.objectid import ObjectId 
     
     collection = get_reports_collection()
-    report = collection.find_one({"_id": ObjectId(report_id)})
+    # Query using session_id instead of _id
+    report = collection.find_one({"session_id": session_id})
     return report
 
 
 def get_reports_by_session(session_id: str) -> List[Report]:
     """
-    Get all reports for a specific session.
+    Get all reports for a specific session. 
+    (Note: With upsert, there should typically only be one report per session)
     
     Args:
         session_id (str): Session ID to filter by
         
     Returns:
-        List[Report]: List of reports
+        List[Report]: List containing the report (or empty if none)
     """
     collection = get_reports_collection()
+    # Query might return multiple if upsert wasn't strictly enforced before,
+    # but ideally returns 0 or 1.
     reports = collection.find({"session_id": session_id})
     return list(reports)
 

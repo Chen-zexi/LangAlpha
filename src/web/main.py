@@ -149,7 +149,7 @@ async def get_lg_client_and_thread():
         logger.error(f"Error creating LangGraph client and thread: {e}")
         raise
 
-async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: Optional[str], last_agent: Optional[str], final_report: Optional[str]) -> List[Dict[str, Any]]:
+async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: Optional[str], last_agent: Optional[str], final_report: Optional[str], report_status: Optional[str] = None) -> List[Dict[str, Any]]:
     """Generates structured log messages based on agent state and message content."""
     log_messages = []
     
@@ -164,7 +164,13 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
             if agent_name == "analyst":
                 log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Analyst has finished generating insight."})
             elif agent_name == "reporter":
-                log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Reporter agent has finished the task."})
+                # Reporter status will be handled separately based on report_status
+                if report_status == "saved":
+                    log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Reporter agent has finished and the report has been saved."})
+                elif report_status == "error":
+                     log_messages.append({"type": "error", "agent": agent_name, "content": f"Reporter agent finished, but there was an error saving the report."})
+                else:
+                     log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Reporter agent is processing..."})
             else:
                 # For all other agents, try to parse the content
                 try:
@@ -172,7 +178,7 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
                     
                     if agent_name == "planner":
                         if isinstance(content, dict):
-                            log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Plan Title: {content.get('title', 'N/A')}"})
+                            log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Plan Title: {content.get('title', 'N/A')}"}) # Keep title for debugging/log
                             log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Thought: {content.get('thought', 'N/A')}"})
 
                             for step in content.get('steps', []):
@@ -229,7 +235,7 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
         if next_agent == "planner":
             status_message = 'Planner is thinking...'
         elif next_agent == "supervisor":
-            status_message = f'Supervisor is evaluating response from {last_agent or "previous agent"}...'
+            status_message = f'Supervisor is evaluating response from {last_agent or "previous agent"}...' # Keep this detail
         elif next_agent == "researcher":
             status_message = 'Researcher is gathering information...'
         elif next_agent == "coder":
@@ -240,81 +246,93 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
             status_message = 'Browser agent is browsing the web...'
         elif next_agent == "analyst":
             status_message = 'Analyst agent is analyzing the gathered information...'
-        elif next_agent == "reporter" and last_agent != "reporter":
+        elif next_agent == "reporter":
+             # Don't signal report readiness here; wait for save confirmation
              status_message = 'Reporter agent is preparing the final report...'
-        elif next_agent == "reporter" and last_agent == "reporter":
-             status_message = 'Reporter agent is finalizing the report...' # Handle consecutive reporter calls
 
         log_messages.append({"type": "status", "agent": next_agent, "content": status_message})
 
-    if final_report:
-         log_messages.append({"type": "separator", "content": "*" * 120})
-         log_messages.append({"type": "final_report", "content": final_report})
+    # Remove final_report handling from logs; it's handled during saving
+    # if final_report:
+    #      log_messages.append({"type": "separator", "content": "*" * 120})
+    #      log_messages.append({"type": "final_report", "content": final_report})
 
     return log_messages
 
-async def format_chunk_for_streaming(chunk):
+# Define a new function to format and send the report status update
+async def format_report_status_update(session_id: str, status: str, error_message: Optional[str] = None) -> str:
+    """Formats an SSE message specifically for report status updates."""
+    sse_data = {
+        "type": "report_status",
+        "session_id": session_id,
+        "status": status, # e.g., 'saved', 'error'
+    }
+    if status == 'error' and error_message:
+        sse_data["error_message"] = error_message
+    
+    return json.dumps(sse_data, cls=DateTimeEncoder)
+
+
+async def format_chunk_for_streaming(chunk, report_status: Optional[str] = None):
     """Formats a LangGraph chunk into structured log messages for streaming."""
     try:
         messages_data = chunk.data.get("messages", [])
         next_agent = chunk.data.get("next", None)
         last_agent = chunk.data.get("last_agent", None)
-        final_report = chunk.data.get("final_report", None)
+        # We no longer need to pass final_report here; it's handled during saving
+        # final_report = chunk.data.get("final_report", None)
 
-        # Sanitize any potentially problematic messages to avoid JSON encoding errors
+        # Sanitize messages if necessary (keep existing logic)
         if messages_data:
             for i, msg in enumerate(messages_data):
                 if isinstance(msg, dict) and 'content' in msg and isinstance(msg['content'], str):
-                    # Replace problematic escape sequences in content strings
                     try:
-                        # Test if the content can be JSON serialized
                         json.dumps(msg['content'])
                     except (TypeError, json.JSONDecodeError):
-                        # If it fails, sanitize the string by replacing problematic characters
                         msg['content'] = msg['content'].replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
                         logger.warning(f"Sanitized problematic content in message from {msg.get('name', 'unknown')}")
 
         # Use the latest message if available
         latest_message = messages_data[-1] if messages_data else None
 
-        logger.debug(f"Processing chunk: last_agent={last_agent}, next_agent={next_agent}, message={latest_message is not None}, final_report={final_report is not None}")
+        logger.debug(f"Processing chunk: last_agent={last_agent}, next_agent={next_agent}, message={latest_message is not None}")
 
-        # Generate structured log messages
-        log_messages = await generate_log_messages(latest_message, next_agent, last_agent, final_report)
+        # Generate structured log messages, passing the report status
+        log_messages = await generate_log_messages(latest_message, next_agent, last_agent, None, report_status=report_status)
         
-        # Include both logs and the original data for more flexibility
+        # Structure the SSE data
         sse_data = {
             "logs": log_messages,
             "next": next_agent,
             "last_agent": last_agent,
-            "final_report": final_report,
-            "messages": [latest_message] if latest_message else [] # Include latest message only to avoid large payloads
+            "messages": [latest_message] if latest_message else [] # Include latest message only
+            # No final_report included here
         }
 
-        # Convert to JSON string using custom encoder for datetime objects
+        # Convert to JSON string
         try:
             json_data = json.dumps(sse_data, cls=DateTimeEncoder)
             logger.debug(f"Streaming chunk size: {len(json_data)} bytes")
             return json_data
         except json.JSONDecodeError as json_err:
             logger.error(f"JSON encoding error: {json_err}. Sanitizing data and retrying.")
-            # Attempt to sanitize the entire structure by converting to string and back
             safe_sse_data = {
                 "logs": log_messages,
                 "next": next_agent,
                 "last_agent": last_agent,
-                "final_report": "Content sanitized due to encoding error" if final_report else None,
-                "messages": []  # Omit messages that might contain problematic content
+                "messages": [] 
             }
             return json.dumps(safe_sse_data, cls=DateTimeEncoder)
     except Exception as e:
         logger.error(f"Error formatting chunk for streaming: {e}", exc_info=True)
-        return json.dumps({"error": f"Error formatting chunk: {str(e)}"})
+        return json.dumps({"error": f"Error formatting chunk: {str(e)}"}) # Keep error reporting
 
-async def stream_workflow_results(query: str, config: WorkflowConfig, session_id: str = None):
-    """Stream results from the LangGraph workflow."""
-    logger.info(f"Starting workflow stream for query: '{query}' with budget: {config.budget}")
-    # Log if custom LLM configs are provided
+async def stream_workflow_results(query: str, config: WorkflowConfig, session_id: str):
+    """Stream results from the LangGraph workflow and save report directly.""" # Updated docstring
+    logger.info(f"Starting workflow stream for query: '{query}' with budget: {config.budget}, session_id: {session_id}")
+    
+    # Use provided session_id, no need to generate a new one here
+    
     if config.llm_configs:
         logger.info(f"Using custom LLM configurations provided in request.")
     else:
@@ -322,39 +340,19 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         
     lg_client, thread_info = await get_lg_client_and_thread()
     
-    # Generate a session ID for this workflow run if not provided
-    if not session_id:
-        session_id = str(uuid.uuid4())
-        logger.info(f"Created new session ID: {session_id} for query: '{query}'")
-    else:
-        logger.info(f"Using provided session ID: {session_id} for query: '{query}'")
-    
-    # Determine the agent LLM map based on the requested budget
     agent_llm_map = get_agent_llm_map(config.budget)
     logger.debug(f"Using agent LLM map: {agent_llm_map}")
     
-    # Prepare llm_configs for the state (use provided or None)
-    # Log the raw config object for debugging
-    if config.llm_configs:
-        logger.info(f"Raw llm_configs object: {config.llm_configs}")
-        logger.info(f"llm_configs object type: {type(config.llm_configs)}")
-        logger.info(f"Config reasoning model: {config.llm_configs.reasoning.model}")
-        logger.info(f"Config reasoning provider: {config.llm_configs.reasoning.provider}")
-    else:
-        logger.info(f"No llm_configs provided in config object: {config}")
-        
-    # Convert Pydantic model to dict if it exists, otherwise pass None
     llm_configs_dict = config.llm_configs.model_dump() if config.llm_configs else None
     if llm_configs_dict:
         logger.debug(f"Passing LLM configs to state: {llm_configs_dict}")
-        # Log each model configuration separately for better debugging
         for llm_type, llm_config in llm_configs_dict.items():
             logger.info(f"LLM config for {llm_type}: {llm_config}")
     else:
         logger.warning("No LLM configs provided, using defaults")
 
     try:
-        # Send an initial message to confirm the connection is established
+        # Send initial connection message
         initial_message = json.dumps({
             "type": "connection_established",
             "message": "Streaming connection established. Starting analysis...",
@@ -362,17 +360,17 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         })
         yield f"data: {initial_message}\n\n"
         
-        # Track the final report content and planner title
+        # Variables to store planner title and final report content
+        planner_title = f"Analysis for: {query}" # Default title
         final_report_content = None
-        planner_title = f"{query}"  # Default title based on query
-        
+        report_saved_or_failed = False # Flag to track if report status was sent
+        report_save_status = None # 'saved' or 'error'
+
         async for chunk in lg_client.runs.stream(
             thread_info["thread_id"],
             "market_intelligence_agent",
             input={
-                # Constants
                 "TEAM_MEMBERS": config.team_members or TEAM_MEMBERS,
-                # Runtime Variables
                 "messages": [query],
                 "current_timestamp": datetime.now(),
                 "researcher_credits": config.researcher_credits,
@@ -380,7 +378,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                 "coder_credits": config.coder_credits,
                 "browser_credits": config.browser_credits,
                 "agent_llm_map": agent_llm_map, 
-                "llm_configs": llm_configs_dict, # Pass the specific LLM configs 
+                "llm_configs": llm_configs_dict,
             },
             config={
                 "recursion_limit": config.stream_config.recursion_limit
@@ -388,88 +386,66 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
             stream_mode=["values", "custom"]
         ):
             try:
-                formatted_chunk = await format_chunk_for_streaming(chunk)
+                # 1. Extract planner title if available
+                messages_data = chunk.data.get("messages", [])
+                if messages_data:
+                    for message in messages_data:
+                        if message and message.get("name") == "planner":
+                            content_str = message.get("content", "")
+                            try:
+                                content_dict = json.loads(content_str) if isinstance(content_str, str) else content_str
+                                if isinstance(content_dict, dict) and "title" in content_dict:
+                                    planner_title = content_dict["title"]
+                                    logger.info(f"Extracted planner title: {planner_title} for session {session_id}")
+                            except (json.JSONDecodeError, TypeError):
+                                logger.warning(f"Could not parse planner content for title: {content_str}")
                 
-                # Try to parse and enhance the chunk
+                # 2. Check for final report content in the chunk
+                current_final_report = chunk.data.get("final_report", None)
+                if current_final_report:
+                    final_report_content = current_final_report # Store it
+                    logger.info(f"Received final_report content for session {session_id}. Preparing to save.")
+
+                    # 3. Save the report immediately when final_report is received
+                    if session_id and planner_title and final_report_content and not report_saved_or_failed:
+                        report_to_save: Report = {
+                            "session_id": session_id,
+                            "timestamp": datetime.now(),
+                            "title": planner_title,
+                            "content": final_report_content,
+                            "metadata": {"query": query} # Include original query
+                        }
+                        saved_report = save_report(report_to_save)
+                        if saved_report:
+                            logger.info(f"Successfully saved/updated report for session {session_id}")
+                            report_save_status = "saved"
+                        else:
+                            logger.error(f"Failed to save report for session {session_id}")
+                            report_save_status = "error"
+                        report_saved_or_failed = True
+                        
+                        # Send a specific status update for the report save
+                        report_update_message = await format_report_status_update(session_id, report_save_status)
+                        yield f"data: {report_update_message}\n\n"
+                
+                # 4. Format and yield the regular chunk data (logs, next agent, etc.)
+                # Pass the report save status to influence reporter log message
+                formatted_chunk = await format_chunk_for_streaming(chunk, report_status=report_save_status)
+                
+                # Add session_id to the formatted chunk before sending
                 try:
                     chunk_data = json.loads(formatted_chunk)
                     chunk_data["session_id"] = session_id
-                    
-                    # Extract planner title if available
-                    if "messages" in chunk_data and chunk_data["messages"]:
-                        for message in chunk_data["messages"]:
-                            if message and message.get("name") == "planner":
-                                try:
-                                    content = message.get("content", "")
-                                    if isinstance(content, str):
-                                        try:
-                                            content_dict = json.loads(content)
-                                        except json.JSONDecodeError:
-                                            # Try to extract title with regex if JSON parsing fails
-                                            import re
-                                            title_match = re.search(r'"title"\s*:\s*"([^"]+)"', content)
-                                            if title_match:
-                                                content_dict = {"title": title_match.group(1)}
-                                            else:
-                                                content_dict = {}
-                                    else:
-                                        content_dict = content
-                                        
-                                    if isinstance(content_dict, dict) and "title" in content_dict:
-                                        planner_title = content_dict["title"]
-                                        logger.info(f"Extracted planner title via regex: {planner_title}")
-                                        # Add the title to the chunk data for frontend use
-                                        chunk_data["planner_title"] = planner_title
-                                except (json.JSONDecodeError, TypeError, AttributeError) as e:
-                                    logger.warning(f"Could not extract planner title: {e}")
-                    
+                    # Remove planner title from here as it's saved internally
+                    # chunk_data["planner_title"] = planner_title 
                     formatted_chunk = json.dumps(chunk_data)
                 except json.JSONDecodeError as json_err:
-                    logger.error(f"Error processing chunk: {json_err}")
-                    # If we can't process the chunk, just send the original formatted chunk
-                    # We've already handled errors in format_chunk_for_streaming
-                
-                # Send the formatted chunk to the client
+                    logger.error(f"Error adding session_id to chunk: {json_err}")
+
                 yield f"data: {formatted_chunk}\n\n"
-                
-                # Check if this chunk contains a final report
-                if chunk_data.get("final_report"):
-                    final_report_content = chunk_data["final_report"]
-                    logger.info(f"Final report detected in stream chunk for session {session_id}")
-                
-                # Also check for reporter agent completion which might indicate report is ready
-                if chunk_data.get("logs"):
-                    for log in chunk_data["logs"]:
-                        if log.get("agent") == "reporter" and log.get("content") and "finished the task" in log.get("content"):
-                            logger.info(f"Reporter agent finished task for session {session_id}")
-                            
-                            # If we don't already have a final report, generate one from the latest messages
-                            if not final_report_content and len(chunk_data.get("messages", [])) > 0:
-                                # Use the latest content as the report
-                                latest_message = chunk_data["messages"][-1]
-                                if latest_message and "content" in latest_message:
-                                    try:
-                                        # Try to parse the content if it's JSON
-                                        reporter_content = latest_message["content"]
-                                        if isinstance(reporter_content, str):
-                                            try:
-                                                reporter_json = json.loads(reporter_content)
-                                                if isinstance(reporter_json, dict) and "report" in reporter_json:
-                                                    final_report_content = reporter_json["report"]
-                                                    logger.info(f"Extracted report from reporter JSON content for session {session_id}")
-                                            except json.JSONDecodeError:
-                                                # If not JSON, use as-is
-                                                final_report_content = reporter_content
-                                                logger.info(f"Using reporter raw content as report for session {session_id}")
-                                        else:
-                                            final_report_content = str(reporter_content)
-                                            logger.info(f"Using reporter non-string content as report for session {session_id}")
-                                    except Exception as e:
-                                        logger.error(f"Error extracting report from reporter message: {e}")
             
             except Exception as e:
                 logger.error(f"Error processing chunk: {e}", exc_info=True)
-                # Send error information to client but continue processing other chunks
                 error_data = json.dumps({
                     "error": "Error processing chunk",
                     "details": str(e),
@@ -478,25 +454,25 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                 })
                 yield f"data: {error_data}\n\n"
             
-        # Send a final message to indicate the stream is complete
-        final_message = json.dumps({
+        # Send a final stream complete message (no report content needed here)
+        final_message = {
             "type": "stream_complete",
             "message": "Analysis stream complete.",
             "session_id": session_id,
-            "planner_title": planner_title  # Include the planner title in the final message
-        })
-        yield f"data: {final_message}\n\n"
+            # "planner_title": planner_title # No longer needed here
+            "report_status": report_save_status if report_saved_or_failed else "not_generated" # Indicate final status
+        }
+        yield f"data: {json.dumps(final_message)}\n\n"
         
     except Exception as e:
-        logger.error(f"Error streaming workflow results: {e}", exc_info=True)
-        
-        # Save error message to MongoDB for critical error tracking
+        logger.error(f"Error streaming workflow results for session {session_id}: {e}", exc_info=True)
+        # Save error message to MongoDB (keep this)
         try:
             error_database_message: Message = {
                 "session_id": session_id,
                 "timestamp": datetime.now(),
                 "role": "system",
-                "content": f"Error: {str(e)}",
+                "content": f"Error during stream: {str(e)}",
                 "type": "error",
                 "metadata": {
                     "thread_id": thread_info["thread_id"],
@@ -505,11 +481,11 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
             }
             save_message(error_database_message)
         except Exception as db_error:
-            logger.error(f"Failed to save error message to MongoDB: {db_error}")
+            logger.error(f"Failed to save stream error message to MongoDB: {db_error}")
         
-        # Send error to client
+        # Send stream error to client
         error_message = json.dumps({
-            "error": "An error occurred while streaming workflow results.",
+            "error": "An error occurred during the analysis stream.",
             "details": str(e),
             "type": "stream_error",
             "session_id": session_id
@@ -517,58 +493,39 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         yield f"data: {error_message}\n\n"
 
 @app.post("/api/run-workflow")
-async def run_workflow(request: Request):
-    """Run the LangGraph workflow using the specified workflow type and request params."""
+async def run_workflow_post(request: Request):
+    """Initiate the LangGraph workflow and return a run_id for streaming.""" # Updated docstring
     try:
-        # Log the raw request body for debugging
         body = await request.json()
         logger.info(f"Received workflow request with body: {body}")
         
-        # Parse the request body
         request_data = body.get("request", {})
         config_data = body.get("config", {})
-        
-        # Log config_data specifically
         logger.info(f"Extracted config_data: {config_data}")
         
-        # Validate with pydantic
-        # Note: This will raise validation errors if the data doesn't match the model
         config = WorkflowConfig(**config_data)
-        
-        # Log the validated config
         logger.info(f"Validated WorkflowConfig: {config}")
         
-        # Create stream settings
-        stream_config = config_data.get("stream_config", {})
-        max_recursion_limit = stream_config.get("recursion_limit", 150)
-        
-        # Extract query from the request body
-        if "request" in body and "query" in body["request"]:
-            query = body["request"]["query"]
-        elif "query" in body:
-            query = body["query"]
-        else:
-            logger.error("Query field not found in request body")
-            raise HTTPException(status_code=422, detail="Query field is required")
-        
+        # Extract query
+        query = request_data.get("query")
         if not query or not query.strip():
-            logger.error("Empty query received")
-            raise HTTPException(status_code=400, detail="Query cannot be empty")
+            logger.error("Query field is required and cannot be empty")
+            raise HTTPException(status_code=422, detail="Query field is required and cannot be empty")
         
         # Create a unique ID for this workflow run and session
         run_id = str(uuid.uuid4())
-        session_id = str(uuid.uuid4())  # Generate a session ID for MongoDB
+        session_id = str(uuid.uuid4()) # Generate a session ID here
         logger.info(f"Created workflow run ID: {run_id}, session ID: {session_id} for query: '{query}'")
         
-        # Store the query, config, and session_id in the app state for retrieval by the stream endpoint
+        # Store necessary data for the stream endpoint
         app.state.workflow_runs = getattr(app.state, "workflow_runs", {})
         app.state.workflow_runs[run_id] = {
             "query": query, 
             "config": config,
-            "session_id": session_id
+            "session_id": session_id # Store the generated session_id
         }
         
-        # Return a response with the Content-Location header for the stream endpoint
+        # Return response with run_id and session_id
         response = Response(
             status_code=200,
             content=json.dumps({"run_id": run_id, "session_id": session_id, "status": "initiated"}),
@@ -576,23 +533,23 @@ async def run_workflow(request: Request):
         )
         stream_url = f"/api/run-workflow/stream/{run_id}"
         response.headers["Content-Location"] = stream_url
-        logger.info(f"Returning stream URL: {stream_url}")
+        logger.info(f"Returning stream URL: {stream_url} with session_id: {session_id}")
         
         return response
+    except HTTPException as http_err:
+        logger.error(f"HTTP Exception in run_workflow_post: {http_err.detail}")
+        raise # Re-raise HTTPException
     except Exception as e:
         logger.error(f"Error in run_workflow_post: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/api/run-workflow/stream/{run_id}")
-async def run_workflow_stream(run_id: str):
+async def run_workflow_stream_get(run_id: str): # Renamed for clarity
     """
-    Stream the results of a previously initiated workflow run.
-    
-    This endpoint is used by EventSource to stream results back to the client.
-    """
+    Stream the results of a previously initiated workflow run using SSE.
+    """ # Updated docstring
     logger.info(f"Stream requested for run ID: {run_id}")
     
-    # Retrieve the query and config from the app state
     workflow_runs = getattr(app.state, "workflow_runs", {})
     if run_id not in workflow_runs:
         logger.error(f"Workflow run not found: {run_id}")
@@ -601,18 +558,18 @@ async def run_workflow_stream(run_id: str):
     run_data = workflow_runs[run_id]
     query = run_data["query"]
     config = run_data["config"]
-    session_id = run_data.get("session_id")  # Get session_id if available
+    session_id = run_data["session_id"] # Retrieve the session_id
     logger.info(f"Starting stream for query: '{query}', session_id: {session_id}")
     
-    # Stream the workflow results with appropriate headers for SSE
+    # Stream results
     return StreamingResponse(
         stream_workflow_results(query, config, session_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # For Nginx compatibility
-            "Access-Control-Allow-Origin": "*",  # CORS for SSE
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
         }
     )
 
@@ -622,14 +579,15 @@ async def home():
     return RedirectResponse(url="/index")
 
 @app.get("/index")
-async def index():
+async def index(request: Request): # Pass request for templates
     """Render the index page."""
-    return templates.TemplateResponse("index.html", {"request": {}})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/report")
-async def report(request: Request, report_id: str = None):
-    """Serve the report page."""
-    return templates.TemplateResponse("report.html", {"request": request})
+async def report_page(request: Request, session_id: Optional[str] = None): # Expect session_id
+    """Serve the report page, expecting session_id."""
+    logger.info(f"Serving report page, session_id from query: {session_id}")
+    return templates.TemplateResponse("report.html", {"request": request, "session_id": session_id})
 
 @app.get("/settings")
 async def settings(request: Request):
@@ -641,93 +599,45 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
-@app.post("/api/create-report")
-async def create_report_endpoint(request: Request):
-    """
-    Create a report from the frontend data and save it to MongoDB.
-    
-    This endpoint is called directly from the frontend when a report is generated.
-    """
-    try:
-        data = await request.json()
-        
-        # Extract data with defaults
-        content = data.get("content", "")
-        
-        # Use planner title if provided, otherwise use default title or query-based title
-        planner_title = data.get("planner_title")
-        query = data.get("metadata", {}).get("query", "")
-        
-        if planner_title:
-            title = planner_title
-        else:
-            title = data.get("title", f"Analysis for: {query}")
-        
-        metadata = data.get("metadata", {})
-        
-        # Generate a session ID if not provided
-        session_id = data.get("session_id", f"session_{uuid.uuid4()}")
-        
-        # Create report object
-        report = {
-            "session_id": session_id,
-            "timestamp": datetime.now(),
-            "title": title,
-            "content": content,
-            "metadata": metadata
-        }
-        
-        # Save to database
-        report_id = save_report(report)
-        logger.info(f"Created report with ID: {report_id} from frontend request, using title: {title}")
-        
-        # Return success with the report ID
-        return JSONResponse(
-            content={"success": True, "report_id": str(report_id)},
-            status_code=200
-        )
-    except Exception as e:
-        logger.error(f"Error creating report from frontend: {e}")
-        return JSONResponse(
-            content={"success": False, "error": str(e)},
-            status_code=500
-        )
+# Remove the /api/create-report endpoint entirely
+# @app.post("/api/create-report") ...
 
-# If static files aren't being served correctly, provide direct access to HTML files
-@app.get("/direct-index")
-async def direct_index():
-    """Direct HTML response for index page if static files aren't working."""
-    logger.info("Direct index page access attempted")
-    try:
-        index_path = static_dir / "index.html"
-        if index_path.exists():
-            with open(index_path, "r") as f:
-                content = f.read()
-            return HTMLResponse(content)
-        else:
-            logger.error(f"Index file not found at {index_path}")
-            return HTMLResponse("<html><body><h1>Index file not found</h1><p>Check server logs for details.</p></body></html>")
-    except Exception as e:
-        logger.error(f"Error serving direct index: {e}")
-        return HTMLResponse(f"<html><body><h1>Error</h1><p>{str(e)}</p></body></html>")
+# Remove direct-index fallback if static files are working reliably
+# @app.get("/direct-index") ...
 
-# New endpoints for MongoDB integration
+# --- MongoDB History Endpoints --- 
 
 @app.get("/api/history/sessions", response_class=JSONResponse)
 async def get_sessions():
-    """Get a list of all unique session IDs"""
+    """Get a list of all unique session IDs and their associated report titles.""" # Updated doc
     try:
-        reports = get_all_reports(limit=100)
-        # Extract unique session IDs from reports
-        sessions = list({report["session_id"]: {
-            "session_id": report["session_id"],
-            "last_updated": report["timestamp"],
-            "title": report.get("title", "Untitled Report")
-        } for report in reports}.values())
+        # Fetch all reports to get session info (limit might be needed for many reports)
+        reports = get_all_reports(limit=500) # Increased limit or implement pagination
         
+        sessions_dict = {}
+        for report in reports:
+            session_id = report.get("session_id")
+            if session_id:
+                # Store the latest info for each session
+                if session_id not in sessions_dict or report["timestamp"] > sessions_dict[session_id]["last_updated"]:
+                    sessions_dict[session_id] = {
+                        "session_id": session_id,
+                        "last_updated": report["timestamp"],
+                        "title": report.get("title", f"Analysis Session {session_id[:8]}")
+                    }
+        
+        sessions = list(sessions_dict.values())
         # Sort by timestamp descending (newest first)
         sessions.sort(key=lambda x: x["last_updated"], reverse=True)
         
+        # Apply limit after sorting
+        sessions = sessions[:100] # Limit the final list size
+        
+        # Convert datetime for JSON response
+        for session in sessions:
+             if isinstance(session.get("last_updated"), datetime):
+                session["last_updated"] = session["last_updated"].isoformat()
+                
         return {"sessions": sessions}
     except Exception as e:
         logging.error(f"Error fetching sessions: {str(e)}")
@@ -739,10 +649,9 @@ async def get_session_messages(session_id: str):
     """Get all messages for a specific session"""
     try:
         messages = get_messages_by_session(session_id)
-        # Convert MongoDB ObjectId to string for JSON serialization
         for message in messages:
             if "_id" in message:
-                message["_id"] = str(message["_id"])
+                message["_id"] = str(message["_id"]) # Keep _id for messages if needed
             if isinstance(message.get("timestamp"), datetime):
                 message["timestamp"] = message["timestamp"].isoformat()
                 
@@ -754,15 +663,19 @@ async def get_session_messages(session_id: str):
 
 @app.get("/api/history/reports/{session_id}", response_class=JSONResponse)
 async def get_session_reports(session_id: str):
-    """Get all reports for a specific session"""
+    """Get all reports for a specific session (should usually be one)."""
     try:
+        # Use get_reports_by_session which returns a list
         reports = get_reports_by_session(session_id)
-        # Convert MongoDB ObjectId to string for JSON serialization
+        
+        # Prepare reports for JSON response
         for report in reports:
-            if "_id" in report:
-                report["_id"] = str(report["_id"])
+            if "_id" in report: # Keep _id if underlying DB uses it
+                 report["_id"] = str(report["_id"])
             if isinstance(report.get("timestamp"), datetime):
                 report["timestamp"] = report["timestamp"].isoformat()
+            if isinstance(report.get("last_updated"), datetime):
+                report["last_updated"] = report["last_updated"].isoformat()
                 
         return {"reports": reports}
     except Exception as e:
@@ -770,138 +683,62 @@ async def get_session_reports(session_id: str):
         raise HTTPException(status_code=500, detail=f"Error fetching reports: {str(e)}")
 
 
-@app.get("/api/history/report/{report_id}", response_class=JSONResponse)
-async def get_single_report(report_id: str):
-    """Get a specific report by ID"""
+@app.get("/api/history/report/{session_id}", response_class=JSONResponse)
+async def get_single_report_by_session(session_id: str): # Renamed for clarity
+    """Get a specific report by session_id."""
     try:
-        report = get_report(report_id)
+        report = get_report(session_id) # Use the updated get_report
         if not report:
-            raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
+            raise HTTPException(status_code=404, detail=f"Report for session {session_id} not found")
             
-        # Convert MongoDB ObjectId to string for JSON serialization
-        if "_id" in report:
-            report["_id"] = str(report["_id"])
+        # Convert fields for JSON response
+        if "_id" in report: # If MongoDB adds _id automatically
+             report["_id"] = str(report["_id"])
         if isinstance(report.get("timestamp"), datetime):
             report["timestamp"] = report["timestamp"].isoformat()
+        if isinstance(report.get("last_updated"), datetime):
+            report["last_updated"] = report["last_updated"].isoformat()
             
         return report
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error fetching report {report_id}: {str(e)}")
+        logging.error(f"Error fetching report for session {session_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching report: {str(e)}")
 
 
-# Add a route for history page
+# Add routes for history pages
 @app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
     """Render the history page."""
     return templates.TemplateResponse("history.html", {"request": request})
 
 
-# Add a route for viewing a specific session
 @app.get("/history/{session_id}", response_class=HTMLResponse)
 async def session_history_page(request: Request, session_id: str):
     """Render the session history page for a specific session."""
     return templates.TemplateResponse("session_history.html", {"request": request, "session_id": session_id})
 
-
-
-async def stream_graph_response(input_text: str, session_id: str, streaming_handler=None):
-    """
-    This function should be updated to save each message to MongoDB as it's received
-    """
-    # ... existing code ...
-    
-    try:
-        message_data: Message = {
-            "session_id": session_id,
-            "timestamp": datetime.now(),
-            "role": "system",  # Update according to message role
-            "content": "message content",  # The actual content
-            "type": "text",  # Message type (text, image, etc.)
-            "metadata": {}  # Additional metadata
-        }
-        save_message(message_data)
-        
-    except Exception as e:
-        logging.error(f"Error in stream_graph_response: {str(e)}")
-        raise
-    
-# ... rest of existing code ...
-
-# Update the report generation endpoint to save to MongoDB
-async def create_report(report_data: dict):
-    """
-    Create a report from the final data.
-    
-    Args:
-        report_data (dict): The final report data
-        
-    Returns:
-        dict: The created report with ID
-    """
-    try:
-        # Extract data
-        session_id = report_data.get("session_id", f"session_{uuid.uuid4()}")
-        content = report_data.get("content", "")
-        title = report_data.get("title", "Investment Report")
-        
-        # Extract query from metadata or use a default
-        query = "Investment Analysis"
-        metadata = report_data.get("metadata", {})
-        if isinstance(metadata, dict) and "query" in metadata:
-            query = metadata["query"]
-        elif "query" in report_data:
-            query = report_data["query"]
-            # Add query to metadata if metadata exists but query is not in it
-            if isinstance(metadata, dict) and "query" not in metadata:
-                metadata["query"] = query
-        
-        # Create report object
-        report = {
-            "session_id": session_id,
-            "timestamp": datetime.now(),
-            "title": f"Report: {query[:50]}{'...' if len(query) > 50 else ''}",
-            "content": content,
-            "metadata": metadata
-        }
-        
-        # Save to database
-        report_id = save_report(report)
-        logger.info(f"Created report with ID: {report_id}")
-        
-        # Return created report
-        return {"id": report_id, "report": report}
-    except Exception as e:
-        logger.error(f"Error creating report: {e}")
-        raise
+# Remove the old create_report function as saving is now in the stream
+# async def create_report(report_data: dict): ...
 
 @app.get("/api/recent-reports", response_class=JSONResponse)
 async def get_recent_reports_endpoint(limit: int = 5):
-    """
-    Get the most recent reports from MongoDB.
-    
-    Args:
-        limit (int, optional): Maximum number of reports to return. Defaults to 5.
-        
-    Returns:
-        JSONResponse: List of recent reports with their IDs
-    """
+    """Get the most recent reports from MongoDB."""
     logger.info(f"Fetching {limit} recent reports")
     try:
-        # Corrected: Call the function from database.models
-        reports = get_recent_reports(limit) # Changed from recent_reports
+        reports = get_recent_reports(limit)
         
-        # Convert MongoDB ObjectId to string and datetime to ISO format for JSON serialization
-        for report in reports: # Changed from recent_reports
+        for report in reports:
             if '_id' in report:
                 report['_id'] = str(report['_id'])
             if 'timestamp' in report and isinstance(report['timestamp'], datetime):
                 report['timestamp'] = report['timestamp'].isoformat()
+            if 'last_updated' in report and isinstance(report['last_updated'], datetime):
+                report['last_updated'] = report['last_updated'].isoformat()
         
         return JSONResponse(
-            content={"reports": reports}, # Changed from recent_reports
+            content={"reports": reports},
             status_code=200
         )
     except Exception as e:

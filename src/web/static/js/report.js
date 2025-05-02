@@ -18,14 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Get report ID from URL query parameters
+    // Get session ID from URL query parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const reportId = urlParams.get('report_id');
+    const sessionId = urlParams.get('session_id');
     
     // DOM Elements
     const reportTitle = document.getElementById('report-title');
     const reportQuery = document.getElementById('report-query');
     const reportTimestamp = document.getElementById('report-timestamp');
+    const sessionIdDisplay = document.getElementById('session-id');
     const reportContent = document.getElementById('report-content');
     const loadingIndicator = document.getElementById('loading-indicator');
     const errorMessage = document.getElementById('error-message');
@@ -33,11 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const printButton = document.getElementById('print-button');
     const downloadButton = document.getElementById('download-button');
     
-    // Load report data if a report ID is provided
-    if (reportId) {
-        loadReport(reportId);
+    // Load report data if a session ID is provided
+    if (sessionId) {
+        loadReport(sessionId);
     } else {
-        showError('No report ID provided. Please return to the main page and try again.');
+        showError('No session ID provided. Please return to the main page and select a report.');
     }
     
     // Event listeners
@@ -57,9 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (downloadButton) {
         downloadButton.addEventListener('click', () => {
             // Use html2pdf.js to generate a PDF containing only the report content
-            const reportContent = document.getElementById('report-content');
+            const reportContentElement = document.getElementById('report-content');
             
-            if (!reportContent || reportContent.innerHTML.trim() === '') {
+            if (!reportContentElement || reportContentElement.innerHTML.trim() === '') {
                 console.error('No report content found');
                 alert('No report content available to download');
                 return;
@@ -78,8 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
             downloadButton.disabled = true;
             
             // Get the report title for the filename
-            const reportTitle = document.getElementById('report-title').textContent || 'Investment Report';
-            const fileName = reportTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
+            const pdfReportTitle = document.getElementById('report-title').textContent || 'Investment Report';
+            const fileName = pdfReportTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
             
             // Configure PDF options with proper fonts and styles 
             const options = {
@@ -101,9 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             // Generate PDF directly from the actual content element
-            // This avoids issues with hidden containers
             html2pdf()
-                .from(reportContent)
+                .from(reportContentElement)
                 .set(options)
                 .save()
                 .then(() => {
@@ -131,7 +131,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/api/history/report/${id}`);
             
             if (!response.ok) {
-                throw new Error(`Failed to load report: ${response.statusText}`);
+                if (response.status === 404) {
+                    throw new Error('Report not found for this session.');
+                } else {
+                    throw new Error(`Failed to load report: ${response.statusText}`);
+                }
             }
             
             const report = await response.json();
@@ -221,14 +225,20 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fix common issues with markdown content from different models
         let processed = content;
         
-        // NEW: Remove markdown code block wrapping if it exists
-        // Check if the entire content is a code block with markdown language
-        const markdownCodeBlockPattern = /^```markdown\s+([\s\S]+?)\s+```$/;
+        // Remove markdown code block wrapping if it exists - handle multiple variants
+        const markdownCodeBlockPattern = /^```(markdown|md)?\s+([\s\S]+?)\s+```$/;
         const codeBlockMatch = processed.match(markdownCodeBlockPattern);
         
         if (codeBlockMatch) {
-            console.log('Found entire content wrapped in ```markdown``` code block, unwrapping it');
-            processed = codeBlockMatch[1];
+            console.log('Found entire content wrapped in markdown code block, unwrapping it');
+            processed = codeBlockMatch[2] || codeBlockMatch[1];
+        }
+        
+        // Also check for any nested markdown blocks
+        const nestedMarkdownPattern = /```(markdown|md)\s+([\s\S]+?)\s+```/g;
+        if (nestedMarkdownPattern.test(processed)) {
+            console.log('Found nested markdown blocks, unwrapping them');
+            processed = processed.replace(nestedMarkdownPattern, '$2');
         }
         
         // 1. Handle escaped newlines that should be actual newlines (common in JSON)
@@ -243,16 +253,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4. Fix improperly escaped code blocks
         processed = processed.replace(/\\`\\`\\`/g, '```');
         
-        // 5. Fix markdown headings that might not have proper spacing
-        processed = processed.replace(/^(#+)([^\s])/gm, '$1 $2');
+        // 5. Fix markdown headings: Ensure a space after the # sequence
+        // Improved regex to handle all heading levels correctly
+        processed = processed.replace(/^(#{1,6})(?!\s|\#)(.+)$/gm, '$1 $2');
         
-        // NEW: Fix double heading syntax (## becomes # #)
-        // This bug happens because of markdown within markdown processing
-        processed = processed.replace(/^# #/gm, '##');
-        processed = processed.replace(/^# #{2}/gm, '###');
-        processed = processed.replace(/^# #{3}/gm, '####');
-        processed = processed.replace(/^# #{4}/gm, '#####');
-        processed = processed.replace(/^# #{5}/gm, '######');
+        // NEW: Special handling for financial notation with tildes to prevent markdown strikethrough
+        // This replaces standalone tildes used in financial context (~$X.XX) with a special character
+        // and then we'll handle it with CSS
+        processed = processed.replace(/(\(?)~\$(\d+(\.\d+)?)/g, '$1<span class="approx-price">~</span>$$2');
+        processed = processed.replace(/(\s)~\$(\d+(\.\d+)?)/g, '$1<span class="approx-price">~</span>$$2');
+        
+        // Also check for other financial notation patterns
+        processed = processed.replace(/([^~])~(\d+(\.\d+)?%?)/g, '$1<span class="approx-price">~</span>$2');
         
         // NEW: Check and fix table formatting issues that cause horizontal scrolling
         // This detects markdown tables and adds special handling
@@ -285,6 +297,12 @@ document.addEventListener('DOMContentLoaded', () => {
             reportTitle.textContent = report.title || 'Investment Report';
         }
         
+        if (sessionIdDisplay && report.session_id) {
+            sessionIdDisplay.textContent = report.session_id;
+        } else if (sessionIdDisplay) {
+            sessionIdDisplay.textContent = 'N/A';
+        }
+        
         if (reportQuery && report.metadata && report.metadata.query) {
             reportQuery.textContent = report.metadata.query;
         } else if (reportQuery) {
@@ -306,28 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Diagnose potential markdown issues
             diagnoseMarkdownIssues(report.content);
             
-            try {
-                // Preprocess the markdown to fix common issues
-                const processedContent = preprocessMarkdown(report.content);
-                
-                // Parse markdown and sanitize HTML
-                const parsedContent = DOMPurify.sanitize(marked.parse(processedContent));
-                console.log('Parsed HTML content:', parsedContent);
-                
-                // Add the content to the DOM
-                reportContent.innerHTML = parsedContent;
-                
-                // Add markdown content class for styling
-                reportContent.classList.add('markdown-content');
-                
-                // Post-process rendered HTML to fix remaining issues
-                fixRenderedContent(reportContent);
-            } catch (error) {
-                console.error('Error parsing markdown:', error);
-                // Fallback: Display sanitized raw content
-                reportContent.textContent = report.content;
-                reportContent.classList.add('raw-content', 'whitespace-pre-wrap', 'p-4');
-            }
+            // Use the new renderReportContent function for better rendering
+            renderReportContent(report);
         }
     }
     
@@ -393,5 +391,67 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         if (reportContent) reportContent.style.display = 'none';
+    }
+
+    function renderReportContent(report) {
+        if (!report || !report.content) {
+            console.log('Empty report or missing content');
+            return;
+        }
+        
+        console.log('Rendering report for session:', report.session_id);
+
+        // Preprocess markdown content to fix common issues
+        const preprocessedContent = preprocessMarkdown(report.content);
+        
+        try {
+            // Use DOMPurify to sanitize, marked to render markdown
+            const sanitizedHTML = marked.parse(preprocessedContent);
+            const purified = DOMPurify.sanitize(sanitizedHTML);
+            
+            // Apply post-processing to fix any remaining issues
+            const postProcessed = postprocessHTML(purified);
+            
+            document.getElementById('report-content').innerHTML = postProcessed;
+            
+            // Apply syntax highlighting to code blocks
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+            
+            // Apply responsive styling AFTER content is in the DOM
+            fixRenderedContent(document.getElementById('report-content')); 
+            
+            console.log('Report content rendered successfully');
+            
+        } catch (error) {
+            console.error('Error rendering markdown:', error);
+            document.getElementById('report-content').textContent = report.content;
+        }
+    }
+    
+    function postprocessHTML(html) {
+        if (!html) return html;
+        
+        let processed = html;
+        
+        // Fix specific rendering issues with financial notation
+        // This ensures the tilde's special markup doesn't break
+        const tildeSpanRegex = /<span class="approx-price">~<\/span>\$([\d\.]+)/g;
+        if (tildeSpanRegex.test(processed)) {
+            console.log('Found financial notation with special span, ensuring proper formatting');
+        }
+        
+        // Fix any additional heading issues that weren't caught in preprocessing
+        processed = processed.replace(/<h([1-6])>#+\s*(.*?)<\/h\1>/g, '<h$1>$2</h$1>');
+        
+        // Ensure tables have proper responsive behavior (handled by fixRenderedContent now)
+        // processed = processed.replace(/<table>/g, '<div class="table-responsive"><table class="table">');
+        // processed = processed.replace(/<\/table>/g, '</table></div>');
+        
+        // Ensure code blocks have proper syntax highlighting class if missing
+        processed = processed.replace(/<pre><code>(?!<span)/g, '<pre><code class="hljs">');
+        
+        return processed;
     }
 }); 

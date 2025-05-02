@@ -5,6 +5,7 @@ let eventSource = null;
 let currentAgentProcessing = null;
 let statusMessages = [];
 let allLogElements = [];
+let currentSessionId = null; // NEW: Track the session ID for the current run
 
 // Default config values (matching .env.example)
 const DEFAULT_LLM_CONFIGS = {
@@ -49,29 +50,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up example chips
     setupExampleQueries();
 
-    // Check if we're returning from report page
-    const isReturningFromReport = checkReturnFromReport();
+    // Check if we're returning from report page and restore state if needed
+    // This should run on DOMContentLoaded to restore main content before first paint
+    checkReturnFromReport();
 
-    // Only load recent reports if not returning from report page
-    // This prevents overwriting the cached output
-    if (!isReturningFromReport) {
-        console.log("Loading recent reports from MongoDB...");
-        loadRecentReports();
-    } else {
-        // Remove loading indicator if present when returning from report
-        const recentReportsList = document.getElementById('recent-reports-list');
-        if (recentReportsList && recentReportsList.innerHTML.includes('Loading recent reports')) {
-            // Display an empty state instead of constant loading
-            recentReportsList.innerHTML = `
-                <li class="mb-1">
-                    <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
-                        <span class="mr-3">📝</span>
-                        Recent reports
-                    </div>
-                </li>
-            `;
-        }
-    }
+    // NOTE: loadRecentReports() is now called in the 'pageshow' event handler
+    // to ensure it runs on initial load AND bfcache restores.
+});
+
+// Use pageshow to ensure recent reports load on initial load and bfcache restore
+window.addEventListener('pageshow', function(event) {
+    console.log(`Page shown: ${event.persisted ? 'from bfcache' : 'initial load'}`);
+    // Always load recent reports when the page is shown
+    console.log("Loading recent reports from MongoDB (on pageshow)...");
+    loadRecentReports();
 });
 
 const submitBtn = document.getElementById('submit-btn');
@@ -83,6 +75,7 @@ const statusIndicator = document.getElementById('status-indicator');
 window.currentPlannerOutput = null;
 window.currentPlanStepsContainer = null;
 window.plannerTitle = null; // Track the planner title
+let reportButtonElement = null; // Store reference to the report button if created
 
 // --- Start: Configuration Functions ---
 
@@ -137,6 +130,7 @@ function checkReturnFromReport() {
         const scrollPosition = parseInt(localStorage.getItem('scrollPosition') || '0');
         const statusText = localStorage.getItem('statusText');
         const statusClass = localStorage.getItem('statusClass');
+        currentSessionId = localStorage.getItem('reportSessionId'); // Restore session ID
 
         if (reportQuery && cachedOutputHtml) {
             // Set the query input
@@ -157,7 +151,7 @@ function checkReturnFromReport() {
                 outputDiv.scrollTop = scrollPosition;
             }, 100);
 
-            // Re-attach event listeners to interactive elements if needed
+            // Re-attach event listeners to interactive elements
             reattachEventListeners();
 
             // Show a toast notification that we've returned
@@ -185,11 +179,11 @@ function reattachEventListeners() {
         }
     });
 
-    // Reattach view report button functionality
-    const reportButtons = outputDiv.querySelectorAll('button[onclick*="window.location.href=\'report.html\'"]');
-    reportButtons.forEach(button => {
-        button.onclick = savePageStateAndNavigate;
-    });
+    // Reattach view report button functionality using session ID
+    reportButtonElement = outputDiv.querySelector('button.view-report-button'); // Find the button
+    if (reportButtonElement) {
+        reportButtonElement.onclick = savePageStateAndNavigateToReport; // Reattach the specific handler
+    }
 }
 
 // Toast notification function
@@ -201,7 +195,7 @@ function showToast(message) {
 
     setTimeout(() => {
         toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
-        setTimeout(() => toast.remove(), 500);
+        setTimeout(() => toast.remove(), 500); 
     }, 3000);
 }
 
@@ -312,11 +306,11 @@ function appendLogMessage(log) {
                 // Save reference to current processing agent for potential hiding later
                 if (log.agent) {
                     // Check if there's already a processing message for this agent
-                    const existingProcessing = allLogElements.find(el =>
-                        el.classList.contains('log-agent-' + log.agent) &&
+                    const existingProcessing = allLogElements.find(el => 
+                        el.classList.contains('log-agent-' + log.agent) && 
                         el.querySelector('.typing-dot')
                     );
-
+                    
                     if (existingProcessing) {
                         existingProcessing.classList.add('opacity-0', 'h-0', 'overflow-hidden', 'my-0', 'py-0');
                         setTimeout(() => {
@@ -369,8 +363,8 @@ function appendLogMessage(log) {
             contentContainer.className = 'mt-3';
             agentContainer.appendChild(contentContainer);
 
-            // Special handling for reporter agent - always display the report button when it finishes
-            if (log.agent === 'reporter' && log.content.includes('finished the task')) {
+            // Special handling for reporter agent - show the report button IF report is saved
+            if (log.agent === 'reporter' && log.content.includes('report has been saved')) {
                 // Create a special container with the report button
                 const reporterContainer = document.createElement('div');
                 reporterContainer.className = 'mt-2 pl-10 flex items-center justify-between';
@@ -378,24 +372,56 @@ function appendLogMessage(log) {
                 // Add the standard text on the left
                 const textDiv = document.createElement('div');
                 textDiv.className = 'text-gray-700 dark:text-gray-300';
-                textDiv.textContent = log.content;
+                textDiv.textContent = log.content; 
                 reporterContainer.appendChild(textDiv);
 
                 // Add the "View Report" button on the right
                 const buttonDiv = document.createElement('div');
                 buttonDiv.className = 'ml-4';
+                // Use the savePageStateAndNavigateToReport function
                 buttonDiv.innerHTML = `
-                    <button onclick="savePageStateAndNavigateToReport()" class="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                    <button onclick="savePageStateAndNavigateToReport()" class="view-report-button px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
                         View Complete Investment Report
                     </button>
                 `;
+                reportButtonElement = buttonDiv.querySelector('button');
                 reporterContainer.appendChild(buttonDiv);
 
                 // Replace the standard content container with our custom one
                 contentContainer.appendChild(reporterContainer);
 
-                // Update status to success when reporter finishes - make sure the status indicator is updated
+                // Update status to success when reporter finishes and report is saved
                 updateStatus('Report Ready', 'success');
+                
+                // Hide any existing reporter processing messages
+                hideAgentProcessing('reporter');
+                
+                // Remove all other reporter status messages that might still be visible
+                const allReporterStatusMessages = allLogElements.filter(el => 
+                    el.classList.contains('log-agent-reporter') && 
+                    el.getAttribute('data-log-type') === 'status'
+                );
+                
+                allReporterStatusMessages.forEach(el => {
+                    el.classList.add('opacity-0', 'h-0', 'overflow-hidden', 'my-0', 'py-0', 'transition-all', 'duration-300');
+                    setTimeout(() => {
+                        try {
+                            el.remove();
+                            // Remove from allLogElements array
+                            const index = allLogElements.indexOf(el);
+                            if (index > -1) {
+                                allLogElements.splice(index, 1);
+                            }
+                        } catch (e) {
+                            console.error("Error removing reporter status message:", e);
+                        }
+                    }, 300);
+                });
+            } 
+            else if (log.agent === 'reporter' && log.content.includes('processing')) {
+                // Reporter is still processing (before save)
+                displayContent(contentContainer, log.content); // Show the processing message
+                // Do not add the button yet
             }
             else if (log.agent === 'planner') {
                 // Store the planner output for potential plan steps
@@ -574,51 +600,6 @@ function appendLogMessage(log) {
             }
             break;
 
-        case 'final_report':
-            // Hide all status messages when final report arrives
-            hideAllStatusMessages();
-
-            // Save the final report content but don't display directly
-            window.finalReportContent = log.content;
-            
-            // Set that we have a report in memory to prevent duplicates
-            window.finalReportGenerated = true;
-
-            // Always update status to success when final report is received
-            updateStatus('Report Ready', 'success');
-
-            // Save to MongoDB via API only if we don't already have a report ID
-            if (!window.currentReportId) {
-                fetch('/api/create-report', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        content: log.content,
-                        title: `${queryInput.value.trim()}`,
-                        planner_title: window.plannerTitle, // Pass planner title if available
-                        metadata: {
-                            query: queryInput.value.trim()
-                        }
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Final report saved to MongoDB:', data);
-                    // Store report ID for navigation
-                    window.currentReportId = data.report_id;
-                    // Refresh recent reports list
-                    loadRecentReports();
-                })
-                .catch(error => console.error('Error saving final report:', error));
-            } else {
-                console.log('Report already exists with ID:', window.currentReportId);
-            }
-
-            // Skip default append - we won't show the report directly anymore
-            return;
-
         case 'error':
             messageElement.className = 'p-4 mb-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md border-l-3 border-l-red-500';
             messageElement.innerHTML = `
@@ -670,8 +651,8 @@ function createPlanStepElement(log) {
 function hideAgentProcessing(agentName) {
     if (!agentName) return;
 
-    const processingMessages = allLogElements.filter(el =>
-        el.classList.contains('log-agent-' + agentName) &&
+    const processingMessages = allLogElements.filter(el => 
+        el.classList.contains('log-agent-' + agentName) && 
         el.querySelector('.typing-dot')
     );
 
@@ -703,14 +684,14 @@ function handleAgentStateTransition(currentAgent, nextAgent) {
     const statusMessages = document.querySelectorAll('[class*="status-message-text"], [class*="agent-status"]');
     statusMessages.forEach(el => {
         const text = el.textContent.toLowerCase();
-        if ((text.includes(currentAgent.toLowerCase()) &&
-             (text.includes('processing') || text.includes('analyzing') ||
+        if ((text.includes(currentAgent.toLowerCase()) && 
+             (text.includes('processing') || text.includes('analyzing') || 
               text.includes('gathering') || text.includes('retrieving')))) {
-
-            const container = el.closest('.status-message-container') ||
-                              el.closest('.agent-processing') ||
+                  
+            const container = el.closest('.status-message-container') || 
+                              el.closest('.agent-processing') || 
                               el.closest('.log-agent-' + currentAgent);
-
+                              
             if (container) {
                 container.style.display = 'none';
             }
@@ -752,96 +733,6 @@ function hideAllStatusMessages() {
     statusMessages = [];
 }
 
-// Modified function to handle streaming messages - all inside the container
-async function formatChunkForRendering(chunk) {
-    const messagesData = chunk.data.messages || [];
-    const nextAgent = chunk.data.next || null;
-    const lastAgent = chunk.data.last_agent || null;
-    const finalReport = chunk.data.final_report || null;
-    
-    // Store planner title if available
-    if (chunk.data.planner_title) {
-        window.plannerTitle = chunk.data.planner_title;
-        console.log("Stored planner title:", window.plannerTitle);
-    }
-
-    // Use the latest message if available
-    const latestMessage = messagesData.length > 0 ? messagesData[messagesData.length - 1] : null;
-
-    // Handle status messages
-    if (nextAgent) {
-        let statusMessage = `Waiting for ${nextAgent}...`; // Default message
-
-        if (nextAgent === "planner") {
-            statusMessage = 'Planner is developing an investment analysis strategy...';
-        } else if (nextAgent === "supervisor") {
-            statusMessage = `Supervisor is evaluating response from ${lastAgent || "previous agent"}...`;
-        } else if (nextAgent === "researcher") {
-            statusMessage = 'Researcher is gathering financial information...';
-        } else if (nextAgent === "coder") {
-            statusMessage = 'Coder is analyzing data patterns...';
-        } else if (nextAgent === "market") {
-            statusMessage = 'Market agent is retrieving market data and trends...';
-        } else if (nextAgent === "browser") {
-            statusMessage = 'Browser agent is searching for current financial news...';
-        } else if (nextAgent === "analyst") {
-            statusMessage = 'Analyst is synthesizing information and forming insights...';
-        } else if (nextAgent === "reporter" && lastAgent !== "reporter") {
-            statusMessage = 'Reporter is preparing your investment analysis report...';
-        } else if (nextAgent === "reporter" && lastAgent === "reporter") {
-            statusMessage = 'Reporter is finalizing the investment insights...';
-        }
-
-        // Create supervisor message inside the container
-        appendSupervisorMessage(statusMessage);
-    }
-
-    // Handle agent messages
-    if (latestMessage) {
-        const agent_name = latestMessage.name;
-        const content_str = latestMessage.content;
-
-        if (agent_name && content_str) {
-            try {
-                const content = typeof content_str === 'string' ? JSON.parse(content_str) : content_str;
-
-                // Handle different agent types
-                if (agent_name === "supervisor") {
-                    if (typeof content === 'object' && content && content.task) {
-                        appendSupervisorMessage(`Supervisor assigned the following task to ${nextAgent || 'an agent'}: ${content.task}`);
-                    }
-                } else {
-                    // Handle other agent outputs through the regular message renderer
-                    appendLogMessage({
-                        type: 'agent_output',
-                        agent: agent_name,
-                        content: typeof content_str === 'string' ? content_str : JSON.stringify(content_str)
-                    });
-                }
-            } catch (e) {
-                // Handle plain text content
-                if (agent_name === "supervisor") {
-                    appendSupervisorMessage(`Supervisor: ${content_str}`);
-                } else {
-                    appendLogMessage({
-                        type: 'agent_output',
-                        agent: agent_name,
-                        content: content_str
-                    });
-                }
-            }
-        }
-    }
-
-    // Handle final report if present
-    if (finalReport) {
-        appendLogMessage({ type: 'final_report', content: finalReport });
-    }
-
-    // Ensure we're scrolled to the bottom after adding content
-    outputDiv.scrollTop = outputDiv.scrollHeight;
-}
-
 submitBtn.addEventListener('click', async () => {
     const query = queryInput.value.trim();
     if (!query) {
@@ -876,6 +767,11 @@ submitBtn.addEventListener('click', async () => {
     statusMessages = [];
     allLogElements = [];
     currentAgentProcessing = null;
+    currentSessionId = null; // Reset session ID for the new run
+    reportButtonElement = null; // Reset report button reference
+    
+    // REMOVED report-related variable resets (currentReportId, localStorage, etc.)
+    window.plannerTitle = null;
 
     // Create an initial state message directly inside the results container
     const initialMessage = document.createElement('div');
@@ -948,10 +844,17 @@ submitBtn.addEventListener('click', async () => {
             throw new Error(`Error: ${response.status} - ${errorText}`);
         }
 
-        // Get the response headers to fetch the API URL for SSE
+        // Get the response headers to fetch the API URL for SSE and session ID
         const sseUrl = response.headers.get('Content-Location');
+        const responseData = await response.json(); // Get session_id from response body
+        currentSessionId = responseData.session_id;
+        console.log("Received session ID from backend:", currentSessionId);
+        
         if (!sseUrl) {
             throw new Error('No streaming URL provided in the response');
+        }
+        if (!currentSessionId) {
+            throw new Error('No session ID provided in the response');
         }
 
         // Set up the EventSource for streaming
@@ -964,26 +867,144 @@ submitBtn.addEventListener('click', async () => {
             updateStatus('Analyzing your query...', 'active');
         };
 
-        eventSource.onmessage = (event) => {
+        eventSource.onmessage = async (event) => {
             try {
                 const data = JSON.parse(event.data);
 
                 // Log the raw data for debugging
                 console.log("Received SSE data:", event.data);
 
-                // Special handling for connection established messages
-                if (data.type === "connection_established" || data.type === "stream_complete") {
-                    // Just log these control messages, no need to display them
-                    console.log(`Stream status: ${data.type}`, data.message);
+                // Verify session ID matches (optional but good practice)
+                if (data.session_id && data.session_id !== currentSessionId) {
+                    console.warn(`Received message for different session (${data.session_id}), expected (${currentSessionId}). Ignoring.`);
                     return;
                 }
 
+                // Handle specific message types first
+                if (data.type === "connection_established") {
+                    console.log(`Stream status: ${data.type}`, data.message);
+                    currentSessionId = data.session_id; // Reconfirm session ID
+                    return;
+                }
+
+                if (data.type === "report_status") {
+                    console.log(`Report status update: ${data.status}`);
+                    if (data.status === 'saved') {
+                        updateStatus('Report Ready', 'success');
+                        // Hide any existing reporter processing messages
+                        hideAgentProcessing('reporter');
+                        
+                        // Now find the reporter message and potentially add/enable the button
+                        const reporterMessages = outputDiv.querySelectorAll('[data-log-agent="reporter"][data-log-type="agent_output"]');
+                        const lastReporterMessage = reporterMessages[reporterMessages.length - 1];
+                        if (lastReporterMessage) {
+                            const contentContainer = lastReporterMessage.querySelector('.mt-3');
+                            if (contentContainer && !contentContainer.querySelector('.view-report-button')) {
+                                // Create the button container if not already present
+                                const reporterContainer = document.createElement('div');
+                                reporterContainer.className = 'mt-2 pl-10 flex items-center justify-between';
+                                const textDiv = document.createElement('div');
+                                textDiv.className = 'text-gray-700 dark:text-gray-300';
+                                textDiv.textContent = 'Reporter agent has finished and the report has been saved.'; // Update text
+                                reporterContainer.appendChild(textDiv);
+                                const buttonDiv = document.createElement('div');
+                                buttonDiv.className = 'ml-4';
+                                buttonDiv.innerHTML = `
+                                    <button onclick="savePageStateAndNavigateToReport()" class="view-report-button px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                                        View Complete Investment Report
+                                    </button>
+                                `;
+                                reportButtonElement = buttonDiv.querySelector('button');
+                                reporterContainer.appendChild(buttonDiv);
+                                // Clear previous content and add the new container
+                                contentContainer.innerHTML = ''; 
+                                contentContainer.appendChild(reporterContainer);
+                            }
+                        }
+                    } else if (data.status === 'error') {
+                        appendLogMessage({ type: 'error', content: `Failed to save report: ${data.error_message || 'Unknown error'}` });
+                        updateStatus('Error saving report', 'error');
+                    }
+                    return;
+                }
+                
+                if (data.type === "stream_complete") {
+                    console.log(`Stream complete: ${data.type}`, data.message);
+                    
+                    // Check final report status from backend
+                    if (data.report_status === 'saved') {
+                        // Ensure UI reflects success if not already
+                        if (!statusIndicator.classList.contains('bg-green-50')) {
+                             updateStatus('Report Ready', 'success');
+                        }
+                        // Hide any existing reporter processing messages
+                        hideAgentProcessing('reporter');
+                         
+                        // If button wasn't created by report_status, try adding it now
+                        if (!reportButtonElement) {
+                            // Find the last reporter message and add the button
+                            const reporterMessages = outputDiv.querySelectorAll('[data-log-agent="reporter"][data-log-type="agent_output"]');
+                            const lastReporterMessage = reporterMessages[reporterMessages.length - 1];
+                            if (lastReporterMessage) {
+                                const contentContainer = lastReporterMessage.querySelector('.mt-3');
+                                if (contentContainer && !contentContainer.querySelector('.view-report-button')) {
+                                     // Add button logic here (similar to report_status handler)
+                                     const reporterContainer = document.createElement('div');
+                                     reporterContainer.className = 'mt-2 pl-10 flex items-center justify-between';
+                                     const textDiv = document.createElement('div');
+                                     textDiv.className = 'text-gray-700 dark:text-gray-300';
+                                     textDiv.textContent = 'Reporter agent has finished and the report has been saved.'; // Update text
+                                     reporterContainer.appendChild(textDiv);
+                                     const buttonDiv = document.createElement('div');
+                                     buttonDiv.className = 'ml-4';
+                                     buttonDiv.innerHTML = `
+                                         <button onclick="savePageStateAndNavigateToReport()" class="view-report-button px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white text-sm font-medium rounded shadow-sm hover:shadow transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                                             View Complete Investment Report
+                                         </button>
+                                     `;
+                                     reportButtonElement = buttonDiv.querySelector('button');
+                                     reporterContainer.appendChild(buttonDiv);
+                                     contentContainer.innerHTML = ''; 
+                                     contentContainer.appendChild(reporterContainer);
+                                }
+                            }
+                        }
+                    } else if (data.report_status === 'error') {
+                        updateStatus('Error saving report', 'error');
+                    } else if (data.report_status === 'not_generated') {
+                        updateStatus('Analysis complete (no report generated)', 'active'); // Use neutral status
+                    }
+                    
+                    // Close the event source
+                    eventSource.close();
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
+                    // Refresh recent reports list after completion
+                    loadRecentReports();
+                    return;
+                }
+
+                // Process regular log messages
                 if (data.logs && Array.isArray(data.logs)) {
-                    // Process each log directly inside the container
+                    // Check for report completion before processing logs
+                    const hasReportFinished = data.logs.some(log => 
+                        log.type === 'agent_output' && 
+                        log.agent === 'reporter' && 
+                        log.content.includes('report has been saved')
+                    );
+                    
+                    // Filter out any redundant "preparing" messages if the report is finished
+                    if (hasReportFinished) {
+                        data.logs = data.logs.filter(log => 
+                            !(log.type === 'status' && 
+                              log.agent === 'reporter' && 
+                              log.content.includes('preparing'))
+                        );
+                    }
+                    
                     data.logs.forEach(log => {
                         // Handle agent state transitions
                         if (log.type === 'status' && log.content.includes('Supervisor is evaluating response from')) {
-                            // Extract the agent name from "Supervisor is evaluating response from X..."
                             const match = log.content.match(/Supervisor is evaluating response from (\w+)\.\.\./);
                             if (match && match[1]) {
                                 const agentName = match[1].toLowerCase();
@@ -991,84 +1012,57 @@ submitBtn.addEventListener('click', async () => {
                             }
                         }
 
-                        // When supervisor assigns a task to a new agent, mark the previous agent as completed
+                        // When supervisor assigns a task to a new agent
                         if (log.type === 'status' && log.content.includes('Supervisor assigned the following task to')) {
-                            // If we know the last agent, mark it as completed
                             const lastAgent = data.last_agent || null;
                             const nextAgent = data.next || null;
-
                             if (lastAgent && nextAgent && lastAgent !== nextAgent) {
                                 handleAgentStateTransition(lastAgent, nextAgent);
                             }
                         }
 
-                        // Check if the reporter has finished the task and update status to success
-                        if (log.type === 'agent_output' && log.agent === 'reporter' && log.content.includes('finished the task')) {
-                            // Ensure status indicator is updated to "Report Ready" with success status
-                            updateStatus('Report Ready', 'success');
-                        }
-
+                        // Handle different log types
                         if (log.type === 'status' &&
                             (log.content.includes('Supervisor is evaluating') ||
                              log.content.includes('Supervisor assigned'))) {
-                            // Handle supervisor messages specially
                             appendSupervisorMessage(log.content);
                         } else {
-                            // Handle all other messages normally
                             appendLogMessage(log);
                         }
                     });
-
-                    // Check if the last log in this chunk is the final report
-                    const lastLog = data.logs[data.logs.length - 1];
-                    if (lastLog && lastLog.type === 'final_report') {
-                        console.log("Final report received. Closing connection.");
-                        eventSource.close();
-                        updateStatus('Report Ready', 'success');
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
-
-                        // Store the final report in localStorage but don't redirect
-                        localStorage.setItem('finalReport', lastLog.content);
-                        localStorage.setItem('reportQuery', queryInput.value.trim());
-                    }
-
-                    // Update status indicator in header only
+                    
+                    // Update header status indicator based on the last status log
                     const lastStatusLog = data.logs.slice().reverse().find(log => log.type === 'status');
                     if (lastStatusLog) {
-                        // Only update status if not already set to "Report Ready"
-                        if (!statusIndicator.classList.contains('bg-green-50')) {
+                        // Only update if not already success or error
+                        if (!statusIndicator.classList.contains('bg-green-50') && !statusIndicator.classList.contains('bg-red-50')) {
                             updateStatus(lastStatusLog.content, 'active');
                         }
                     }
 
-                    // Ensure scrolling to bottom after adding content
+                    // Ensure scrolling to bottom
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 } else if (data.error) {
                     console.error("Received error from stream:", data.error);
                     
-                    // Special handling for JSON decode errors
+                    // Handle specific errors (keep JSON decode error handling)
                     if (data.details && data.details.includes('invalid escaped character in string')) {
-                        console.warn("JSON decode error detected. This is likely due to an invalid character in the data stream.");
+                        console.warn("JSON decode error detected.");
                         appendLogMessage({ 
                             type: 'error', 
-                            content: `Data format error: The system encountered an issue with special characters in the response. The analysis will continue, but some information may be missing.` 
+                            content: `Data format error: The system encountered an issue with special characters.` 
                         });
-                        
-                        // Don't close the event source for this specific error - allow the stream to continue
                         if (data.type === 'stream_error') {
-                            // Only close if it's a critical stream error
                             eventSource.close();
                             updateStatus('Error', 'error');
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
                         } else if (data.type === 'chunk_error') {
-                            // For chunk errors, just log and continue
                             console.warn("Continuing stream despite chunk error");
                             updateStatus('Processing with warnings', 'active');
                         }
                     } else {
-                        // Handle other errors normally
+                        // Handle other errors
                         appendLogMessage({ type: 'error', content: `Analysis Error: ${data.details || data.error}` });
                         eventSource.close();
                         updateStatus('Error', 'error');
@@ -1076,7 +1070,7 @@ submitBtn.addEventListener('click', async () => {
                         submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>';
                     }
                 } else {
-                    // If data doesn't match expected format, show error and debug info
+                    // Handle unexpected data format
                     console.warn("Received unexpected data format:", data);
                     appendLogMessage({
                         type: 'error',
@@ -1092,11 +1086,10 @@ submitBtn.addEventListener('click', async () => {
             }
         };
 
-        // Add these improved error handlers
         eventSource.onerror = (error) => {
             console.error('EventSource error:', error);
             // Avoid double error message if connection closed after final report
-            if (!statusIndicator.classList.contains('success')) {
+            if (!statusIndicator.classList.contains('success') && !statusIndicator.classList.contains('error')) {
                 appendLogMessage({
                     type: 'error',
                     content: 'Connection error or stream ended unexpectedly. Try refreshing the page.'
@@ -1218,45 +1211,20 @@ if ('ResizeObserver' in window) {
     }
 }
 
-function savePageStateAndNavigate() {
-    // Save current page state
-    localStorage.setItem('returnFromReport', 'true');
-    localStorage.setItem('reportQuery', queryInput.value.trim());
-
-    // Save the current scroll position
-    localStorage.setItem('scrollPosition', outputDiv.scrollTop);
-
-    // Cache the entire output content
-    localStorage.setItem('cachedOutputHtml', outputDiv.innerHTML);
-
-    // Save information about all log elements
-    const logElementsInfo = allLogElements.map(el => {
-        return {
-            className: el.className,
-            type: el.getAttribute('data-log-type') || '',
-            agent: el.getAttribute('data-log-agent') || ''
-        };
-    });
-    localStorage.setItem('cachedLogElements', JSON.stringify(logElementsInfo));
-
-    // Save current status indicator state
-    localStorage.setItem('statusText', statusIndicator.querySelector('span:not(.status-dot)').textContent);
-    localStorage.setItem('statusClass',
-        statusIndicator.classList.contains('bg-green-50') ? 'success' :
-        statusIndicator.classList.contains('bg-primary-50') ? 'active' :
-        statusIndicator.classList.contains('bg-red-50') ? 'error' : '');
-
-    // Redirect to report page
-    window.location.href = 'report.html';
-}
-
-// Function to save state and navigate to report
+// Function to save state and navigate to report using session_id
 function savePageStateAndNavigateToReport() {
+    if (!currentSessionId) {
+        console.error("Cannot navigate to report: Session ID is missing.");
+        showToast("Error: Could not determine the report session.");
+        return;
+    }
+    
     // Save current page state to localStorage before navigating
     localStorage.setItem('returnFromReport', 'true');
     localStorage.setItem('reportQuery', queryInput.value.trim());
     localStorage.setItem('scrollPosition', outputDiv.scrollTop);
     localStorage.setItem('cachedOutputHtml', outputDiv.innerHTML);
+    localStorage.setItem('reportSessionId', currentSessionId); // Save session ID
     
     // Save status indicator state
     localStorage.setItem('statusText', statusIndicator.querySelector('span:not(.status-dot)').textContent);
@@ -1265,59 +1233,8 @@ function savePageStateAndNavigateToReport() {
         statusIndicator.classList.contains('bg-primary-50') ? 'active' :
         statusIndicator.classList.contains('bg-red-50') ? 'error' : '');
     
-    if (window.currentReportId) {
-        // Navigate to the report page with the stored report ID
-        window.location.href = `/report?report_id=${window.currentReportId}`;
-    } else {
-        // Fallback: Generate a report from agent outputs
-        console.error("No report ID available. Generating fallback report...");
-
-        // Get all content from agent outputs
-        const allAgentOutputs = Array.from(document.querySelectorAll('[data-log-type="agent_output"]'))
-            .map(el => {
-                const agentName = el.getAttribute('data-log-agent') || 'unknown';
-                const content = el.querySelector('.markdown-content')?.innerText || el.innerText || '';
-                return `## ${agentName.charAt(0).toUpperCase() + agentName.slice(1)} Analysis\n\n${content}\n\n`;
-            })
-            .join('\n');
-
-        const reportContent = `# Investment Analysis Report\n\n${allAgentOutputs}\n\n*Generated on ${new Date().toLocaleString()}*`;
-
-        // Save the report to MongoDB only if we don't already have a report ID
-        if (!window.currentReportId) {
-            fetch('/api/create-report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content: reportContent,
-                    title: `Analysis: ${queryInput.value.trim()}`,
-                    planner_title: window.plannerTitle, // Pass planner title if available
-                    metadata: {
-                        query: queryInput.value.trim()
-                    }
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Fallback report saved to MongoDB:', data);
-                // Navigate to the report page with the new report ID
-                if (data.report_id) {
-                    window.location.href = `/report?report_id=${data.report_id}`;
-                } else {
-                    alert('Error: No report ID returned from server');
-                }
-            })
-            .catch(error => {
-                console.error('Error saving fallback report:', error);
-                alert('Error saving report. Please try again.');
-            });
-        } else {
-            console.log('Report already exists with ID:', window.currentReportId);
-            window.location.href = `/report?report_id=${window.currentReportId}`;
-        }
-    }
+    // Navigate to the report page using session_id
+    window.location.href = `/report?session_id=${currentSessionId}`;
 }
 
 // Function to load recent reports from MongoDB
@@ -1326,7 +1243,7 @@ function loadRecentReports() {
 
     if (!recentReportsList) {
         console.error('Recent reports list element not found');
-        return;
+        return Promise.reject(new Error('Recent reports list element not found'));
     }
 
     // Clear any existing reports
@@ -1339,8 +1256,8 @@ function loadRecentReports() {
         </li>
     `;
 
-    // Fetch recent reports from API
-    fetch('/api/recent-reports?limit=5')
+    // Fetch recent reports from API and return the promise
+    return fetch('/api/recent-reports?limit=5')
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Failed to fetch recent reports: ${response.status}`);
@@ -1361,13 +1278,13 @@ function loadRecentReports() {
                         </div>
                     </li>
                 `;
-                return;
+                return data;
             }
 
             // Clear the list
             recentReportsList.innerHTML = '';
 
-            // Add each report to the list
+            // Add each report to the list using session_id for the link
             data.reports.forEach(report => {
                 const reportDate = new Date(report.timestamp).toLocaleString();
                 
@@ -1381,8 +1298,9 @@ function loadRecentReports() {
 
                 const reportItem = document.createElement('li');
                 reportItem.className = 'mb-1';
+                // Use session_id in the href
                 reportItem.innerHTML = `
-                    <a href="/report?report_id=${report._id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
+                    <a href="/report?session_id=${report.session_id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
                         <span class="mr-3">📄</span>
                         <div class="flex flex-col">
                             <span class="text-sm">${shortTitle}</span>
@@ -1392,6 +1310,8 @@ function loadRecentReports() {
                 `;
                 recentReportsList.appendChild(reportItem);
             });
+            
+            return data;
         })
         .catch(error => {
             console.error('Error loading recent reports:', error);
@@ -1403,5 +1323,6 @@ function loadRecentReports() {
                     </div>
                 </li>
             `;
+            throw error; // Re-throw so calling code knows it failed
         });
 } 
