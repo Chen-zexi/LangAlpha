@@ -384,11 +384,12 @@ async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"
         goto = "planner"
 
     time_range = response.time_range if hasattr(response, 'time_range') else None
-
+    tickers = response.tickers if hasattr(response, 'tickers') else None
     return Command(
         update={
             'last_agent': 'coordinator',
             'time_range': time_range,
+            'tickers': tickers,
             'next': goto
         },
         goto=goto,

@@ -45,8 +45,14 @@
 }
 
 @keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 
 @keyframes fadeInUp {
@@ -61,7 +67,7 @@
 
 /* Animation classes */
 .animate-typing-dot { animation: typingDot 1.5s infinite ease-in-out; }
-.animate-fade-in { animation: fadeIn 0.3s ease-in; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
 .animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
 .animate-pulse { animation: pulse 2s infinite; }
 

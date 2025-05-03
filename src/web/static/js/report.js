@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingIndicator = document.getElementById('loading-indicator');
     const errorMessage = document.getElementById('error-message');
     const backButton = document.getElementById('back-button');
-    const printButton = document.getElementById('print-button');
     const downloadButton = document.getElementById('download-button');
     
     // Load report data if a session ID is provided
@@ -46,12 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         backButton.addEventListener('click', () => {
             // Return to the main page
             window.location.href = '/';
-        });
-    }
-    
-    if (printButton) {
-        printButton.addEventListener('click', () => {
-            window.print();
         });
     }
     

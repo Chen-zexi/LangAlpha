@@ -53,6 +53,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if we're returning from report page and restore state if needed
     // This should run on DOMContentLoaded to restore main content before first paint
     checkReturnFromReport();
+    
+    // Fetch recent reports
+    fetchRecentReports();
+    
+    // Set up the View All Reports button directly here
+    console.log("Setting up View All Reports button directly");
+    const viewAllReportsBtn = document.getElementById('view-all-reports-btn');
+    console.log("View All Reports Button:", viewAllReportsBtn);
+    
+    if (viewAllReportsBtn) {
+        viewAllReportsBtn.addEventListener('click', function() {
+            console.log("View All Reports button clicked");
+            window.location.href = '/all-reports';
+        });
+    } else {
+        console.error("View All Reports button not found in DOM");
+    }
 
     // NOTE: loadRecentReports() is now called in the 'pageshow' event handler
     // to ensure it runs on initial load AND bfcache restores.

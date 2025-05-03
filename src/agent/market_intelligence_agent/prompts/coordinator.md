@@ -21,6 +21,16 @@ Your primary responsibilities are:
   - Handoff to planner
   - If user's query indicate a specific time range, set `time_range` to the specific time range in date/month/year - date/month/year format. Right now is <<CURRENT_TIME>>
   - If user's query does not indicate a specific time range, set `time_range` to "user did not specify a time range", or "recent", or "latest" if user's query is about the latest information.
+  - You should determine if the user's query is associated with a specific stock/company. If so, set `TickerInfo` information appropriately.
+  - Set `TickerInfo.company` to the name of the company if user's query is about a specific stock/company.
+  - Set `TickerInfo.ticker` to the ticker of the stock/company if user's query is about a specific stock/company.
+  - Set `TickerInfo.exchange` to the appropriate market.
+  - Format the `tradingview_chart_symbol` in "EXCHANGE:SYMBOL" format (e.g., "NASDAQ:AAPL", "NYSE:IBM").
+  - If user's query is about market in general, set `ticker` in `TickerInfo` to "SPY" for S&P 500 or "QQQ" for Nasdaq 100, and set `exchange` to respectfully.
+  - If user's query is about a specific sector, set `ticker` in `TickerInfo` to the ticker of the industry ETF, and set `exchange` to the appropriate market.
+  - You should alays store the `TickerInfo` object in `tickers` list.
+  - If None of the above, do not include `tickers` in the response. 
+
 
 # Notes
 

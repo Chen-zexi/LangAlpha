@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from langgraph_sdk import get_client
 
@@ -191,6 +191,11 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
                         else:
                              log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Received planner content (non-dict): {content_str}"})
 
+                    elif agent_name == "coordinator":
+                        if isinstance(content, dict):
+                            log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Coordinator processed query and set time range: {content.get('time_range', 'N/A')}"})
+                        else:
+                            log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Received coordinator content (non-dict): {content_str}"})
 
                     elif agent_name == "supervisor":
                          if isinstance(content, dict):
@@ -249,6 +254,8 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
         elif next_agent == "reporter":
              # Don't signal report readiness here; wait for save confirmation
              status_message = 'Reporter agent is preparing the final report...'
+        elif next_agent == "coordinator":
+            status_message = 'Coordinator is processing the query...'
 
         log_messages.append({"type": "status", "agent": next_agent, "content": status_message})
 
@@ -365,6 +372,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         final_report_content = None
         report_saved_or_failed = False # Flag to track if report status was sent
         report_save_status = None # 'saved' or 'error'
+        ticker_info_list = None  # Store tickers from the state
 
         async for chunk in lg_client.runs.stream(
             thread_info["thread_id"],
@@ -400,20 +408,35 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                             except (json.JSONDecodeError, TypeError):
                                 logger.warning(f"Could not parse planner content for title: {content_str}")
                 
-                # 2. Check for final report content in the chunk
+                # 2. Check for ticker info in the state (similar to final_report)
+                tickers = chunk.data.get("tickers", None)
+                if tickers:
+                    ticker_info_list = tickers
+                    logger.info(f"Received ticker information for session {session_id}: {ticker_info_list}")
+                
+                # 3. Check for final report content in the chunk
                 current_final_report = chunk.data.get("final_report", None)
                 if current_final_report:
                     final_report_content = current_final_report # Store it
                     logger.info(f"Received final_report content for session {session_id}. Preparing to save.")
 
-                    # 3. Save the report immediately when final_report is received
+                    # 4. Save the report immediately when final_report is received
                     if session_id and planner_title and final_report_content and not report_saved_or_failed:
+                        # Add ticker info to metadata if available
+                        report_metadata = {
+                            "query": query
+                        }
+                        
+                        # Add ticker information to metadata if available
+                        if ticker_info_list:
+                            report_metadata["tickers"] = ticker_info_list
+                            
                         report_to_save: Report = {
                             "session_id": session_id,
                             "timestamp": datetime.now(),
                             "title": planner_title,
                             "content": final_report_content,
-                            "metadata": {"query": query} # Include original query
+                            "metadata": report_metadata  # Include original query and tickers
                         }
                         saved_report = save_report(report_to_save)
                         if saved_report:
@@ -428,7 +451,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                         report_update_message = await format_report_status_update(session_id, report_save_status)
                         yield f"data: {report_update_message}\n\n"
                 
-                # 4. Format and yield the regular chunk data (logs, next agent, etc.)
+                # 5. Format and yield the regular chunk data (logs, next agent, etc.)
                 # Pass the report save status to influence reporter log message
                 formatted_chunk = await format_chunk_for_streaming(chunk, report_status=report_save_status)
                 
@@ -436,8 +459,6 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                 try:
                     chunk_data = json.loads(formatted_chunk)
                     chunk_data["session_id"] = session_id
-                    # Remove planner title from here as it's saved internally
-                    # chunk_data["planner_title"] = planner_title 
                     formatted_chunk = json.dumps(chunk_data)
                 except json.JSONDecodeError as json_err:
                     logger.error(f"Error adding session_id to chunk: {json_err}")
@@ -459,7 +480,6 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
             "type": "stream_complete",
             "message": "Analysis stream complete.",
             "session_id": session_id,
-            # "planner_title": planner_title # No longer needed here
             "report_status": report_save_status if report_saved_or_failed else "not_generated" # Indicate final status
         }
         yield f"data: {json.dumps(final_message)}\n\n"
@@ -594,10 +614,22 @@ async def settings(request: Request):
     """Serve the settings page."""
     return templates.TemplateResponse("settings.html", {"request": request})
 
+@app.get("/all-reports")
+async def all_reports_page(request: Request):
+    logger.info(f"Serving all-reports page")
+    return templates.TemplateResponse("all-reports.html", {"request": request})
+
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+    try:
+        # Return a simple health check response
+        return {"status": "ok", "timestamp": datetime.now().isoformat()}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
 
 # Remove the /api/create-report endpoint entirely
 # @app.post("/api/create-report") ...

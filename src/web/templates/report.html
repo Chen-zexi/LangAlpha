@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LangAlpha | Investment Report</title>
+    <!-- TailwindCSS -->
+    <link href="/static/css/output.css" rel="stylesheet">
     <!-- External CSS -->
-    <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/report.css">
     <!-- Markdown parsing and sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <!-- Code highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
     <!-- Print styles -->
     <style>
         @media print {
@@ -30,31 +34,30 @@
         }
     </style>
 </head>
-<body>
-    <div class="report-container">
-        <header class="header">
-            <div class="logo-container">
-                <div class="logo-icon">L</div>
-                <div class="logo">LangAlpha</div>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div class="max-w-5xl mx-auto p-5">
+        <header class="flex justify-between items-center mb-6 py-4 border-b border-gray-200 dark:border-gray-700 px-2">
+            <div class="flex items-center ml-4">
+                <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold">L</div>
+                <span class="ml-2 text-xl font-semibold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">LangAlpha</span>
             </div>
-            <div class="actions">
-                <button id="back-button" class="button secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div class="flex gap-3 mr-4">
+                <button id="back-button" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
                         <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Back to Main Page
                 </button>
-                <button id="print-button" class="button secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 9V2H18V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M6 18H4C3.46957 18 2.96086 17.7893 2.58579 17.4142C2.21071 17.0391 2 16.5304 2 16V11C2 10.4696 2.21071 9.96086 2.58579 9.58579C2.96086 9.21071 3.46957 9 4 9H20C20.5304 9 21.0391 9.21071 21.4142 9.58579C21.7893 9.96086 22 10.4696 22 11V16C22 16.5304 21.7893 17.0391 21.4142 17.4142C21.0391 17.7893 20.5304 18 20 18H18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M18 14H6V22H18V14Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <a href="/all-reports" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
+                        <path d="M9 5H7C6.46957 5 5.96086 5.21071 5.58579 5.58579C5.21071 5.96086 5 6.46957 5 7V19C5 19.5304 5.21071 20.0391 5.58579 20.4142C5.96086 20.7893 6.46957 21 7 21H17C17.5304 21 18.0391 20.7893 18.4142 20.4142C18.7893 20.0391 19 19.5304 19 19V7C19 6.46957 18.7893 5.96086 18.4142 5.58579C18.0391 5.21071 17.5304 5 17 5H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M13 3H11C9.89543 3 9 3.89543 9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5C15 3.89543 14.1046 3 13 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    Print
-                </button>
-                <button id="download-button" class="button primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    All Reports
+                </a>
+                <button id="download-button" class="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white shadow-md hover:shadow-lg transition-all duration-300">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
                         <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -64,23 +67,24 @@
             </div>
         </header>
 
-        <div class="report-info">
-            <h1 id="report-title">Investment Analysis Report</h1>
-            <p>Query: <span id="report-query">Loading...</span></p>
-            <p>Generated: <span id="report-timestamp">Loading...</span></p>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md mb-6 p-6 px-8">
+            <h1 id="report-title" class="text-2xl font-semibold mb-4">Investment Analysis Report</h1>
+            <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">Query: <span id="report-query" class="font-medium">Loading...</span></p>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Generated: <span id="report-timestamp" class="font-medium">Loading...</span></p>
+            <p class="text-gray-600 dark:text-gray-400 text-sm hidden">Session ID: <span id="session-id" class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Loading...</span></p>
         </div>
 
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="text-center p-8">
-            <div class="inline-block w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+        <div id="loading-indicator" class="flex flex-col items-center justify-center p-8">
+            <div class="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
             <p class="mt-4 text-lg">Loading report...</p>
         </div>
 
         <!-- Error Message -->
-        <div id="error-message" class="bg-red-100 text-red-700 p-4 rounded-lg mb-4 hidden"></div>
+        <div id="error-message" class="bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-lg mb-4 hidden"></div>
 
         <!-- Report Content -->
-        <div id="report-content" class="report-content markdown-content hidden"></div>
+        <div id="report-content" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 markdown-content hidden"></div>
     </div>
 
     <!-- External JavaScript -->
