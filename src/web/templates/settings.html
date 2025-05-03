@@ -8,14 +8,22 @@
     <link href="/static/css/output.css" rel="stylesheet">
     <!-- External CSS -->
     <link rel="stylesheet" href="/static/css/index.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Motion One animation library -->
+    <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
+    <!-- LangAlpha animations -->
+    <script src="/static/js/animations.js"></script>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div class="flex min-h-screen">
         <!-- Sidebar -->
-        <aside class="w-64 shadow-md bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed top-0 left-0 h-full hidden lg:block overflow-y-auto">
+        <aside class="w-64 shadow-md bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed top-0 left-0 h-full hidden lg:block overflow-y-auto slide-in-left">
             <div class="p-5">
                 <div class="flex items-center mb-8">
-                    <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold">L</div>
+                    <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold breathing-animation">
+                        <i class="fa-solid fa-chart-simple"></i>
+                    </div>
                     <span class="ml-2 text-xl font-semibold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">LangAlpha</span>
                 </div>
                 
@@ -23,38 +31,38 @@
                     <h3 class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Main Menu</h3>
                     <ul>
                         <li class="mb-1">
-                            <a href="/" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                                <span class="mr-3">🔍</span>
+                            <a href="/" data-transition="true" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <i class="fa-solid fa-magnifying-glass mr-3 w-5 text-center"></i>
                                 AI Research
                             </a>
                         </li>
                         <li class="mb-1">
-                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                                <span class="mr-3">📊</span>
+                            <a href="#" data-transition="true" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <i class="fa-solid fa-gauge-high mr-3 w-5 text-center"></i>
                                 Dashboard
                             </a>
                         </li>
                         <li class="mb-1">
-                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                                <span class="mr-3">📈</span>
+                            <a href="#" data-transition="true" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <i class="fa-solid fa-arrow-trend-up mr-3 w-5 text-center"></i>
                                 Market Trend
                             </a>
                         </li>
                         <li class="mb-1">
-                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                                <span class="mr-3">💼</span>
+                            <a href="#" data-transition="true" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <i class="fa-solid fa-building mr-3 w-5 text-center"></i>
                                 Companies
                             </a>
                         </li>
                         <li class="mb-1">
-                            <a href="#" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                                <span class="mr-3">📰</span>
+                            <a href="#" data-transition="true" class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <i class="fa-regular fa-newspaper mr-3 w-5 text-center"></i>
                                 News & Insights
                             </a>
                         </li>
                         <li class="mb-1">
                             <a href="/settings" class="flex items-center p-3 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium">
-                                <span class="mr-3">⚙️</span>
+                                <i class="fa-solid fa-gear mr-3 w-5 text-center"></i>
                                 Settings
                             </a>
                         </li>
@@ -66,7 +74,7 @@
                     <ul id="recent-reports-list">
                         <li class="mb-1 animate-pulse">
                             <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
-                                <span class="mr-3">🕒</span>
+                                <i class="fa-regular fa-clock mr-3 w-5 text-center"></i>
                                 Loading recent reports...
                             </div>
                         </li>
@@ -78,21 +86,23 @@
         <!-- Main Content -->
         <main class="w-full lg:ml-64 p-5">
             <div class="max-w-5xl mx-auto">
-                <header class="mb-6 py-3 bg-gray-50 dark:bg-gray-900 z-10">
+                <header class="mb-6 py-3 bg-gray-50 dark:bg-gray-900 z-10 fade-in-element">
                     <div class="flex justify-between items-center">
-                        <h1 class="text-2xl font-semibold">Workflow Settings</h1>
-                        <a href="/" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                            <span class="mr-2">←</span> Back to Home
+                        <h1 class="text-2xl font-semibold"><i class="fa-solid fa-sliders mr-2 text-primary-500"></i>Workflow Settings</h1>
+                        <a href="/" data-transition="true" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors animated-button">
+                            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Home
                         </a>
                     </div>
                 </header>
                 
                 <!-- Settings Content -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md mb-8 p-6">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md mb-8 p-6 slide-in-up">
                     <div class="space-y-6">
                         <!-- Budget Configuration -->
-                        <div>
-                            <label for="config-budget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Budget Level</label>
+                        <div class="fade-in-element">
+                            <label for="config-budget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <i class="fa-solid fa-wallet mr-2 text-primary-500"></i>Agent Budget Level
+                            </label>
                             <select id="config-budget" name="budget" class="mt-1 block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
                                 <option value="low">Low (Economic Models)</option>
                                 <option value="medium">Medium (Balanced Models)</option>
@@ -102,11 +112,15 @@
                         </div>
                         <hr class="border-gray-200 dark:border-gray-700">
                         <!-- LLM Configuration Sections -->
-                        <div class="space-y-4">
-                            <h4 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">LLM Model Configuration</h4>
+                        <div class="space-y-4 fade-in-element">
+                            <h4 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                                <i class="fa-solid fa-microchip mr-2 text-primary-500"></i>LLM Model Configuration
+                            </h4>
                             <!-- Reasoning LLM -->
-                            <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reasoning LLM</label>
+                            <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md fade-in-element">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <i class="fa-solid fa-brain mr-2 text-primary-500/80"></i>Reasoning LLM
+                                </label>
                                 <div class="mt-2 grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label for="config-reasoning-model" class="block text-xs text-gray-600 dark:text-gray-400">Model Name</label>
@@ -122,7 +136,9 @@
                             </div>
                             <!-- Basic LLM -->
                             <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Basic LLM</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <i class="fa-solid fa-comment-dots mr-2 text-primary-500/80"></i>Basic LLM
+                                </label>
                                 <div class="mt-2 grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label for="config-basic-model" class="block text-xs text-gray-600 dark:text-gray-400">Model Name</label>
@@ -138,7 +154,9 @@
                             </div>
                             <!-- Coding LLM -->
                              <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Coding LLM</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <i class="fa-solid fa-code mr-2 text-primary-500/80"></i>Coding LLM
+                                </label>
                                 <div class="mt-2 grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label for="config-coding-model" class="block text-xs text-gray-600 dark:text-gray-400">Model Name</label>
@@ -154,7 +172,9 @@
                             </div>
                             <!-- Economic LLM -->
                             <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Economic LLM</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <i class="fa-solid fa-sack-dollar mr-2 text-primary-500/80"></i>Economic LLM
+                                </label>
                                 <div class="mt-2 grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
                                     <div>
                                         <label for="config-economic-model" class="block text-xs text-gray-600 dark:text-gray-400">Model Name</label>
@@ -171,12 +191,12 @@
                         </div>
 
                         <!-- Actions -->
-                        <div class="mt-6 flex justify-end space-x-4">
-                            <button id="reset-config-btn" class="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                Reset to Defaults
+                        <div class="mt-6 flex justify-end space-x-4 fade-in-element">
+                            <button id="reset-config-btn" class="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors animated-button">
+                                <i class="fa-solid fa-rotate-left mr-2"></i>Reset to Defaults
                             </button>
-                            <button id="save-config-btn" class="px-4 py-2 bg-primary-600 text-white rounded-md shadow-sm hover:bg-primary-700 transition-colors">
-                                Save Settings
+                            <button id="save-config-btn" class="px-4 py-2 bg-primary-600 text-white rounded-md shadow-sm hover:bg-primary-700 transition-colors animated-button">
+                                <i class="fa-solid fa-floppy-disk mr-2"></i>Save Settings
                             </button>
                         </div>
                     </div>
@@ -187,7 +207,7 @@
     
     <!-- Back to top button -->
     <button id="backToTop" class="fixed bottom-6 right-6 w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-5 transition-all duration-300 z-50 hover:bg-primary-700">
-        ↑
+        <i class="fa-solid fa-arrow-up"></i>
     </button>
 
     <!-- External JavaScript -->

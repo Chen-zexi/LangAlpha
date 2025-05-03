@@ -158,7 +158,6 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
         content_str = message.get("content")
         
         if agent_name and content_str:
-            log_messages.append({"type": "separator", "content": "-" * 120})
             
             # Special handling for analyst and reporter before trying to parse JSON
             if agent_name == "analyst":
@@ -170,7 +169,7 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
                 elif report_status == "error":
                      log_messages.append({"type": "error", "agent": agent_name, "content": f"Reporter agent finished, but there was an error saving the report."})
                 else:
-                     log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Reporter agent is processing..."})
+                     log_messages.append({"type": "agent_output", "agent": agent_name, "content": f"Reporter agent is processing"})
             else:
                 # For all other agents, try to parse the content
                 try:
@@ -235,34 +234,29 @@ async def generate_log_messages(message: Optional[Dict[str, Any]], next_agent: O
 
 
     if next_agent:
-        log_messages.append({"type": "separator", "content": "=" * 120})
         status_message = f"Waiting for {next_agent}..." # Default message
         if next_agent == "planner":
-            status_message = 'Planner is thinking...'
+            status_message = 'Planner is thinking'
         elif next_agent == "supervisor":
             status_message = f'Supervisor is evaluating response from {last_agent or "previous agent"}...' # Keep this detail
         elif next_agent == "researcher":
-            status_message = 'Researcher is gathering information...'
+            status_message = 'Researcher is gathering information'
         elif next_agent == "coder":
-            status_message = 'Coder is coding...'
+            status_message = 'Coder is coding'
         elif next_agent == "market":
-            status_message = 'Market agent is retrieving market data...'
+            status_message = 'Market agent is retrieving market data'
         elif next_agent == "browser":
-            status_message = 'Browser agent is browsing the web...'
+            status_message = 'Browser agent is browsing the web'
         elif next_agent == "analyst":
-            status_message = 'Analyst agent is analyzing the gathered information...'
+            status_message = 'Analyst agent is analyzing the gathered information'
         elif next_agent == "reporter":
              # Don't signal report readiness here; wait for save confirmation
-             status_message = 'Reporter agent is preparing the final report...'
+             status_message = 'Reporter agent is preparing the final report'
         elif next_agent == "coordinator":
-            status_message = 'Coordinator is processing the query...'
+            status_message = 'Coordinator is processing the query'
 
         log_messages.append({"type": "status", "agent": next_agent, "content": status_message})
 
-    # Remove final_report handling from logs; it's handled during saving
-    # if final_report:
-    #      log_messages.append({"type": "separator", "content": "*" * 120})
-    #      log_messages.append({"type": "final_report", "content": final_report})
 
     return log_messages
 
@@ -286,9 +280,7 @@ async def format_chunk_for_streaming(chunk, report_status: Optional[str] = None)
         messages_data = chunk.data.get("messages", [])
         next_agent = chunk.data.get("next", None)
         last_agent = chunk.data.get("last_agent", None)
-        # We no longer need to pass final_report here; it's handled during saving
-        # final_report = chunk.data.get("final_report", None)
-
+        
         # Sanitize messages if necessary (keep existing logic)
         if messages_data:
             for i, msg in enumerate(messages_data):
@@ -312,8 +304,7 @@ async def format_chunk_for_streaming(chunk, report_status: Optional[str] = None)
             "logs": log_messages,
             "next": next_agent,
             "last_agent": last_agent,
-            "messages": [latest_message] if latest_message else [] # Include latest message only
-            # No final_report included here
+            "messages": [latest_message] if latest_message else []
         }
 
         # Convert to JSON string
@@ -372,6 +363,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         final_report_content = None
         report_saved_or_failed = False # Flag to track if report status was sent
         report_save_status = None # 'saved' or 'error'
+        ticker_type = None # Store ticker type from the state
         ticker_info_list = None  # Store tickers from the state
 
         async for chunk in lg_client.runs.stream(
@@ -409,6 +401,10 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                                 logger.warning(f"Could not parse planner content for title: {content_str}")
                 
                 # 2. Check for ticker info in the state (similar to final_report)
+                ticker_type = chunk.data.get("ticker_type", None)
+                if ticker_type:
+                    ticker_type = ticker_type.lower()
+                    logger.info(f"Received ticker type: {ticker_type} for session {session_id}")
                 tickers = chunk.data.get("tickers", None)
                 if tickers:
                     ticker_info_list = tickers
@@ -426,8 +422,8 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                         report_metadata = {
                             "query": query
                         }
-                        
-                        # Add ticker information to metadata if available
+                        if ticker_type:
+                            report_metadata["ticker_type"] = ticker_type
                         if ticker_info_list:
                             report_metadata["tickers"] = ticker_info_list
                             
@@ -746,13 +742,6 @@ async def history_page(request: Request):
     return templates.TemplateResponse("history.html", {"request": request})
 
 
-@app.get("/history/{session_id}", response_class=HTMLResponse)
-async def session_history_page(request: Request, session_id: str):
-    """Render the session history page for a specific session."""
-    return templates.TemplateResponse("session_history.html", {"request": request, "session_id": session_id})
-
-# Remove the old create_report function as saving is now in the stream
-# async def create_report(report_data: dict): ...
 
 @app.get("/api/recent-reports", response_class=JSONResponse)
 async def get_recent_reports_endpoint(limit: int = 5):

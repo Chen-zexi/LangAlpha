@@ -236,10 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <a href="/report?session_id=${report.session_id}" 
                        class="inline-flex items-center px-4 py-2 text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors shadow-sm">
                         View Report
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="ml-1.5">
-                            <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M12 5L19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                        <i class="fa-solid fa-arrow-right ml-2"></i>
                     </a>
                 </div>
             </div>

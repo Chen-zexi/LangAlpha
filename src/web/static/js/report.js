@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('error-message');
     const backButton = document.getElementById('back-button');
     const downloadButton = document.getElementById('download-button');
+    const tradingViewWidgetsContainer = document.getElementById('tradingview-widgets-container');
     
     // Load report data if a session ID is provided
     if (sessionId) {
@@ -281,6 +282,291 @@ document.addEventListener('DOMContentLoaded', () => {
         return processed;
     }
     
+    // Initialize TradingView Symbol Info Widget
+    function initTradingViewSymbolInfoWidget(symbol) {
+        if (!symbol) {
+            console.error('No symbol provided for TradingView widget');
+            return;
+        }
+        
+        console.log(`Initializing TradingView Symbol Info Widget for ${symbol}`);
+        
+        // Get the container element
+        const container = document.getElementById('tradingview-symbol-info');
+        if (!container) {
+            console.error('TradingView widget container not found');
+            return;
+        }
+        
+        // Show the widgets container
+        const widgetsContainer = document.getElementById('tradingview-widgets-container');
+        if (widgetsContainer) {
+            widgetsContainer.classList.remove('hidden');
+        }
+        
+        // Add loading state
+        container.classList.add('loading');
+        
+        try {
+            // Detect dark mode using CSS media query
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const colorTheme = isDarkMode ? 'dark' : 'light';
+            
+            // Create the script element
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js';
+            script.async = true;
+            
+            // Set the widget configuration
+            const widgetConfig = {
+                symbol: symbol,
+                width: "100%",
+                locale: "en",
+                colorTheme: colorTheme,
+                isTransparent: true
+            };
+            
+            console.log('TradingView widget config:', widgetConfig);
+            script.innerHTML = JSON.stringify(widgetConfig);
+            
+            // Add event listener to remove loading state when script loads
+            script.onload = function() {
+                console.log('TradingView widget script loaded');
+                setTimeout(() => {
+                    container.classList.remove('loading');
+                }, 500);
+            };
+            
+            script.onerror = function(error) {
+                console.error('Error loading TradingView widget script:', error);
+                container.classList.remove('loading');
+                showWidgetError(container, 'Failed to load widget');
+            };
+            
+            // Add the script to the container
+            const widgetDiv = container.querySelector('.tradingview-widget-container__widget');
+            if (widgetDiv) {
+                widgetDiv.innerHTML = ''; // Clear previous widget if any
+                widgetDiv.appendChild(script);
+            } else {
+                console.error('Widget div not found in container');
+                container.classList.remove('loading');
+                showWidgetError(container, 'Widget container not found');
+            }
+        } catch (error) {
+            console.error('Error initializing TradingView widget:', error);
+            container.classList.remove('loading');
+            showWidgetError(container, 'Error initializing widget');
+        }
+    }
+    
+    // Initialize TradingView Mini Chart Widget
+    function initTradingViewMiniChartWidget(symbol) {
+        if (!symbol) {
+            console.error('No symbol provided for TradingView Mini Chart widget');
+            return;
+        }
+        
+        console.log(`Initializing TradingView Mini Chart Widget for ${symbol}`);
+        
+        // Get the container element
+        const container = document.getElementById('tradingview-mini-chart');
+        if (!container) {
+            console.error('TradingView Mini Chart container not found');
+            return;
+        }
+        
+        // Add loading state
+        container.classList.add('loading');
+        
+        try {
+            // Detect dark mode using CSS media query
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const colorTheme = isDarkMode ? 'dark' : 'light';
+            
+            // Create the script element
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
+            script.async = true;
+            
+            // Set the widget configuration
+            const widgetConfig = {
+                symbol: symbol,
+                width: "100%",
+                height: "100%",
+                locale: "en",
+                dateRange: "12M",
+                colorTheme: colorTheme,
+                isTransparent: true,
+                autosize: true,
+                largeChartUrl: "",
+                chartOnly: true,
+                noTimeScale: false
+            };
+            
+            console.log('TradingView Mini Chart widget config:', widgetConfig);
+            script.innerHTML = JSON.stringify(widgetConfig);
+            
+            // Add event listener to remove loading state when script loads
+            script.onload = function() {
+                console.log('TradingView Mini Chart widget script loaded');
+                setTimeout(() => {
+                    container.classList.remove('loading');
+                }, 500);
+            };
+            
+            script.onerror = function(error) {
+                console.error('Error loading TradingView Mini Chart widget script:', error);
+                container.classList.remove('loading');
+                showWidgetError(container, 'Failed to load chart widget');
+            };
+            
+            // Add the script to the container
+            const widgetDiv = container.querySelector('.tradingview-widget-container__widget');
+            if (widgetDiv) {
+                widgetDiv.innerHTML = ''; // Clear previous widget if any
+                widgetDiv.appendChild(script);
+            } else {
+                console.error('Widget div not found in container');
+                container.classList.remove('loading');
+                showWidgetError(container, 'Chart widget container not found');
+            }
+        } catch (error) {
+            console.error('Error initializing TradingView Mini Chart widget:', error);
+            container.classList.remove('loading');
+            showWidgetError(container, 'Error initializing chart widget');
+        }
+    }
+    
+    // Initialize TradingView Market Overview Widget
+    function initTradingViewMarketOverviewWidget() {
+        console.log(`Initializing TradingView Market Overview Widget`);
+        
+        // Get the container element
+        const container = document.getElementById('tradingview-market-overview');
+        if (!container) {
+            console.error('TradingView Market Overview widget container not found');
+            return;
+        }
+        
+        // Add loading state
+        container.classList.add('loading');
+        
+        try {
+            // Detect dark mode using CSS media query
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const colorTheme = isDarkMode ? 'dark' : 'light';
+            
+            // Create the script element
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js';
+            script.async = true;
+            
+            // Set the widget configuration with predefined market symbols
+            const widgetConfig = {
+                "symbols": [
+                    ["SPREADEX:SPX|1D"],
+                    ["NASDAQ:NDX|1D"],
+                    ["PYTH:US10Y|1D"],
+                    ["EIGHTCAP:VIX|1D"],
+                    ["TVC:GOLD|1D"]
+                ],
+                "chartOnly": false,
+                "width": "100%",
+                "height": "100%",
+                "locale": "en",
+                "colorTheme": colorTheme,
+                "autosize": true,
+                "showVolume": true,
+                "showMA": false,
+                "hideDateRanges": false,
+                "hideMarketStatus": false,
+                "hideSymbolLogo": false,
+                "scalePosition": "right",
+                "isTransparent": true,
+                "scaleMode": "Normal",
+                "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
+                "fontSize": "10",
+                "noTimeScale": false,
+                "valuesTracking": "1",
+                "changeMode": "price-and-percent",
+                "chartType": "area",
+                "maLineColor": "#2962FF",
+                "maLineWidth": 1,
+                "maLength": 9,
+                "headerFontSize": "small",
+                "lineWidth": 2,
+                "lineType": 0,
+                "dateRanges": [
+                    "1d|1",
+                    "1m|30",
+                    "3m|60",
+                    "12m|1D",
+                    "60m|1W",
+                    "all|1M"
+                ]
+            };
+            
+            console.log('TradingView Market Overview widget config:', widgetConfig);
+            script.innerHTML = JSON.stringify(widgetConfig);
+            
+            // Add event listener to remove loading state when script loads
+            script.onload = function() {
+                console.log('TradingView Market Overview widget script loaded');
+                setTimeout(() => {
+                    container.classList.remove('loading');
+                }, 500);
+            };
+            
+            script.onerror = function(error) {
+                console.error('Error loading TradingView Market Overview widget script:', error);
+                container.classList.remove('loading');
+                showWidgetError(container, 'Failed to load market overview widget');
+            };
+            
+            // Add the script to the container
+            const widgetDiv = container.querySelector('.tradingview-widget-container__widget');
+            if (widgetDiv) {
+                widgetDiv.innerHTML = ''; // Clear previous widget if any
+                widgetDiv.appendChild(script);
+            } else {
+                console.error('Widget div not found in container');
+                container.classList.remove('loading');
+                showWidgetError(container, 'Market overview widget container not found');
+            }
+        } catch (error) {
+            console.error('Error initializing TradingView Market Overview widget:', error);
+            container.classList.remove('loading');
+            showWidgetError(container, 'Error initializing market overview widget');
+        }
+    }
+    
+    // Helper function to show widget errors
+    function showWidgetError(container, message) {
+        // Create an error message element
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'bg-red-100 text-red-700 p-4 rounded-lg text-center';
+        errorDiv.innerHTML = `
+            <p class="font-medium">Widget Error</p>
+            <p class="text-sm">${message}</p>
+        `;
+        
+        // Clear the container and add the error message
+        if (container) {
+            const widgetDiv = container.querySelector('.tradingview-widget-container__widget');
+            if (widgetDiv) {
+                widgetDiv.innerHTML = '';
+                widgetDiv.appendChild(errorDiv);
+            } else {
+                container.innerHTML = '';
+                container.appendChild(errorDiv);
+            }
+        }
+    }
+    
     function displayReport(report) {
         // Set title
         document.title = `LangAlpha | ${report.title || 'Investment Report'}`;
@@ -309,6 +595,23 @@ document.addEventListener('DOMContentLoaded', () => {
             reportTimestamp.parentElement.style.display = 'none';
         }
         
+        // Check for ticker info in report metadata
+        if (report.metadata && report.metadata.tickers && report.metadata.tickers.length > 0) {
+            console.log('Ticker info found in report metadata:', report.metadata.tickers);
+            
+            // Get the ticker type from metadata or default to market if not provided
+            const tickerType = report.metadata.ticker_type ? report.metadata.ticker_type.toLowerCase() : 'market';
+            console.log('Ticker type:', tickerType);
+            
+            // Show appropriate widget based on ticker type
+            showTradingViewWidget(tickerType, report.metadata.tickers);
+        } else {
+            console.log('No ticker info found in report metadata - defaulting to market view');
+            
+            // Show market widget by default even when no tickers are available
+            showTradingViewWidget('market', []);
+        }
+        
         // Display report content with markdown parsing
         if (reportContent && report.content) {
             // DEBUG: Log raw content and parsed content to help diagnose rendering issues
@@ -320,6 +623,164 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use the new renderReportContent function for better rendering
             renderReportContent(report);
         }
+    }
+    
+    // Function to display appropriate TradingView widget based on ticker type
+    function showTradingViewWidget(tickerType, tickerInfoList) {
+        // Show the main widgets container
+        if (tradingViewWidgetsContainer) {
+            tradingViewWidgetsContainer.classList.remove('hidden');
+        } else {
+            console.error('TradingView widgets container not found');
+            return;
+        }
+        
+        // Hide all widget types first
+        document.getElementById('tradingview-symbol-widget').classList.add('hidden');
+        document.getElementById('tradingview-market-widget').classList.add('hidden');
+        document.getElementById('tradingview-multiple-widget').classList.add('hidden');
+        document.getElementById('tradingview-compare-widget').classList.add('hidden');
+        
+        console.log(`Showing widget for ticker type: ${tickerType} with ${tickerInfoList.length} tickers`);
+        
+        // Show appropriate widget based on ticker type
+        if (tickerType === 'company' || tickerType === 'etf') {
+            // Company or ETF - Show Symbol Info + Mini Chart
+            const symbolWidget = document.getElementById('tradingview-symbol-widget');
+            if (symbolWidget) {
+                symbolWidget.classList.remove('hidden');
+                
+                // Get the first ticker
+                const firstTicker = tickerInfoList[0];
+                
+                // Format ticker for TradingView
+                const tickerSymbol = formatTickerForTradingView(firstTicker);
+                
+                if (tickerSymbol) {
+                    // Initialize TradingView widgets with the ticker symbol
+                    initTradingViewSymbolInfoWidget(tickerSymbol);
+                    initTradingViewMiniChartWidget(tickerSymbol);
+                    console.log(`Initialized symbol widgets for ${tickerSymbol}`);
+                } else {
+                    console.warn('Could not format ticker symbol from:', firstTicker);
+                    symbolWidget.classList.add('hidden');
+                    tradingViewWidgetsContainer.classList.add('hidden');
+                }
+            }
+        } else if (tickerType === 'market') {
+            // Market - Show Market Overview (with predefined symbols, no need for tickers)
+            const marketWidget = document.getElementById('tradingview-market-widget');
+            if (marketWidget) {
+                marketWidget.classList.remove('hidden');
+                
+                // Initialize the market overview widget with predefined symbols
+                // This will work even if tickerInfoList is empty
+                initTradingViewMarketOverviewWidget();
+                console.log('Initialized market overview widget');
+            }
+        } else if (tickerType === 'multiple') {
+            // Multiple tickers - Show Multiple Symbols widget
+            const multipleWidget = document.getElementById('tradingview-multiple-widget');
+            if (multipleWidget) {
+                multipleWidget.classList.remove('hidden');
+                
+                // Make sure we have at least one ticker
+                if (tickerInfoList.length > 0) {
+                    // Get formatted ticker symbols
+                    const formattedTickers = tickerInfoList.map(ticker => formatTickerForTradingView(ticker)).filter(Boolean);
+                    
+                    if (formattedTickers.length > 0) {
+                        // Initialize widget for multiple ticker symbols
+                        initTradingViewMultipleSymbolsWidget(formattedTickers);
+                        console.log(`Initialized multiple symbols widget with ${formattedTickers.length} tickers`);
+                    } else {
+                        console.warn('Could not format any tickers for multiple widget');
+                        multipleWidget.classList.add('hidden');
+                        tradingViewWidgetsContainer.classList.add('hidden');
+                    }
+                } else {
+                    console.warn('No tickers available for multiple widget');
+                    multipleWidget.classList.add('hidden');
+                    tradingViewWidgetsContainer.classList.add('hidden');
+                }
+            }
+        } else if (tickerType === 'compare') {
+            // Compare - Show Compare Symbols widget
+            const compareWidget = document.getElementById('tradingview-compare-widget');
+            if (compareWidget) {
+                compareWidget.classList.remove('hidden');
+                
+                // Make sure we have at least two tickers
+                if (tickerInfoList.length >= 2) {
+                    // Format tickers for TradingView
+                    const mainSymbol = formatTickerForTradingView(tickerInfoList[0]);
+                    const compareSymbol = formatTickerForTradingView(tickerInfoList[1]);
+                    
+                    if (mainSymbol && compareSymbol) {
+                        // Initialize compare symbols widget
+                        initTradingViewCompareSymbolsWidget(mainSymbol, compareSymbol);
+                        console.log(`Initialized compare symbols widget for ${mainSymbol} and ${compareSymbol}`);
+                    } else {
+                        console.warn('Could not format ticker symbols for comparison');
+                        compareWidget.classList.add('hidden');
+                        tradingViewWidgetsContainer.classList.add('hidden');
+                    }
+                } else {
+                    console.warn('Need at least two tickers for compare widget');
+                    compareWidget.classList.add('hidden');
+                    tradingViewWidgetsContainer.classList.add('hidden');
+                }
+            }
+        } else {
+            console.warn('Unknown ticker type:', tickerType);
+            tradingViewWidgetsContainer.classList.add('hidden');
+        }
+    }
+    
+    // Helper function to format ticker symbols for TradingView
+    function formatTickerForTradingView(ticker) {
+        if (!ticker) return null;
+        
+        // If ticker object has tradingview_symbol property, use it directly
+        if (typeof ticker === 'object') {
+            if (ticker.tradingview_symbol) {
+                return ticker.tradingview_symbol;
+            }
+            
+            // If no tradingview_symbol but we have exchange and ticker, construct it
+            if (ticker.exchange && ticker.ticker) {
+                return `${ticker.exchange}:${ticker.ticker}`;
+            }
+            
+            // If we just have a ticker property, use it with default exchange
+            if (ticker.ticker) {
+                return `NASDAQ:${ticker.ticker}`;
+            }
+            
+            // If we have a symbol property (sometimes used instead of ticker)
+            if (ticker.symbol) {
+                // Check if symbol already contains exchange prefix
+                if (ticker.symbol.includes(':')) {
+                    return ticker.symbol;
+                }
+                return `NASDAQ:${ticker.symbol}`;
+            }
+        }
+        
+        // If ticker is a string, handle it as before
+        if (typeof ticker === 'string') {
+            // If ticker already includes an exchange prefix like 'NASDAQ:AAPL', use it directly
+            if (ticker.includes(':')) {
+                return ticker;
+            }
+            
+            // For US stocks, default to NASDAQ if no exchange is specified
+            return `NASDAQ:${ticker}`;
+        }
+        
+        // Return null if we couldn't determine a valid format
+        console.error('Unable to format ticker for TradingView:', ticker);
+        return null;
     }
     
     // New function to fix rendered content after it's added to the DOM
@@ -379,7 +840,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function showError(message) {
         if (!errorMessage) return;
         
-        errorMessage.textContent = message;
+        const errorTextElement = document.getElementById('error-message-text');
+        if (errorTextElement) {
+            errorTextElement.textContent = message;
+        } else {
+            // Fallback if span doesn't exist
+            errorMessage.innerHTML = `<div class="flex items-center"><i class="fa-solid fa-triangle-exclamation mr-3 text-xl"></i>${message}</div>`;
+        }
+        
         errorMessage.style.display = 'block';
         
         if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -446,5 +914,262 @@ document.addEventListener('DOMContentLoaded', () => {
         processed = processed.replace(/<pre><code>(?!<span)/g, '<pre><code class="hljs">');
         
         return processed;
+    }
+
+    // Initialize TradingView Multiple Symbols Widget
+    function initTradingViewMultipleSymbolsWidget(tickers) {
+        if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
+            console.error('No valid tickers provided for Multiple Symbols widget');
+            return;
+        }
+        
+        console.log(`Initializing TradingView Multiple Symbols Widget for ${tickers.length} tickers`);
+        
+        // Get the container element
+        const container = document.getElementById('tradingview-multiple-symbols');
+        if (!container) {
+            console.error('TradingView Multiple Symbols container not found');
+            return;
+        }
+        
+        // Add loading state
+        container.classList.add('loading');
+        
+        try {
+            // Detect dark mode using CSS media query
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const colorTheme = isDarkMode ? 'dark' : 'light';
+            
+            // Format tickers for TradingView symbols array
+            const formattedSymbols = tickers.slice(0, 5).map(ticker => {
+                const symbol = formatTickerForTradingView(ticker);
+                // Format each symbol for the widget
+                if (symbol) {
+                    if (symbol.includes('|')) {
+                        return [symbol];
+                    } else {
+                        return [`${symbol}|1D`];
+                    }
+                }
+                return null;
+            }).filter(Boolean); // Remove any null values
+            
+            if (formattedSymbols.length === 0) {
+                console.error('No valid formatted symbols for Multiple Symbols widget');
+                container.classList.remove('loading');
+                showWidgetError(container, 'No valid symbols to display');
+                return;
+            }
+            
+            // Create the script element
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js';
+            script.async = true;
+            
+            // Set the widget configuration
+            const widgetConfig = {
+                "symbols": formattedSymbols,
+                "chartOnly": false,
+                "width": "100%",
+                "height": "100%",
+                "locale": "en",
+                "colorTheme": colorTheme,
+                "autosize": true,
+                "showVolume": true,
+                "showMA": false,
+                "hideDateRanges": false,
+                "hideMarketStatus": false,
+                "hideSymbolLogo": false,
+                "scalePosition": "right",
+                "scaleMode": "Normal",
+                "isTransparent": true,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
+                "fontSize": "10",
+                "noTimeScale": false,
+                "valuesTracking": "1",
+                "changeMode": "price-and-percent",
+                "chartType": "area",
+                "maLineColor": "#2962FF",
+                "maLineWidth": 1,
+                "maLength": 9,
+                "headerFontSize": "small",
+                "lineWidth": 2,
+                "lineType": 0,
+                "dateRanges": [
+                    "1d|1",
+                    "1m|30",
+                    "3m|60",
+                    "12m|1D",
+                    "60m|1W",
+                    "all|1M"
+                ]
+            };
+            
+            console.log('TradingView Multiple Symbols widget config:', widgetConfig);
+            script.innerHTML = JSON.stringify(widgetConfig);
+            
+            // Add event listener to remove loading state when script loads
+            script.onload = function() {
+                console.log('TradingView Multiple Symbols widget script loaded');
+                setTimeout(() => {
+                    container.classList.remove('loading');
+                }, 500);
+            };
+            
+            script.onerror = function(error) {
+                console.error('Error loading TradingView Multiple Symbols widget script:', error);
+                container.classList.remove('loading');
+                showWidgetError(container, 'Failed to load multiple symbols widget');
+            };
+            
+            // Add the script to the container
+            const widgetDiv = container.querySelector('.tradingview-widget-container__widget');
+            if (widgetDiv) {
+                widgetDiv.innerHTML = ''; // Clear previous widget if any
+                widgetDiv.appendChild(script);
+            } else {
+                console.error('Widget div not found in container');
+                container.classList.remove('loading');
+                showWidgetError(container, 'Multiple symbols widget container not found');
+            }
+        } catch (error) {
+            console.error('Error initializing TradingView Multiple Symbols widget:', error);
+            container.classList.remove('loading');
+            showWidgetError(container, 'Error initializing multiple symbols widget');
+        }
+    }
+    
+    // Initialize TradingView Compare Symbols Widget
+    function initTradingViewCompareSymbolsWidget(mainSymbol, compareSymbol) {
+        console.log(`Initializing TradingView Compare Symbols Widget: ${mainSymbol} vs ${compareSymbol}`);
+        
+        // Get the container element
+        const container = document.getElementById('tradingview-symbol-compare');
+        if (!container) {
+            console.error('TradingView Compare Symbols container not found');
+            return;
+        }
+        
+        // Add loading state
+        container.classList.add('loading');
+        
+        try {
+            // Detect dark mode using CSS media query
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const colorTheme = isDarkMode ? 'dark' : 'light';
+            
+            // Extract symbol name for display if possible
+            let mainName = "Main Symbol";
+            if (mainSymbol.includes(':')) {
+                const parts = mainSymbol.split(':');
+                if (parts.length > 1) {
+                    mainName = parts[1];
+                }
+            }
+            
+            // Format the main symbol if it's not in the right format
+            let formattedMainSymbol = mainSymbol;
+            if (!mainSymbol.includes('|')) {
+                formattedMainSymbol = `${mainSymbol}|1D`;
+            }
+            
+            // Format the compare symbol for the compareSymbol object
+            let formattedCompareSymbol = compareSymbol;
+            if (!compareSymbol.includes('|')) {
+                formattedCompareSymbol = compareSymbol;
+            }
+            
+            // Create the script element
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js';
+            script.async = true;
+            
+            // Set the widget configuration
+            const widgetConfig = {
+                "symbols": [
+                    [
+                        mainName,
+                        formattedMainSymbol
+                    ],
+                    [
+                        formattedCompareSymbol
+                    ]
+                ],
+                "chartOnly": false,
+                "width": "100%",
+                "height": "100%",
+                "locale": "en",
+                "colorTheme": colorTheme,
+                "autosize": true,
+                "showVolume": true,
+                "showMA": false,
+                "hideDateRanges": false,
+                "hideMarketStatus": false,
+                "hideSymbolLogo": false,
+                "scalePosition": "right",
+                "scaleMode": "Percentage",
+                "isTransparent": true,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
+                "fontSize": "10",
+                "noTimeScale": false,
+                "valuesTracking": "1",
+                "changeMode": "price-and-percent",
+                "chartType": "area",
+                "maLineColor": "#2962FF",
+                "maLineWidth": 1,
+                "maLength": 9,
+                "headerFontSize": "small",
+                "lineWidth": 2,
+                "lineType": 0,
+                "compareSymbol": {
+                    "symbol": compareSymbol,
+                    "lineColor": "#FF9800",
+                    "lineWidth": 2,
+                    "showLabels": true
+                },
+                "dateRanges": [
+                    "1d|1",
+                    "1m|30",
+                    "3m|60",
+                    "12m|1D",
+                    "60m|1W",
+                    "all|1M"
+                ]
+            };
+            
+            console.log('TradingView Compare Symbols widget config:', widgetConfig);
+            script.innerHTML = JSON.stringify(widgetConfig);
+            
+            // Add event listener to remove loading state when script loads
+            script.onload = function() {
+                console.log('TradingView Compare Symbols widget script loaded');
+                setTimeout(() => {
+                    container.classList.remove('loading');
+                }, 500);
+            };
+            
+            script.onerror = function(error) {
+                console.error('Error loading TradingView Compare Symbols widget script:', error);
+                container.classList.remove('loading');
+                showWidgetError(container, 'Failed to load compare symbols widget');
+            };
+            
+            // Add the script to the container
+            const widgetDiv = container.querySelector('.tradingview-widget-container__widget');
+            if (widgetDiv) {
+                widgetDiv.innerHTML = ''; // Clear previous widget if any
+                widgetDiv.appendChild(script);
+            } else {
+                console.error('Widget div not found in container');
+                container.classList.remove('loading');
+                showWidgetError(container, 'Compare symbols widget container not found');
+            }
+        } catch (error) {
+            console.error('Error initializing TradingView Compare Symbols widget:', error);
+            container.classList.remove('loading');
+            showWidgetError(container, 'Error initializing compare symbols widget');
+        }
     }
 }); 

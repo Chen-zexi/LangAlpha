@@ -6,6 +6,7 @@ let currentAgentProcessing = null;
 let statusMessages = [];
 let allLogElements = [];
 let currentSessionId = null; // NEW: Track the session ID for the current run
+let supervisorStatusMessages = []; // NEW: Track supervisor status messages
 
 // Default config values (matching .env.example)
 const DEFAULT_LLM_CONFIGS = {
@@ -54,8 +55,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // This should run on DOMContentLoaded to restore main content before first paint
     checkReturnFromReport();
     
-    // Fetch recent reports
-    fetchRecentReports();
     
     // Set up the View All Reports button directly here
     console.log("Setting up View All Reports button directly");
@@ -188,10 +187,13 @@ function reattachEventListeners() {
         const container = button.nextElementSibling;
         if (container && container.classList.contains('plan-steps-container')) {
             button.addEventListener('click', function() {
-                const arrow = this.querySelector('span');
+                const arrow = this.querySelector('.chevron-icon');
                 const isHidden = container.style.display === 'none';
                 container.style.display = isHidden ? 'block' : 'none';
-                arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+                arrow.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+                
+                // Trigger resize after toggle
+                setTimeout(resizeResultsContainer, 10);
             });
         }
     });
@@ -267,10 +269,35 @@ function displayText(element, text) {
     resizeResultsContainer();
 }
 
+// Function to animate typing dots using Motion One
+function animateTypingDots(containerElement) {
+    if (!containerElement) return;
+    
+    const dots = containerElement.querySelectorAll('.typing-dot');
+    if (!dots || dots.length === 0) return;
+    
+    dots.forEach((dot, index) => {
+        // Different delay for each dot
+        const delay = index * 0.2;
+        
+        // Create a repeating animation
+        Motion.animate(
+            dot,
+            { transform: ['translateY(0px)', 'translateY(-3px)', 'translateY(0px)'] },
+            { 
+                duration: 1.5,
+                delay,
+                repeat: Infinity,
+                easing: "ease-in-out"
+            }
+        );
+    });
+}
+
 // Function to format and append log messages
 function appendLogMessage(log) {
     const messageElement = document.createElement('div');
-    messageElement.classList.add('log-message', 'animate-fade-in');
+    messageElement.classList.add('log-message');
 
     if (log.type) {
         messageElement.classList.add(`log-type-${log.type}`);
@@ -288,10 +315,6 @@ function appendLogMessage(log) {
     }
 
     switch (log.type) {
-        case 'separator':
-            messageElement.innerHTML = `<hr class="border-t border-gray-100 dark:border-gray-800 my-1 opacity-40 ${log.content.startsWith('=') ? 'border-t-2' : ''}">`;
-            break;
-
         case 'status':
             // Create a status message
             if (log.agent && (log.content.includes('waiting for') || log.content.includes('thinking') ||
@@ -312,10 +335,10 @@ function appendLogMessage(log) {
                     </div>
                     <div class="pl-10 mt-2 text-gray-600 dark:text-gray-400 flex items-center">
                         ${sanitizeHTML(log.content)}
-                        <div class="ml-2 flex gap-1">
-                            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot typing-dot"></div>
-                            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot typing-dot"></div>
-                            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-typing-dot typing-dot"></div>
+                        <div class="ml-2 flex gap-1 typing-dots-container">
+                            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 typing-dot"></div>
+                            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 typing-dot"></div>
+                            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 typing-dot"></div>
                         </div>
                     </div>
                 `;
@@ -329,8 +352,11 @@ function appendLogMessage(log) {
                     );
                     
                     if (existingProcessing) {
-                        existingProcessing.classList.add('opacity-0', 'h-0', 'overflow-hidden', 'my-0', 'py-0');
-                        setTimeout(() => {
+                        // Use Motion One to animate the removal
+                        Motion.animate(existingProcessing, 
+                            { opacity: 0, height: 0, overflow: "hidden" }, 
+                            { duration: 0.3, easing: "ease-out" }
+                        ).then(() => {
                             try {
                                 existingProcessing.remove();
                                 // Remove from allLogElements array
@@ -341,7 +367,7 @@ function appendLogMessage(log) {
                             } catch (e) {
                                 console.error("Error removing existing processing status:", e);
                             }
-                        }, 300);
+                        });
                     }
 
                     currentAgentProcessing = messageElement;
@@ -524,7 +550,9 @@ function appendLogMessage(log) {
                     <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Plan Steps
                     </h4>
-                    <span class="chevron-icon inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 transition-transform duration-300">&#62;</span>
+                    <svg class="chevron-icon w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
                 `;
 
                 // Create a container for all plan steps (collapsed by default)
@@ -546,6 +574,9 @@ function appendLogMessage(log) {
                         stepsContentContainer.style.display = 'none';
                         chevron.style.transform = 'rotate(0deg)';
                     }
+                    
+                    // Trigger resize after toggling visibility
+                    setTimeout(resizeResultsContainer, 10);
                 });
 
                 planStepsContainer.appendChild(planStepsHeading);
@@ -634,8 +665,24 @@ function appendLogMessage(log) {
             messageElement.innerHTML = `<p><em>Unknown log type '${log.type}':</em> ${sanitizeHTML(JSON.stringify(log.content))}</p>`;
     }
 
+    // Set initial state for animation
+    messageElement.style.opacity = '0';
+    messageElement.style.transform = 'translateY(10px)';
+    
     outputDiv.appendChild(messageElement);
     allLogElements.push(messageElement);
+
+    // Apply Motion One animation
+    Motion.animate(messageElement, 
+        { opacity: 1, transform: 'translateY(0px)' }, 
+        { duration: 0.3, easing: "ease-out" }
+    );
+
+    // Animate typing dots if present
+    const dotsContainer = messageElement.querySelector('.typing-dots-container');
+    if (dotsContainer) {
+        animateTypingDots(dotsContainer);
+    }
 
     // Force recalculation of container size
     setTimeout(resizeResultsContainer, 50);
@@ -674,8 +721,11 @@ function hideAgentProcessing(agentName) {
     );
 
     processingMessages.forEach(el => {
-        el.classList.add('opacity-0', 'h-0', 'overflow-hidden', 'my-0', 'py-0', 'transition-all', 'duration-300');
-        setTimeout(() => {
+        // Use Motion One to animate the element before removing it
+        Motion.animate(el, 
+            { opacity: 0, height: 0, margin: 0, padding: 0 }, 
+            { duration: 0.3, easing: "ease-out" }
+        ).then(() => {
             try {
                 el.remove();
                 // Remove from allLogElements array
@@ -686,7 +736,37 @@ function hideAgentProcessing(agentName) {
             } catch (e) {
                 console.error("Error removing processing status:", e);
             }
-        }, 300);
+        });
+    });
+}
+
+// Function to hide supervisor status messages that show "evaluating"
+function hideSupervisorEvaluatingMessages() {
+    supervisorStatusMessages.forEach(el => {
+        // Only hide status messages that include "evaluating"
+        if (el.textContent.includes('Supervisor is evaluating')) {
+            // Use Motion One to animate the element before removing it
+            Motion.animate(el, 
+                { opacity: 0, height: 0, margin: 0, padding: 0 }, 
+                { duration: 0.3, easing: "ease-out" }
+            ).then(() => {
+                try {
+                    el.remove();
+                    // Remove from supervisorStatusMessages array
+                    const index = supervisorStatusMessages.indexOf(el);
+                    if (index > -1) {
+                        supervisorStatusMessages.splice(index, 1);
+                    }
+                    // Also remove from allLogElements array if present
+                    const globalIndex = allLogElements.indexOf(el);
+                    if (globalIndex > -1) {
+                        allLogElements.splice(globalIndex, 1);
+                    }
+                } catch (e) {
+                    console.error("Error removing supervisor evaluating message:", e);
+                }
+            });
+        }
     });
 }
 
@@ -719,22 +799,45 @@ function handleAgentStateTransition(currentAgent, nextAgent) {
 // Function to handle supervisor messages
 function appendSupervisorMessage(content) {
     const messageElement = document.createElement('div');
-    messageElement.className = 'px-4 py-2 italic text-gray-600 dark:text-gray-400 text-sm flex items-center';
+    messageElement.className = 'px-4 py-2 italic text-gray-600 dark:text-gray-400 text-sm flex items-center supervisor-message';
     messageElement.innerHTML = `
-        <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mr-2"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mr-2 supervisor-message-dot"></span>
         ${content}
     `;
+    
+    // Set initial opacity to 0 for animation
+    messageElement.style.opacity = '0';
     outputDiv.appendChild(messageElement);
+    allLogElements.push(messageElement);
+    
+    // Use Motion One to animate the fade-in
+    Motion.animate(messageElement, 
+        { opacity: 1 }, 
+        { duration: 0.3, easing: "ease-out" }
+    );
+    
+    // If this is a status message about supervisor evaluating, track it
+    if (content.includes('Supervisor is evaluating')) {
+        supervisorStatusMessages.push(messageElement);
+    }
+    
+    // If this is a task assignment message, hide any previous evaluating messages
+    if (content.includes('Supervisor assigned the following task to')) {
+        hideSupervisorEvaluatingMessages();
+    }
 
     // Ensure we're scrolled to the bottom
     outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
-// Helper function to hide all status messages (for when final report arrives)
+// Function to hide all status messages (for when final report arrives)
 function hideAllStatusMessages() {
     statusMessages.forEach(element => {
-        element.classList.add('opacity-0', 'h-0', 'overflow-hidden', 'my-0', 'py-0', 'transition-all', 'duration-300');
-        setTimeout(() => {
+        // Use Motion One to animate the element before removing it
+        Motion.animate(element, 
+            { opacity: 0, height: 0, margin: 0, padding: 0 }, 
+            { duration: 0.3, easing: "ease-out" }
+        ).then(() => {
             try {
                 element.remove();
                 // Remove from allLogElements array
@@ -745,7 +848,7 @@ function hideAllStatusMessages() {
             } catch (e) {
                 console.error("Error removing status message:", e);
             }
-        }, 300);
+        });
     });
     statusMessages = [];
 }
@@ -783,6 +886,7 @@ submitBtn.addEventListener('click', async () => {
     outputDiv.innerHTML = '';
     statusMessages = [];
     allLogElements = [];
+    supervisorStatusMessages = []; // Reset supervisor status messages
     currentAgentProcessing = null;
     currentSessionId = null; // Reset session ID for the new run
     reportButtonElement = null; // Reset report button reference
@@ -1033,6 +1137,10 @@ submitBtn.addEventListener('click', async () => {
                         if (log.type === 'status' && log.content.includes('Supervisor assigned the following task to')) {
                             const lastAgent = data.last_agent || null;
                             const nextAgent = data.next || null;
+                            
+                            // Hide any previous supervisor evaluating messages when supervisor assigns a task
+                            hideSupervisorEvaluatingMessages();
+                            
                             if (lastAgent && nextAgent && lastAgent !== nextAgent) {
                                 handleAgentStateTransition(lastAgent, nextAgent);
                             }
@@ -1142,16 +1250,39 @@ function updateStatus(message, status) {
     // Add appropriate class based on status
     if (status === 'active' || status === 'connected') {
         statusIndicator.classList.add('bg-primary-50', 'dark:bg-primary-900/20', 'text-primary-600', 'dark:text-primary-400');
-        statusIndicatorDot.classList.add('bg-primary-500', 'animate-pulse');
+        statusIndicatorDot.classList.add('bg-primary-500');
+        
+        // Animate the pulse effect with Motion One
+        Motion.animate(
+            statusIndicatorDot, 
+            { 
+                scale: [0.8, 1.2, 0.8],
+                opacity: [0.8, 1, 0.8]
+            }, 
+            { 
+                duration: 2,
+                repeat: Infinity,
+                easing: "ease-in-out"
+            }
+        );
     } else if (status === 'success') {
         statusIndicator.classList.add('bg-green-50', 'dark:bg-green-900/20', 'text-green-600', 'dark:text-green-400');
         statusIndicatorDot.classList.add('bg-green-500');
+        
+        // Stop any existing animation
+        Motion.animate(statusIndicatorDot, { scale: 1, opacity: 1 });
     } else if (status === 'error') {
         statusIndicator.classList.add('bg-red-50', 'dark:bg-red-900/20', 'text-red-600', 'dark:text-red-400');
         statusIndicatorDot.classList.add('bg-red-500');
+        
+        // Stop any existing animation
+        Motion.animate(statusIndicatorDot, { scale: 1, opacity: 1 });
     } else {
         statusIndicator.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-600', 'dark:text-gray-400');
         statusIndicatorDot.classList.add('bg-gray-400');
+        
+        // Stop any existing animation
+        Motion.animate(statusIndicatorDot, { scale: 1, opacity: 1 });
     }
 }
 
@@ -1197,35 +1328,46 @@ backToTopButton.addEventListener('click', () => {
 // Function to resize the results container based on content
 function resizeResultsContainer() {
     const resultsContainer = document.querySelector('.results-content');
+    if (!resultsContainer) {
+        return;
+    }
+
+    // Get the current scroll position to restore it later
+    const scrollTop = resultsContainer.scrollTop;
 
     // Reset height to auto to measure real content height
     resultsContainer.style.height = 'auto';
+    resultsContainer.style.minHeight = '';
 
     // Get the scrollHeight of the content
     const contentHeight = resultsContainer.scrollHeight;
-    const minHeight = 400;
+    const minHeight = 550;
 
     // Set the height to the maximum of content height or minimum height
-    resultsContainer.style.minHeight = `${Math.max(contentHeight, minHeight)}px`;
+    const newHeight = Math.max(contentHeight, minHeight);
+    resultsContainer.style.minHeight = `${newHeight}px`;
+    
+    // Restore scroll position
+    resultsContainer.scrollTop = scrollTop;
+}
+
+// Observer to resize container when content changes
+if ('ResizeObserver' in window) {
+    const resizeObserver = new ResizeObserver((entries) => {
+        resizeResultsContainer();
+    });
+
+    // Start observing the results content when it's available
+    const resultsContent = document.querySelector('.results-content');
+    if (resultsContent) {
+        resizeObserver.observe(resultsContent);
+    }
 }
 
 // Setup example queries
 function setExampleQuery(query) {
     queryInput.value = query;
     queryInput.focus();
-}
-
-// Observer to resize container when content changes
-if ('ResizeObserver' in window) {
-    const resizeObserver = new ResizeObserver(() => {
-        resizeResultsContainer();
-    });
-
-    // Start observing the results content
-    const resultsContent = document.querySelector('.results-content');
-    if (resultsContent) {
-        resizeObserver.observe(resultsContent);
-    }
 }
 
 // Function to save state and navigate to report using session_id

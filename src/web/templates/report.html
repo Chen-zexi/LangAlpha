@@ -8,12 +8,18 @@
     <link href="/static/css/output.css" rel="stylesheet">
     <!-- External CSS -->
     <link rel="stylesheet" href="/static/css/report.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <!-- Markdown parsing and sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <!-- Code highlighting -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.css">
     <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
+    <!-- Motion One animation library -->
+    <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
+    <!-- LangAlpha animations -->
+    <script src="/static/js/animations.js"></script>
     <!-- Print styles -->
     <style>
         @media print {
@@ -36,55 +42,113 @@
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div class="max-w-5xl mx-auto p-5">
-        <header class="flex justify-between items-center mb-6 py-4 border-b border-gray-200 dark:border-gray-700 px-2">
+        <header class="flex justify-between items-center mb-6 py-4 border-b border-gray-200 dark:border-gray-700 px-2 slide-in-up">
             <div class="flex items-center ml-4">
-                <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold">L</div>
+                <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold breathing-animation">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </div>
                 <span class="ml-2 text-xl font-semibold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">LangAlpha</span>
             </div>
             <div class="flex gap-3 mr-4">
-                <button id="back-button" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
-                        <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                <button id="back-button" class="back-button flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors animated-button">
+                    <i class="fa-solid fa-arrow-left mr-2"></i>
                     Back to Main Page
                 </button>
-                <a href="/all-reports" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
-                        <path d="M9 5H7C6.46957 5 5.96086 5.21071 5.58579 5.58579C5.21071 5.96086 5 6.46957 5 7V19C5 19.5304 5.21071 20.0391 5.58579 20.4142C5.96086 20.7893 6.46957 21 7 21H17C17.5304 21 18.0391 20.7893 18.4142 20.4142C18.7893 20.0391 19 19.5304 19 19V7C19 6.46957 18.7893 5.96086 18.4142 5.58579C18.0391 5.21071 17.5304 5 17 5H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M13 3H11C9.89543 3 9 3.89543 9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5C15 3.89543 14.1046 3 13 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                <a href="/all-reports" data-transition="true" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors animated-button">
+                    <i class="fa-regular fa-folder-open mr-2"></i>
                     All Reports
                 </a>
-                <button id="download-button" class="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white shadow-md hover:shadow-lg transition-all duration-300">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
-                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                <button id="download-button" class="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white shadow-md hover:shadow-lg transition-all duration-300 animated-button">
+                    <i class="fa-solid fa-download mr-2"></i>
                     Download as PDF
                 </button>
             </div>
         </header>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md mb-6 p-6 px-8">
-            <h1 id="report-title" class="text-2xl font-semibold mb-4">Investment Analysis Report</h1>
-            <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">Query: <span id="report-query" class="font-medium">Loading...</span></p>
-            <p class="text-gray-600 dark:text-gray-400 text-sm">Generated: <span id="report-timestamp" class="font-medium">Loading...</span></p>
-            <p class="text-gray-600 dark:text-gray-400 text-sm hidden">Session ID: <span id="session-id" class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Loading...</span></p>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md mb-6 p-6 px-8 slide-in-up">
+            <h1 id="report-title" class="text-2xl font-semibold mb-4 fade-in-element">Investment Analysis Report</h1>
+            <p class="text-gray-600 dark:text-gray-400 text-sm mb-2 fade-in-element">Query: <span id="report-query" class="font-medium">Loading...</span></p>
+            <p class="text-gray-600 dark:text-gray-400 text-sm fade-in-element">Generated: <span id="report-timestamp" class="font-medium">Loading...</span></p>
+            <p class="text-gray-600 dark:text-gray-400 text-sm hidden fade-in-element">Session ID: <span id="session-id" class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Loading...</span></p>
+        </div>
+
+        <!-- TradingView Widget Container - Main wrapper for all widget types -->
+        <div id="tradingview-widgets-container" class="hidden mb-6 slide-in-up">
+            <!-- Widget Type 1: Symbol Info + Chart (for company and ETF) -->
+            <div id="tradingview-symbol-widget" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-4 fade-in-element">
+                <div id="tradingview-symbol-info" class="tradingview-widget-container mb-4">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <div class="tradingview-widget-copyright hidden">
+                        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
+                            <span class="blue-text">Track all markets on TradingView</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Mini Chart Widget -->
+                <div id="tradingview-mini-chart" class="tradingview-widget-container mt-4" style="height: 200px; overflow: visible;">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <div class="tradingview-widget-copyright hidden">
+                        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
+                            <span class="blue-text">Track all markets on TradingView</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Widget Type 2: Market Overview (for market) -->
+            <div id="tradingview-market-widget" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-4 fade-in-element">
+                <div id="tradingview-market-overview" class="tradingview-widget-container" style="height: 500px; width: 100%;">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <div class="tradingview-widget-copyright hidden">
+                        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
+                            <span class="blue-text">Track all markets on TradingView</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Widget Type 3: Multiple Symbols (for multiple tickers) -->
+            <div id="tradingview-multiple-widget" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-4 fade-in-element">
+                <div id="tradingview-multiple-symbols" class="tradingview-widget-container" style="height: 500px; width: 100%;">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <div class="tradingview-widget-copyright hidden">
+                        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
+                            <span class="blue-text">Track all markets on TradingView</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Widget Type 4: Compare Symbols (for compare ticker type) -->
+            <div id="tradingview-compare-widget" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-4 fade-in-element">
+                <div id="tradingview-symbol-compare" class="tradingview-widget-container" style="height: 500px; width: 100%;">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <div class="tradingview-widget-copyright hidden">
+                        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
+                            <span class="blue-text">Track all markets on TradingView</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="flex flex-col items-center justify-center p-8">
+        <div id="loading-indicator" class="flex flex-col items-center justify-center p-8 fade-in-element">
             <div class="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
             <p class="mt-4 text-lg">Loading report...</p>
         </div>
 
         <!-- Error Message -->
-        <div id="error-message" class="bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-lg mb-4 hidden"></div>
+        <div id="error-message" class="bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-lg mb-4 hidden fade-in-element">
+            <div class="flex items-center">
+                <i class="fa-solid fa-triangle-exclamation mr-3 text-xl"></i>
+                <span id="error-message-text"></span>
+            </div>
+        </div>
 
         <!-- Report Content -->
-        <div id="report-content" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 markdown-content hidden"></div>
+        <div id="report-content" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 markdown-content hidden slide-in-up prose dark:prose-invert prose-indigo max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-2 prose-p:mt-2 prose-li:my-0 prose-table:my-4 prose-code:before:content-none prose-code:after:content-none"></div>
     </div>
 
     <!-- External JavaScript -->

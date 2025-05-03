@@ -8,16 +8,24 @@
     <link href="/static/css/output.css" rel="stylesheet">
     <!-- External CSS -->
     <link rel="stylesheet" href="/static/css/index.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Motion One animation library -->
+    <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
+    <!-- LangAlpha animations -->
+    <script src="/static/js/animations.js"></script>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div class="max-w-5xl mx-auto p-5">
-        <header class="flex justify-between items-center mb-8 py-4 border-b border-gray-200 dark:border-gray-700 px-2">
+        <header class="flex justify-between items-center mb-8 py-4 border-b border-gray-200 dark:border-gray-700 px-2 slide-in-up">
             <div class="flex items-center ml-4">
-                <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold">L</div>
+                <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold breathing-animation">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </div>
                 <span class="ml-2 text-xl font-semibold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">LangAlpha</span>
             </div>
             <div class="flex gap-3 mr-4">
-                <button id="back-button" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <button id="back-button" class="back-button flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors animated-button">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
                         <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -27,31 +35,35 @@
             </div>
         </header>
 
-        <div class="flex justify-between items-center mb-8 px-2">
+        <div class="flex justify-between items-center mb-8 px-2 fade-in-element">
             <h1 class="text-2xl font-semibold ml-4">All Investment Reports</h1>
             <div id="results-count" class="text-sm text-gray-500 dark:text-gray-400 hidden mr-4">
                 <span id="count-text">0 reports found</span>
-                <button id="clear-search" class="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-xs rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors hidden">
+                <button id="clear-search" class="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-xs rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors hidden animated-button">
                     Clear
                 </button>
             </div>
         </div>
 
         <!-- Filter toolbar - aligned single container design -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-8 slide-in-up">
             <div class="p-6 flex flex-col gap-10">
                 <!-- Search field with icon -->
-                <div class="relative">
+                <div class="relative fade-in-element">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     </div>
-                    <label for="search-reports" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Reports</label>
-                    <input 
-                        type="search"
-                        id="search-reports" 
-                        class="w-full pl-12 pr-10 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                        placeholder="   Search reports..."
-                    >
-                    <button id="search-clear" class="absolute bottom-0 top-7 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer hidden">
+                    <label for="search-reports" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <i class="fa-solid fa-magnifying-glass mr-2"></i>Search Reports
+                    </label>
+                    <div class="relative">
+                        <input 
+                            type="search"
+                            id="search-reports" 
+                            class="w-full pl-10 pr-10 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            placeholder="Search reports..."
+                        >
+                    </div>
+                    <button id="search-clear" class="absolute bottom-0 top-7 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer hidden animated-button">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -59,50 +71,59 @@
                 </div>
                 
                 <!-- Sort dropdown with matching styles -->
-                <div class="rounded-md">
-                    <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Reports By</label>
-                    <select id="sort-by" class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
-                        <option value="date-desc">Newest First</option>
-                        <option value="date-asc">Oldest First</option>
-                        <option value="title-asc">Title (A-Z)</option>
-                        <option value="title-desc">Title (Z-A)</option>
-                    </select>
+                <div class="rounded-md fade-in-element">
+                    <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <i class="fa-solid fa-arrow-up-wide-short mr-2"></i>Sort Reports By
+                    </label>
+                    <div class="relative">
+                        <select id="sort-by" class="w-full py-2 pl-3 pr-10 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm appearance-none">
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                            <option value="title-asc">Title: A-Z</option>
+                            <option value="title-desc">Title: Z-A</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="flex flex-col items-center justify-center p-8">
+        <div id="loading-indicator" class="flex flex-col items-center justify-center p-8 fade-in-element">
             <div class="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
             <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Loading reports...</p>
         </div>
 
         <!-- Empty state -->
-        <div id="empty-state" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center hidden">
-            <div class="text-6xl mb-6 opacity-30">📋</div>
+        <div id="empty-state" class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center hidden fade-in-element">
+            <div class="text-6xl mb-6 opacity-30">
+                <i class="fa-regular fa-file-lines"></i>
+            </div>
             <h2 class="text-xl font-semibold mb-2">No Reports Found</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-4">There are no investment reports available yet.</p>
-            <a href="/" class="inline-block px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors font-medium">
+            <a href="/" data-transition="true" class="inline-block px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors font-medium animated-button">
                 Generate a Report
             </a>
         </div>
 
         <!-- Error state -->
-        <div id="error-state" class="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-6 rounded-xl hidden">
+        <div id="error-state" class="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-6 rounded-xl hidden fade-in-element">
             <h2 class="text-xl font-semibold mb-2">Error Loading Reports</h2>
             <p id="error-message">An unexpected error occurred. Please try refreshing the page.</p>
         </div>
 
         <!-- Reports Container - Improved spacing and layout -->
-        <div id="reports-container" class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 hidden">
+        <div id="reports-container" class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 hidden fade-in-element">
             <!-- Report cards will be generated here by JavaScript -->
         </div>
 
         <!-- Pagination -->
-        <div id="pagination" class="flex justify-center items-center gap-3 my-8 hidden">
-            <button id="prev-page" class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+        <div id="pagination" class="flex justify-center items-center gap-3 my-8 hidden fade-in-element">
+            <button id="prev-page" class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed animated-button">Previous</button>
             <span id="page-info" class="text-sm text-gray-600 dark:text-gray-400">Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
-            <button id="next-page" class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+            <button id="next-page" class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed animated-button">Next</button>
         </div>
     </div>
 

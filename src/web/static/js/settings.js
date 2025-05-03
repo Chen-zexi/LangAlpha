@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up button event listeners
     setupButtonHandlers();
 
+    // Set up provider change listeners
+    setupProviderChangeHandlers();
+
     // Load recent reports
     loadRecentReports();
 });
@@ -27,10 +30,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Default config values (matching .env.example)
 const DEFAULT_LLM_CONFIGS = {
-    reasoning: { model: 'gpt-4o', provider: 'OPENAI' },
-    basic:     { model: 'gpt-4o-mini', provider: 'OPENAI' },
-    coding:    { model: 'gpt-4o', provider: 'OPENAI' },
-    economic:  { model: 'gpt-4o-mini', provider: 'OPENAI' }
+    reasoning: { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
+    basic:     { model: 'gpt-4.1', provider: 'OPENAI' },
+    coding:    { model: 'claude-3-7-sonnet-latest', provider: 'ANTHROPIC' },
+    economic:  { model: 'grok-3-beta', provider: 'XAI' },
 };
 
 const DEFAULT_WORKFLOW_CONFIG = {
@@ -40,6 +43,14 @@ const DEFAULT_WORKFLOW_CONFIG = {
 
 // Initialize currentWorkflowConfig at global scope
 let currentWorkflowConfig = null;
+
+// Define default models for each provider
+const PROVIDER_DEFAULTS = {
+    'OPENAI': 'gpt-4.1',
+    'GEMINI': 'gemini-2.5-pro-preview-03-25',
+    'XAI': 'grok-3-beta',
+    'ANTHROPIC': 'claude-3-7-sonnet-latest'
+};
 
 // Set up button handlers
 function setupButtonHandlers() {
@@ -65,6 +76,34 @@ function setupButtonHandlers() {
     } else {
         console.error("#reset-config-btn not found");
     }
+}
+
+// Add event listeners to provider dropdowns
+function setupProviderChangeHandlers() {
+    const llmTypes = ['reasoning', 'basic', 'coding', 'economic'];
+
+    llmTypes.forEach(type => {
+        const providerSelect = document.getElementById(`config-${type}-provider`);
+        const modelInput = document.getElementById(`config-${type}-model`);
+
+        if (providerSelect && modelInput) {
+            providerSelect.addEventListener('change', (event) => {
+                const selectedProvider = event.target.value.toUpperCase();
+                const defaultModel = PROVIDER_DEFAULTS[selectedProvider];
+
+                if (defaultModel) {
+                    modelInput.value = defaultModel;
+                    console.log(`Set ${type} model to default for ${selectedProvider}: ${defaultModel}`);
+                } else {
+                    // Optionally clear the model field or leave it if provider has no default
+                    // modelInput.value = ''; 
+                    console.log(`No default model found for provider: ${selectedProvider}`);
+                }
+            });
+        } else {
+            console.error(`Missing provider select or model input for type: ${type}`);
+        }
+    });
 }
 
 // Load current config and populate the form
@@ -235,7 +274,7 @@ function loadRecentReports() {
     recentReportsList.innerHTML = `
         <li class="mb-1 animate-pulse">
             <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
-                <span class="mr-3">🕒</span>
+                <i class="fa-regular fa-clock mr-3 w-5 text-center"></i>
                 Loading recent reports...
             </div>
         </li>
@@ -258,7 +297,7 @@ function loadRecentReports() {
                 recentReportsList.innerHTML = `
                     <li class="mb-1">
                         <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
-                            <span class="mr-3">📝</span>
+                            <i class="fa-regular fa-file-lines mr-3 w-5 text-center"></i>
                             No recent reports found
                         </div>
                     </li>
@@ -285,7 +324,7 @@ function loadRecentReports() {
                 reportItem.className = 'mb-1';
                 reportItem.innerHTML = `
                     <a href="/report?report_id=${report._id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
-                        <span class="mr-3">📄</span>
+                        <i class="fa-regular fa-file-lines mr-3 w-5 text-center"></i>
                         <div class="flex flex-col">
                             <span class="text-sm">${shortTitle}</span>
                             <span class="text-xs text-gray-500">${reportDate}</span>
@@ -300,7 +339,7 @@ function loadRecentReports() {
             recentReportsList.innerHTML = `
                 <li class="mb-1">
                     <div class="flex items-center p-3 rounded-md text-red-700 dark:text-red-400">
-                        <span class="mr-3">❌</span>
+                        <i class="fa-solid fa-triangle-exclamation mr-3 w-5 text-center"></i>
                         Error loading reports: ${error.message}
                     </div>
                 </li>
