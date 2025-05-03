@@ -49,12 +49,12 @@ class SupervisorInstructions(BaseModel):
 class TickerInfo(BaseModel):
     company: str | None = Field(description="The name of the company")
     ticker: str | None = Field(description="The ticker symbol of the stock/company/market/sector")
-    exchange: str | None = Field(description="The market/exchange that the ticker is traded on (e.g., NASDAQ, NYSE, AMEX)")
     tradingview_symbol: str | None = Field(description="The formatted symbol for TradingView widget in 'EXCHANGE:SYMBOL' format")
 
 class CoordinatorInstructions(BaseModel):
     handoff_to_planner: bool
     time_range: str
+    ticker_type: Literal["company", "market", "multiple", "ETF", "compare"] = Field(description="The type of the ticker")
     tickers: list[TickerInfo] | None = Field(description="The list of tickers information")
 
 class AgentResult(BaseModel):
@@ -79,6 +79,7 @@ class State(MessagesState):
     browser_credits: int = Field(default=0)
     market_credits: int = Field(default=0)
     time_range: str
+    ticker_type: Literal["company", "market", "multiple", "ETF", "compare"] | None = Field(default=None)
     tickers: list[TickerInfo] | None = Field(default=None)
     agent_llm_map: Dict[str, Any] | None = Field(default=None)
     llm_configs: Optional[LLMConfigs] = Field(default=None)
