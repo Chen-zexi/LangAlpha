@@ -59,9 +59,10 @@ This guide helps you formulate effective queries when interacting with LangAlpha
 
 *   **Not Real-Time Trading Advice:** LangAlpha provides analysis based on available data but does not offer live buy/sell recommendations or execute trades.
 *   **Data Availability:** Analysis quality depends on the data accessible through its tools (Polygon, Yahoo Finance, Tavily, Tickertick). Highly niche or private data may not be available.
+*   **Agent Availability:** Broswer agent is currently not available in the web UI. Try it with the cml version.
 *   **Ambiguity:** Very broad or ambiguous queries may lead to less focused or potentially inaccurate results. The clearer your query, the better the outcome.
 *   **Scope:** LangAlpha is currently only designed for US stock market analysis. It may not do well on other market or financial instruments.
-*   **Availability:** Broswer agent is currently not available in the web UI. Try it with the cml version.
+
 
 ## Key Technologies
 
