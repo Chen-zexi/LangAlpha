@@ -58,6 +58,7 @@ You should include the title of the report in the `title` field.
 # Notes
 
 - Ensure the plan is clear and logical, with tasks assigned to the correct agent based on their capabilities.
+- If user's query is not clear or ambiguous, you should never attempt to ask user for clarification, none of the agent has direct access to user. You should perform an comprehensive research to regarding the topic / relvent ticker of the query and construct a plan for your research.
 - Always use `coder` for mathematical computations.
 - For stock price analysis, ensure time series data is processed to identify patterns, correlations, and anomalies.
 - When explaining price movements, plan for analysis that connects data points to real-world events.

@@ -20,6 +20,48 @@ Depends on the query, it take 2-6 minutes to generate the response. Token usage 
 
 Examples are generated in ealier phase of the development. Run the latest version for better result.
 
+## General Guide for Usage:
+
+This guide helps you formulate effective queries when interacting with LangAlpha via the web interface to get the most relevant and comprehensive analysis. LangAlpha uses multiple AI agents working together, so clear instructions lead to better results.
+
+### How to get better result:
+
+1.  **Be Specific About Your Target:**
+    *   **Instead of:** "Tell me about the market."
+    *   **Ask:** "Provide a market summary for the US stock market for the past week."
+    *   **Instead of:** "Analyze Nvidia."
+    *   **Ask:** "Analyze Nvidia's stock performance and financial health over the last fiscal year."
+    -  You can optionally provide a company to compare with. Specific information (product, service, etc.) you want the report to focus on.
+
+2.  **Define the Scope and Timeframe:**
+    *   Specify the period you're interested in (e.g., "last quarter," "year-to-date," "since January 1st, 2024," "the last 5 years").
+    *   **Example:** "Summarize the key news affecting the semiconductor industry in the last month."
+    *   **Example:** "Compare the YTD stock performance of Ford (F) and General Motors (GM)."
+
+3.  **State Your Desired Outcome:**
+    *   What kind of information or analysis do you need?
+    *   **News & Events:** "What are the recent major news headlines for Tesla (TSLA)?"
+    *   **Financial Data:** "Retrieve the key financial metrics (P/E ratio, EPS, Revenue Growth) for Microsoft (MSFT) for the last two years."
+    *   **Technical Analysis:** "Provide a technical analysis of NVIDIA based on daily data for the past 3 months, including RSI and MACD indicators."
+    *   **Fundamental Analysis:** "Assess the fundamental strengths and weaknesses of Amazon (AMZN) based on its latest quarterly report."
+    *   **Comparative Analysis:** "Compare the valuation metrics of the top 3 cloud computing companies."
+    *   **Risk Assessment:** "What are the primary risks associated with investing in Chinese EV stocks right now?"
+    *   **Comprehensive Report:** "Generate a comprehensive report on the outlook for the AI cloud service over the next year, including market trends, key players, and potential challenges."
+
+### What LangAlpha Does Well:
+
+*   **Synthesizing Information:** Combining quantitative market data (prices, financials) with qualitative information (news, research).
+*   **Structured Analysis:** Breaking down complex requests into logical research and analysis steps.
+*   **Generating Reports:** Compiling findings into comprehensive, easy-to-read Markdown reports.
+*   **Financial Context:** Providing analysis from a financial perspective
+
+### Limitations to Keep in Mind:
+
+*   **Not Real-Time Trading Advice:** LangAlpha provides analysis based on available data but does not offer live buy/sell recommendations or execute trades.
+*   **Data Availability:** Analysis quality depends on the data accessible through its tools (Polygon, Yahoo Finance, Tavily, Tickertick). Highly niche or private data may not be available.
+*   **Ambiguity:** Very broad or ambiguous queries may lead to less focused or potentially inaccurate results. The clearer your query, the better the outcome.
+*   **Scope:** LangAlpha is currently only designed for US stock market analysis. It may not do well on other market or financial instruments.
+*   **Availability:** Broswer agent is currently not available in the web UI. Try it with the cml version.
 
 ## Key Technologies
 
@@ -78,12 +120,7 @@ Below is an image demonstrate the current agent workflow
 LangAlpha/
 ├── data                                  # Data directory
 ├── models                                # Valuation Model directory
-├── notebooks/                            # Jupyter notebooks for demonstration
-|    ├── checkpoint/
-|    |    ├── milestone_3.ipynb             # Checkpoint for milestone 3
-|    |    └── milestone_4.ipynb             # Checkpoint for milestone 4
-|    ├── demo/                              # Notebook for demo and testing                         
-|    └── db_management.ipynb                # Database management tool                 
+├── notebooks/                            # Jupyter notebooks for demonstration               
 ├── src/                                    # Source code
 |    ├── agent/                           # Agent directory
 |    |    └── market_intelligence_agent/    # Market Intelligence Agent
@@ -104,21 +141,8 @@ LangAlpha/
 |    |    ├── templates/                    # HTML templates
 |    |    ├── main.py                       # Main FastAPI application
 |    |    └── Dockerfile                    # Dockerfile for web service
-|    ├── data_tool/                      # Tools for data retriving
-|    |    ├── data_providers/             
-|    |    |    ├── connect_wrds.py          # code to connect wrds
-|    |    |    ├── financial_datasets.py    # code to retrieve data from financial datasets
-|    |    |    ├── polygon.py               # code to retrieve data from polygon
-|    |    |    └── yahoo_finance.py         # code to retrieve data from yahoo finance
-|    |    ├── data_models.py                # pydantic models
-|    |    └── get_data.py                   # get data
-|    ├── database_tool/                  # Tools for Database Manipulation   
-|    |    ├── connect_db.py                 # connect to database
-|    |    ├── create_table.py               # create tables
-|    |    └── db_operation.py               # complax data retrieval from database
-|    └── llm/                            # LLM config for LLM use oustide of Langraph workflow
-|         ├── llm_models.py                 # LLM models
-|         └── api_call.py                   # Make api call to LLM
+|    |
+|    └──utlitity/                      # Tools for data retriving
 |  
 └── ...
 ```
