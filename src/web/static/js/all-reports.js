@@ -205,6 +205,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Function to get ticker badge text based on report metadata
+    function getTickerBadgeText(report) {
+        // Check if report has ticker metadata
+        if (!report.metadata || !report.metadata.tickers || !Array.isArray(report.metadata.tickers) || report.metadata.tickers.length === 0) {
+            return null; // No ticker info available
+        }
+        
+        // Get ticker type (default to 'market' if not provided)
+        const tickerType = report.metadata.ticker_type ? report.metadata.ticker_type.toLowerCase() : 'market';
+        
+        // Determine badge text based on ticker type
+        if (tickerType === 'market') {
+            return 'Market';
+        } else if (tickerType === 'company' && report.metadata.tickers[0] && report.metadata.tickers[0].company) {
+            return report.metadata.tickers[0].company;
+        } else if (report.metadata.tickers[0] && report.metadata.tickers[0].company) {
+            // For all other types, use the first ticker's company name if available
+            return report.metadata.tickers[0].company;
+        }
+        
+        // Fallback if no company name is available but we have a ticker
+        if (report.metadata.tickers[0]) {
+            if (typeof report.metadata.tickers[0] === 'object' && report.metadata.tickers[0].ticker) {
+                return report.metadata.tickers[0].ticker;
+            } else if (typeof report.metadata.tickers[0] === 'string') {
+                return report.metadata.tickers[0];
+            }
+        }
+        
+        return null; // No suitable ticker info found
+    }
+    
     // Function to create a report card element
     function createReportCard(report) {
         const card = document.createElement('div');
@@ -221,22 +253,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const reportTitle = report.title || 
             (report.metadata && report.metadata.query ? report.metadata.query : 'Investment Analysis');
         
+        // Get ticker badge text if available
+        const tickerBadgeText = getTickerBadgeText(report);
+        
         card.innerHTML = `
             <div class="p-6">
                 <div class="flex items-start justify-between">
                     <div class="flex-grow mr-4">
                         <div class="flex items-center mb-2">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2" title="${reportTitle}">${reportTitle}</h3>
-                            <span class="ml-3 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 text-xs font-medium px-2.5 py-0.5 rounded-full">Report</span>
+                            <h3 class="text-md font-semibold text-gray-900 dark:text-gray-100 line-clamp-2" title="${reportTitle}">${reportTitle}</h3>
                         </div>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Generated: ${friendlyTimestamp}</p>
                     </div>
                 </div>
-                <div class="flex justify-end mt-2">
+                <div class="flex justify-between items-center mt-2">
+                    ${tickerBadgeText ? `
+                    <span class="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs font-medium px-2 py-1.5 rounded-md flex items-center">
+                        <i class="fa-solid fa-chart-line mr-1"></i>${tickerBadgeText}
+                    </span>` : 
+                    `<span></span>`}
                     <a href="/report?session_id=${report.session_id}" 
-                       class="inline-flex items-center px-4 py-2 text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors shadow-sm">
+                       class="inline-flex items-center px-2 py-1.5 text-xs font-medium bg-primary-600 hover:bg-primary-800 text-white rounded-md transition-colors shadow-sm">
                         View Report
-                        <i class="fa-solid fa-arrow-right ml-2"></i>
                     </a>
                 </div>
             </div>

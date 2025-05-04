@@ -799,10 +799,10 @@ function handleAgentStateTransition(currentAgent, nextAgent) {
 // Function to handle supervisor messages
 function appendSupervisorMessage(content) {
     const messageElement = document.createElement('div');
-    messageElement.className = 'px-4 py-2 italic text-gray-600 dark:text-gray-400 text-sm flex items-center supervisor-message';
+    messageElement.className = 'mr-2 px-4 py-2 italic text-gray-600 dark:text-gray-400 text-sm flex items-center supervisor-message';
     messageElement.innerHTML = `
         <span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mr-2 supervisor-message-dot"></span>
-        ${content}
+        <span class="ml-2">${content}</span>
     `;
     
     // Set initial opacity to 0 for animation
@@ -1460,7 +1460,7 @@ function loadRecentReports() {
                 // Use session_id in the href
                 reportItem.innerHTML = `
                     <a href="/report?session_id=${report.session_id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
-                        <span class="mr-3">📄</span>
+                        <span class="mr-3"><i class="fa-regular fa-file-lines"></i></span>
                         <div class="flex flex-col">
                             <span class="text-sm">${shortTitle}</span>
                             <span class="text-xs text-gray-500">${reportDate}</span>

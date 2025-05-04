@@ -22,9 +22,45 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
+
     
-    <!-- LangAlpha animations -->
-    <script src="/static/js/animations.js"></script>
+    <style>
+        /* Under Development Modal Styles */
+        .dev-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .dev-modal {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: modal-fade-in 0.3s ease-out;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .dev-modal {
+                background-color: #1f2937;
+                color: #f3f4f6;
+            }
+        }
+        
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div class="flex min-h-screen">
@@ -85,7 +121,7 @@
                     <ul id="recent-reports-list">
                         <li class="mb-1 animate-pulse">
                             <div class="flex items-center p-3 rounded-md text-gray-700 dark:text-gray-300">
-                                <i class="fa-regular fa-clock mr-3 w-5 text-center"></i>
+                                <i class="fa-solid fa-history mr-3 w-5 text-center"></i>
                                 Loading recent reports...
                             </div>
                         </li>
@@ -93,7 +129,7 @@
                     <!-- View All Reports Button -->
                     <div class="mt-3 text-center fade-in-element">
                         <button id="view-all-reports-btn" onclick="window.location.href='/all-reports'; console.log('Button clicked directly');" class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-primary-50 dark:hover:bg-primary-900/20 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-md transition-colors w-full flex items-center justify-center animated-button">
-                            <i class="fa-solid fa-clipboard-list mr-2"></i> View All Reports
+                            <i class="fa-regular fa-folder-closed mr-2 text-primary-500"></i> View All Reports
                         </button>
                     </div>
                 </div>
@@ -105,10 +141,10 @@
             <div class="max-w-5xl mx-auto">
                 <header class="mb-6 py-3 bg-gray-50 dark:bg-gray-900 z-10 px-1 fade-in-element">
                     <div class="flex justify-between items-center">
-                        <h1 class="text-2xl font-semibold ml-4"><i class="fa-solid fa-robot mr-2 text-primary-500"></i>AI Research and Insights</h1>
+                        <h1 class="text-2xl font-semibold text-primary-500 ml-4"></i>AI Research and Insights</h1>
                         <!-- Settings Button -->
-                        <a href="/settings" data-transition="true" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors inline-flex mr-4 animated-button">
-                            <i class="fa-solid fa-gear h-6 w-6"></i>
+                        <a href="/settings" data-transition="true" class="rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors inline-flex animated-button">
+                            <i class="fa-solid fa-sliders mr-3 fa-xl text-center"></i>
                         </a>
                     </div>
                 </header>
@@ -116,14 +152,14 @@
                 <!-- Search Input Container -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 mb-6 p-6 slide-in-up">
                     <div class="mb-4">
-                        <h2 class="text-lg font-semibold mb-1"><i class="fa-solid fa-comments mr-2 text-primary-500"></i>Chat with LangAlpha</h2>
+                        <h2 class="text-lg font-semibold mb-1"></i>Chat with LangAlpha</h2>
                     </div>
                     <div class="relative mb-4">
                         <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         <input
                             id="query"
                             class="w-full px-10 py-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:border-primary-500 outline-none transition-all duration-300"
-                            placeholder="E.g., 'Analyze recent performance of TSLA stock' or 'Compare tech sector ETFs'"
+                            placeholder="Type a query here..."
                             aria-label="Enter your market intelligence query"
                         >
                     </div>
@@ -147,16 +183,16 @@
                     
                     <div id="output" class="results-content min-h-[550px] overflow-y-auto">
                         <!-- Empty State -->
-                        <div class="empty-state flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in h-full">
-                            <h3 class="text-xl font-semibold mb-4 fade-in-element">Your Financial Analysis Hub</h3>
+                        <div class="empty-state flex flex-col items-center justify-center py-20 px-6 text-center animate-fade-in h-full">
+                            <h3 class="text-xl font-semibold mb-4 p-6 fade-in-element">Your Financial Analysis Hub</h3>
                             <p class="text-gray-600 dark:text-gray-400 max-w-md mb-8 fade-in-element">Enter a finance query above to get AI-powered investment insights and market intelligence</p>
                             
                             <div class="flex flex-wrap gap-3 justify-center">
-                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all duration-300 hover:shadow-md hover:-translate-y-1 fade-in-element animated-button" onclick="setExampleQuery('Analyze NVIDIA stock performance')">
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all duration-300 hover:shadow-md hover:-translate-y-1 fade-in-element animated-button" onclick="setExampleQuery('Analyze NVIDIA stock performance in depth, including financials, technicals, and market sentiment, evaluate the investment opportunity for 2025')">
                                     <i class="fa-solid fa-microchip mr-1"></i> Analyze NVIDIA stock
                                 </div>
-                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all duration-300 hover:shadow-md hover:-translate-y-1 fade-in-element animated-button" onclick="setExampleQuery('Compare Apple and Microsoft financials')">
-                                    <i class="fa-solid fa-scale-balanced mr-1"></i> Compare AAPL vs MSFT
+                                <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all duration-300 hover:shadow-md hover:-translate-y-1 fade-in-element animated-button" onclick="setExampleQuery('Compare Meta and Microsoft, which one is better to invest right now?')">
+                                    <i class="fa-solid fa-scale-balanced mr-1"></i> Compare META vs MSFT
                                 </div>
                                 <div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all duration-300 hover:shadow-md hover:-translate-y-1 fade-in-element animated-button" onclick="setExampleQuery('Generate an overview of the stock market today')">
                                     <i class="fa-solid fa-globe mr-1"></i> Market overview
@@ -177,7 +213,81 @@
         ↑
     </button>
 
+    <!-- Under Development Modal -->
+    <div id="dev-modal-overlay" class="dev-modal-overlay">
+        <div class="dev-modal">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">
+                    <i class="fa-solid fa-tools mr-2 text-primary-500"></i>
+                    Under Development
+                </h3>
+                <button id="close-dev-modal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <p class="text-gray-600 dark:text-gray-300 mb-3">We're still working on this feature. It will be available soon!</p>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
+                    <div class="bg-primary-500 h-2.5 rounded-full w-1/3"></div>
+                </div>
+                <p id="dev-modal-feature" class="text-sm text-gray-500 dark:text-gray-400"></p>
+            </div>
+            <div class="text-right">
+                <button id="confirm-dev-modal" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-md transition-colors">
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- External JavaScript -->
     <script src="/static/js/index.js"></script>
+    
+    <script>
+        // Under Development Modal Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const devModalOverlay = document.getElementById('dev-modal-overlay');
+            const devModalFeature = document.getElementById('dev-modal-feature');
+            const closeDevModal = document.getElementById('close-dev-modal');
+            const confirmDevModal = document.getElementById('confirm-dev-modal');
+            
+            // Get all menu items marked with data-transition="true" but exclude Settings page and other developed pages
+            const inDevMenuItems = document.querySelectorAll('a[data-transition="true"]:not([href="/settings"])');
+            
+            inDevMenuItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Get the menu item text to display in the modal
+                    const featureName = this.textContent.trim();
+                    devModalFeature.textContent = `Feature: ${featureName}`;
+                    
+                    // Show the modal
+                    devModalOverlay.style.display = 'flex';
+                });
+            });
+            
+            // Close modal functionality
+            function closeModal() {
+                devModalOverlay.style.display = 'none';
+            }
+            
+            closeDevModal.addEventListener('click', closeModal);
+            confirmDevModal.addEventListener('click', closeModal);
+            
+            // Close modal when clicking outside
+            devModalOverlay.addEventListener('click', function(e) {
+                if (e.target === devModalOverlay) {
+                    closeModal();
+                }
+            });
+            
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && devModalOverlay.style.display === 'flex') {
+                    closeModal();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

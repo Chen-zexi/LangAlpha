@@ -1071,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Format the main symbol if it's not in the right format
             let formattedMainSymbol = mainSymbol;
             if (!mainSymbol.includes('|')) {
-                formattedMainSymbol = `${mainSymbol}|1D`;
+                formattedMainSymbol = `${mainSymbol}|12M`;
             }
             
             // Format the compare symbol for the compareSymbol object
