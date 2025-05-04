@@ -92,7 +92,7 @@ services:
             HOST: 0.0.0.0
             LOG_LEVEL: info
             PYTHONUNBUFFERED: 1
-            WATCHFILES_FORCE_POLLING: true
+            WATCHFILES_FORCE_POLLING: 'true'
         volumes:
             - ./src/web:/app/web:cached
             - ./src/web/static:/app/web/static:cached
