@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
 const DEFAULT_LLM_CONFIGS = {
     reasoning: { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
     basic:     { model: 'gpt-4.1', provider: 'OPENAI' },
-    coding:    { model: 'claude-3-7-sonnet-latest', provider: 'ANTHROPIC' },
+    coding:    { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
     economic:  { model: 'gpt-4.1-mini', provider: 'OPENAI' },
 };
 

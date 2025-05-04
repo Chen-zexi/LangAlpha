@@ -47,22 +47,22 @@ def create_llm_from_config(
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set.")
-        return ChatOpenAI(model=model, api_key=api_key, temperature=temperature, **kwargs)
+        return ChatOpenAI(model=model, api_key=api_key, temperature=temperature, max_retries=3, **kwargs)
     elif provider == "GEMINI":
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable not set.")
-        return ChatGoogleGenerativeAI(model=model, api_key=api_key, temperature=temperature, **kwargs)
+        return ChatGoogleGenerativeAI(model=model, api_key=api_key, temperature=temperature, max_retries=3,**kwargs)
     elif provider == "ANTHROPIC":
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable not set.")
-        return ChatAnthropic(model=model, api_key=api_key, temperature=temperature, **kwargs)
+        return ChatAnthropic(model=model, api_key=api_key, temperature=temperature, max_retries=3,**kwargs)
     elif provider == "XAI":
         api_key = os.getenv("XAI_API_KEY")
         if not api_key:
             raise ValueError("XAI_API_KEY environment variable not set.")
-        return ChatXAI(model=model, api_key=api_key, temperature=temperature, **kwargs)
+        return ChatXAI(model=model, api_key=api_key, temperature=temperature, max_retries=3,**kwargs)
     else:
         raise ValueError(f"Unknown LLM provider specified in config: {config.provider}")
 
