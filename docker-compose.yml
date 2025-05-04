@@ -78,7 +78,7 @@ services:
             context: .
             dockerfile: src/web/Dockerfile
         ports:
-            - "8000:8000"
+            - "80:8000"
         depends_on:
             - langgraph-api
             - mongodb
