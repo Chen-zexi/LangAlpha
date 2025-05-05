@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import Dict, Any, List
-import pandas as pd
 from yahooquery import Ticker
 from mcp.server.fastmcp import FastMCP
 
+mcp = FastMCP("YahooQuery")
 
-# ────────────────────────── INTERNAL ────────────────────────── #
+
+
 
 def _tkr(ticker: str, **kwargs) -> Ticker:
     return Ticker(ticker, **kwargs)
@@ -23,9 +24,8 @@ def _safe_get(d: Dict[str, Any], *path, default=None):
 
 
 
-# ───────────── 2) CATALYST CALENDAR & CONSENSUS ───────────── #
 
-def event_expectations(ticker: str, **kw) -> Dict[str, Any]:
+async def event_expectations(ticker: str, **kw) -> Dict[str, Any]:
     tk = _tkr(ticker, **kw)
     ce = tk.calendar_events.get(ticker, {})
     et = tk.earnings_trend.get(ticker, {})
@@ -50,7 +50,7 @@ def event_expectations(ticker: str, **kw) -> Dict[str, Any]:
 
 # ───────────── 3) FUNDAMENTALS (VALUE & QUALITY) ──────────── #
 
-def fundamental_summary(ticker: str, **kw) -> Dict[str, Any]:
+async def fundamental_summary(ticker: str, **kw) -> Dict[str, Any]:
     tk = _tkr(ticker, **kw)
     fd = tk.financial_data.get(ticker, {})
     ks = tk.key_stats.get(ticker, {})
@@ -93,7 +93,7 @@ def fundamental_summary(ticker: str, **kw) -> Dict[str, Any]:
 
 # ─────────────── 4) OWNERSHIP & ANALYST FLOW ─────────────── #
 
-def ownership_sentiment(ticker: str, n=5, **kw) -> Dict[str, Any]:
+async def ownership_sentiment(ticker: str, n=5, **kw) -> Dict[str, Any]:
     tk = _tkr(ticker, **kw)
     mh = tk.major_holders.get(ticker, {})
     rt = tk.recommendation_trend
@@ -120,7 +120,7 @@ def ownership_sentiment(ticker: str, n=5, **kw) -> Dict[str, Any]:
 
 # ───────────── 5) DISCOUNTED-CASH-FLOW SNAPSHOT ───────────── #
 
-def dcf_valuation(ticker: str,
+async def dcf_valuation(ticker: str,
                   rf=0.04, eq_prem=0.05, perp_g=0.02, cap_g=0.20, **kw) -> Dict[str, Any]:
     tk = _tkr(ticker, **kw)
     
@@ -181,22 +181,22 @@ def dcf_valuation(ticker: str,
 
 # ──────────── 9) ONE-CALL DASHBOARD ──────────── #
 
-def comprehensive_dashboard(ticker: str, **kw) -> Dict[str, Any]:
+async def comprehensive_dashboard(ticker: str, **kw) -> Dict[str, Any]:
     return {
-        "events": event_expectations(ticker, **kw),
-        "fundamentals": fundamental_summary(ticker, **kw),
-        "ownership": ownership_sentiment(ticker, **kw),
-        "DCF": dcf_valuation(ticker, **kw)
+        "events": await event_expectations(ticker, **kw),
+        "fundamentals": await fundamental_summary(ticker, **kw),
+        "ownership": await ownership_sentiment(ticker, **kw),
+        "DCF": await dcf_valuation(ticker, **kw)
     }
 
 
 # ───────────── MCP SERVER SETUP ───────────── #
 
 # Initialize FastMCP server
-mcp = FastMCP("YahooQuery")
+
 
 @mcp.tool()
-def get_event_expectations(ticker: str) -> Dict[str, Any]:
+async def get_event_expectations(ticker: str) -> Dict[str, Any]:
     """
     Get information about upcoming events and analyst expectations.
     
@@ -207,10 +207,10 @@ def get_event_expectations(ticker: str) -> Dict[str, Any]:
         A dictionary containing information about upcoming earnings dates,
         ex-dividend dates, and analyst consensus estimates.
     """
-    return event_expectations(ticker)
+    return await event_expectations(ticker)
 
 @mcp.tool()
-def get_fundamental_summary(ticker: str) -> Dict[str, Any]:
+async def get_fundamental_summary(ticker: str) -> Dict[str, Any]:
     """
     Get fundamental financial metrics for value and quality analysis.
     
@@ -221,10 +221,10 @@ def get_fundamental_summary(ticker: str) -> Dict[str, Any]:
         A dictionary containing valuation metrics (P/E, EV/EBITDA), margin data,
         growth rates, and liquidity ratios.
     """
-    return fundamental_summary(ticker)
+    return await fundamental_summary(ticker)
 
 @mcp.tool()
-def get_ownership_sentiment(ticker: str, n: int = 5) -> Dict[str, Any]:
+async def get_ownership_sentiment(ticker: str, n: int = 5) -> Dict[str, Any]:
     """
     Get information about stock ownership and analyst sentiment.
     
@@ -236,10 +236,10 @@ def get_ownership_sentiment(ticker: str, n: int = 5) -> Dict[str, Any]:
         A dictionary containing insider/institutional ownership percentages,
         analyst recommendations, and recent rating changes.
     """
-    return ownership_sentiment(ticker, n)
+    return await ownership_sentiment(ticker, n)
 
 @mcp.tool()
-def get_dcf_valuation(
+async def get_dcf_valuation(
     ticker: str,
     rf: float = 0.04, 
     eq_prem: float = 0.05, 
@@ -260,12 +260,12 @@ def get_dcf_valuation(
         A dictionary containing intrinsic price per share, current price,
         potential upside percentage, and the inputs used for calculation.
     """
-    return dcf_valuation(ticker, rf, eq_prem, perp_g, cap_g)
+    return await dcf_valuation(ticker, rf, eq_prem, perp_g, cap_g)
 
 
 
 @mcp.tool()
-def get_comprehensive_dashboard(ticker: str) -> Dict[str, Any]:
+async def get_comprehensive_dashboard(ticker: str) -> Dict[str, Any]:
     """
     Get a comprehensive dashboard for a stock that includes events, analyst ratings,fundamentals, ownership, and DCF.
     
@@ -276,7 +276,7 @@ def get_comprehensive_dashboard(ticker: str) -> Dict[str, Any]:
         A dictionary containing results from all available analysis methods combined:
         events, fundamentals, ownership, DCF.
     """
-    return comprehensive_dashboard(ticker)
+    return await comprehensive_dashboard(ticker)
 
 
 # ───────── QUICK SMOKE-TEST ───────── #
