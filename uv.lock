@@ -17,6 +17,7 @@ anthropic==0.50.0
 anyio==4.9.0
     # via
     #   anthropic
+    #   browser-use
     #   httpx
     #   httpx-ws
     #   mcp
@@ -31,7 +32,7 @@ attrs==25.3.0
     #   aiohttp
     #   outcome
     #   trio
-azure-core==1.33.0
+azure-core==1.34.0
     # via azure-identity
 azure-identity==1.21.0
     # via langchain-azure-dynamic-sessions
@@ -43,14 +44,14 @@ beautifulsoup4==4.13.4
     #   yahooquery
 blockbuster==1.5.24
     # via langgraph-api
-boto3==1.38.5
+boto3==1.38.8
     # via langchain-aws
-botocore==1.38.5
+botocore==1.38.8
     # via
     #   boto3
     #   browser-use
     #   s3transfer
-browser-use==0.1.41
+browser-use==0.1.45
     # via langalpha (pyproject.toml)
 cachetools==5.5.2
     # via google-auth
@@ -63,15 +64,16 @@ certifi==2025.4.26
     #   selenium
 cffi==1.17.1
     # via cryptography
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
     # via requests
 click==8.1.8
     # via
+    #   browser-use
     #   langgraph-cli
     #   uvicorn
 cloudpickle==3.1.1
     # via langgraph-api
-cryptography==44.0.2
+cryptography==44.0.3
     # via
     #   azure-identity
     #   langgraph-api
@@ -90,6 +92,8 @@ distro==1.9.0
     #   anthropic
     #   openai
     #   posthog
+docstring-parser==0.16
+    # via google-cloud-aiplatform
 dotenv==0.9.9
     # via langalpha (pyproject.toml)
 executing==2.2.0
@@ -97,13 +101,10 @@ executing==2.2.0
 faiss-cpu==1.11.0
     # via browser-use
 filelock==3.18.0
-    # via
-    #   huggingface-hub
-    #   torch
-    #   transformers
+    # via torch
 filetype==1.2.0
     # via langchain-google-genai
-fireworks-ai==0.15.12
+fireworks-ai==0.15.13
     # via langchain-fireworks
 forbiddenfruit==0.1.4
     # via blockbuster
@@ -112,28 +113,65 @@ frozenlist==1.6.0
     #   aiohttp
     #   aiosignal
 fsspec==2025.3.2
-    # via
-    #   huggingface-hub
-    #   torch
+    # via torch
 google-ai-generativelanguage==0.6.18
     # via langchain-google-genai
 google-api-core==2.24.2
     # via
     #   browser-use
     #   google-ai-generativelanguage
+    #   google-cloud-aiplatform
+    #   google-cloud-bigquery
+    #   google-cloud-core
+    #   google-cloud-resource-manager
+    #   google-cloud-storage
 google-auth==2.39.0
     # via
     #   google-ai-generativelanguage
     #   google-api-core
+    #   google-cloud-aiplatform
+    #   google-cloud-bigquery
+    #   google-cloud-core
+    #   google-cloud-resource-manager
+    #   google-cloud-storage
+google-cloud-aiplatform==1.91.0
+    # via langchain-google-vertexai
+google-cloud-bigquery==3.31.0
+    # via google-cloud-aiplatform
+google-cloud-core==2.4.3
+    # via
+    #   google-cloud-bigquery
+    #   google-cloud-storage
+google-cloud-resource-manager==1.14.2
+    # via google-cloud-aiplatform
+google-cloud-storage==2.19.0
+    # via
+    #   google-cloud-aiplatform
+    #   langchain-google-vertexai
+google-crc32c==1.7.1
+    # via
+    #   google-cloud-storage
+    #   google-resumable-media
+google-resumable-media==2.7.2
+    # via
+    #   google-cloud-bigquery
+    #   google-cloud-storage
 googleapis-common-protos==1.70.0
     # via
     #   google-api-core
+    #   grpc-google-iam-v1
     #   grpcio-status
 greenlet==3.2.1
-    # via playwright
+    # via
+    #   patchright
+    #   playwright
+grpc-google-iam-v1==0.14.2
+    # via google-cloud-resource-manager
 grpcio==1.71.0
     # via
     #   google-api-core
+    #   googleapis-common-protos
+    #   grpc-google-iam-v1
     #   grpcio-status
     #   qdrant-client
 grpcio-status==1.71.0
@@ -159,6 +197,7 @@ httpx==0.28.1
     #   browser-use
     #   fireworks-ai
     #   httpx-ws
+    #   langchain-google-vertexai
     #   langgraph-api
     #   langgraph-sdk
     #   langsmith
@@ -171,14 +210,10 @@ httpx-sse==0.4.0
     # via
     #   fireworks-ai
     #   langchain-community
+    #   langchain-google-vertexai
     #   mcp
 httpx-ws==0.7.2
     # via fireworks-ai
-huggingface-hub==0.30.2
-    # via
-    #   sentence-transformers
-    #   tokenizers
-    #   transformers
 hyperframe==6.1.0
     # via h2
 idna==3.10
@@ -198,8 +233,6 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-joblib==1.4.2
-    # via scikit-learn
 jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
@@ -239,6 +272,7 @@ langchain-core==0.3.49
     #   langchain-experimental
     #   langchain-fireworks
     #   langchain-google-genai
+    #   langchain-google-vertexai
     #   langchain-mcp-adapters
     #   langchain-ollama
     #   langchain-openai
@@ -261,6 +295,8 @@ langchain-google-genai==2.1.2
     # via
     #   langalpha (pyproject.toml)
     #   browser-use
+langchain-google-vertexai==2.0.20
+    # via langalpha (pyproject.toml)
 langchain-mcp-adapters==0.0.9
     # via langalpha (pyproject.toml)
 langchain-ollama==0.3.0
@@ -316,10 +352,16 @@ langsmith==0.3.21
     #   langchain-community
     #   langchain-core
     #   langgraph-api
+linkify-it-py==2.0.3
+    # via markdown-it-py
 lxml==4.9.4
     # via yahooquery
 markdown-it-py==3.0.0
-    # via langalpha (pyproject.toml)
+    # via
+    #   langalpha (pyproject.toml)
+    #   mdit-py-plugins
+    #   rich
+    #   textual
 markdownify==1.1.0
     # via
     #   langalpha (pyproject.toml)
@@ -332,9 +374,11 @@ mcp==1.6.0
     # via
     #   langalpha (pyproject.toml)
     #   langchain-mcp-adapters
+mdit-py-plugins==0.4.2
+    # via markdown-it-py
 mdurl==0.1.2
     # via markdown-it-py
-mem0ai==0.1.88
+mem0ai==0.1.93
     # via browser-use
 monotonic==1.6
     # via posthog
@@ -366,9 +410,7 @@ numpy==1.26.4
     #   langchain-community
     #   pandas
     #   qdrant-client
-    #   scikit-learn
-    #   scipy
-    #   transformers
+    #   shapely
 oauth2client==4.1.3
     # via langalpha (pyproject.toml)
 oauthlib==3.2.2
@@ -377,7 +419,7 @@ oauthlib==3.2.2
     #   requests-oauthlib
 ollama==0.4.8
     # via langchain-ollama
-openai==1.76.2
+openai==1.77.0
     # via
     #   langchain-fireworks
     #   langchain-openai
@@ -397,25 +439,25 @@ outcome==1.3.0.post0
 packaging==24.2
     # via
     #   faiss-cpu
-    #   huggingface-hub
+    #   google-cloud-aiplatform
+    #   google-cloud-bigquery
     #   langchain-core
     #   langchainhub
     #   langsmith
     #   marshmallow
-    #   transformers
     #   wrds
 pandas==2.2.3
     # via
     #   wrds
     #   yahooquery
+patchright==1.51.3
+    # via browser-use
 pillow==11.2.1
-    # via
-    #   fireworks-ai
-    #   sentence-transformers
+    # via fireworks-ai
+platformdirs==4.3.7
+    # via textual
 playwright==1.51.0
-    # via
-    #   langalpha (pyproject.toml)
-    #   browser-use
+    # via langalpha (pyproject.toml)
 polygon==1.2.6
     # via langalpha (pyproject.toml)
 polygon-api-client==1.14.4
@@ -434,11 +476,16 @@ proto-plus==1.26.1
     # via
     #   google-ai-generativelanguage
     #   google-api-core
+    #   google-cloud-aiplatform
+    #   google-cloud-resource-manager
 protobuf==5.29.4
     # via
     #   google-ai-generativelanguage
     #   google-api-core
+    #   google-cloud-aiplatform
+    #   google-cloud-resource-manager
     #   googleapis-common-protos
+    #   grpc-google-iam-v1
     #   grpcio-status
     #   proto-plus
     #   qdrant-client
@@ -469,11 +516,13 @@ pydantic==2.10.6
     #   anthropic
     #   browser-use
     #   fireworks-ai
+    #   google-cloud-aiplatform
     #   langchain
     #   langchain-anthropic
     #   langchain-aws
     #   langchain-core
     #   langchain-google-genai
+    #   langchain-google-vertexai
     #   langsmith
     #   mcp
     #   mem0ai
@@ -491,9 +540,13 @@ pydantic-settings==2.8.1
     #   langchain-community
     #   mcp
 pyee==12.1.1
-    # via playwright
+    # via
+    #   patchright
+    #   playwright
 pygments==2.19.1
-    # via devtools
+    # via
+    #   devtools
+    #   rich
 pyjwt==2.10.1
     # via
     #   langgraph-api
@@ -513,6 +566,7 @@ pysocks==1.7.1
 python-dateutil==2.9.0.post0
     # via
     #   botocore
+    #   google-cloud-bigquery
     #   pandas
     #   posthog
 python-dotenv==1.1.0
@@ -527,23 +581,20 @@ pytz==2024.2
     #   pandas
 pyyaml==6.0.2
     # via
-    #   huggingface-hub
     #   langchain
     #   langchain-community
     #   langchain-core
-    #   transformers
 qdrant-client==1.14.2
     # via mem0ai
 regex==2024.11.6
-    # via
-    #   tiktoken
-    #   transformers
+    # via tiktoken
 requests==2.32.3
     # via
     #   azure-core
     #   browser-use
     #   google-api-core
-    #   huggingface-hub
+    #   google-cloud-bigquery
+    #   google-cloud-storage
     #   langchain
     #   langchain-azure-dynamic-sessions
     #   langchain-community
@@ -558,7 +609,6 @@ requests==2.32.3
     #   requests-oauthlib
     #   requests-toolbelt
     #   tiktoken
-    #   transformers
     #   yahooquery
 requests-futures==1.0.2
     # via
@@ -570,28 +620,24 @@ requests-toolbelt==1.0.0
     # via
     #   langalpha (pyproject.toml)
     #   langsmith
+rich==14.0.0
+    # via
+    #   browser-use
+    #   textual
 rsa==4.9.1
     # via
     #   google-auth
     #   oauth2client
 s3transfer==0.12.0
     # via boto3
-safetensors==0.5.3
-    # via transformers
-scikit-learn==1.6.1
-    # via sentence-transformers
-scipy==1.15.2
-    # via
-    #   scikit-learn
-    #   sentence-transformers
 screeninfo==0.8.1
     # via browser-use
 selenium==4.29.0
     # via langalpha (pyproject.toml)
-sentence-transformers==4.1.0
-    # via browser-use
-setuptools==80.0.1
+setuptools==80.3.1
     # via torch
+shapely==2.1.0
+    # via google-cloud-aiplatform
 six==1.17.0
     # via
     #   asttokens
@@ -634,26 +680,17 @@ tenacity==9.1.2
     #   langchain-community
     #   langchain-core
     #   langgraph-api
-threadpoolctl==3.6.0
-    # via scikit-learn
+textual==3.2.0
+    # via browser-use
 tiktoken==0.9.0
     # via langchain-openai
-tokenizers==0.21.1
-    # via transformers
 torch==2.7.0
-    # via
-    #   langalpha (pyproject.toml)
-    #   sentence-transformers
+    # via langalpha (pyproject.toml)
 tqdm==4.67.1
     # via
     #   langalpha (pyproject.toml)
-    #   huggingface-hub
     #   openai
-    #   sentence-transformers
-    #   transformers
     #   yahooquery
-transformers==4.51.3
-    # via sentence-transformers
 trio==0.30.0
     # via
     #   selenium
@@ -670,7 +707,7 @@ typing-extensions==4.13.2
     #   azure-identity
     #   beautifulsoup4
     #   browser-use
-    #   huggingface-hub
+    #   google-cloud-aiplatform
     #   langchain-core
     #   mypy
     #   openai
@@ -680,14 +717,16 @@ typing-extensions==4.13.2
     #   pydantic-core
     #   pyee
     #   selenium
-    #   sentence-transformers
     #   sqlalchemy
+    #   textual
     #   torch
     #   typing-inspect
 typing-inspect==0.9.0
     # via dataclasses-json
 tzdata==2025.2
     # via pandas
+uc-micro-py==1.0.3
+    # via linkify-it-py
 urllib3==2.4.0
     # via
     #   botocore
@@ -703,6 +742,8 @@ uvicorn==0.34.2
     #   langgraph-api
     #   mcp
     #   sse-starlette
+validators==0.34.0
+    # via langchain-google-vertexai
 watchfiles==1.0.5
     # via langgraph-api
 websocket-client==1.8.0

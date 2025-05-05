@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A market intelligence agent component for LangAlpha."
 
 dependencies = [
-    "browser-use>=0.1.41",
+    "browser-use>=0.1.45",
     "dotenv>=0.9.0",
     "python-dotenv>=1.0.1",
     "langchain>=0.3.0",
@@ -21,6 +21,7 @@ dependencies = [
     "langchain-experimental>=0.3.4",
     "langchain-fireworks>=0.2.9",
     "langchain-google-genai>=2.1.2",
+    "langchain-google-vertexai>=2.0.0",
     "langchain-mcp-adapters>=0.0.9",
     "langchain-ollama>=0.3.0",
     "langchain-openai>=0.3.11",

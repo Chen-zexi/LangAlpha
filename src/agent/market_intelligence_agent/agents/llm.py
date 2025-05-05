@@ -3,6 +3,7 @@ import logging
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
+from langchain_google_vertexai import ChatVertexAI
 from langchain_xai import ChatXAI
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
@@ -53,6 +54,8 @@ def create_llm_from_config(
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable not set.")
         return ChatGoogleGenerativeAI(model=model, api_key=api_key, temperature=temperature, max_retries=3,**kwargs)
+    elif provider == "VERTEXAI":
+        return ChatVertexAI(model=model,temperature=temperature, max_retries=3,**kwargs)
     elif provider == "ANTHROPIC":
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:

@@ -875,11 +875,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.getElementById('report-content').innerHTML = postProcessed;
             
-            // Apply syntax highlighting to code blocks
-            document.querySelectorAll('pre code').forEach((block) => {
-                hljs.highlightElement(block);
-            });
-            
             // Apply responsive styling AFTER content is in the DOM
             fixRenderedContent(document.getElementById('report-content')); 
             
@@ -910,8 +905,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // processed = processed.replace(/<table>/g, '<div class="table-responsive"><table class="table">');
         // processed = processed.replace(/<\/table>/g, '</table></div>');
         
-        // Ensure code blocks have proper syntax highlighting class if missing
-        processed = processed.replace(/<pre><code>(?!<span)/g, '<pre><code class="hljs">');
         
         return processed;
     }

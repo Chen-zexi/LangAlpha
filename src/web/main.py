@@ -627,12 +627,6 @@ async def health_check():
             content={"status": "error", "message": str(e)}
         )
 
-# Remove the /api/create-report endpoint entirely
-# @app.post("/api/create-report") ...
-
-# Remove direct-index fallback if static files are working reliably
-# @app.get("/direct-index") ...
-
 # --- MongoDB History Endpoints --- 
 
 @app.get("/api/history/sessions", response_class=JSONResponse)
