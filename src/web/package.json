@@ -1,0 +1,12 @@
+{
+  "name": "langalpha-web",
+  "version": "1.0.0",
+  "description": "LangAlpha Web Interface",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css",
+    "watch:css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.3.5"
+  }
+}

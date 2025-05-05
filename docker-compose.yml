@@ -1,0 +1,108 @@
+volumes:
+    langgraph-data:
+        driver: local
+    mongodb-data:
+        driver: local
+services:
+    langgraph-redis:
+        image: redis:6
+        healthcheck:
+            test: redis-cli ping
+            interval: 5s
+            timeout: 1s
+            retries: 5
+    langgraph-postgres:
+        image: postgres:16
+        ports:
+            - "5433:5432"
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+        volumes:
+            - langgraph-data:/var/lib/postgresql/data
+        healthcheck:
+            test: pg_isready -U postgres
+            start_period: 10s
+            timeout: 1s
+            retries: 5
+            interval: 5s
+    mongodb:
+        build:
+            context: .
+            dockerfile: src/database/Dockerfile
+        ports:
+            - "27017:27017"
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: admin
+            MONGO_INITDB_ROOT_PASSWORD: password
+            MONGO_INITDB_DATABASE: langalpha
+        volumes:
+            - mongodb-data:/data/db
+        healthcheck:
+            test: mongosh --quiet --eval 'db.runCommand("ping").ok' || exit 1
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+        restart: unless-stopped
+    langgraph-api:
+        build:
+            context: .
+            dockerfile: src/agent/Dockerfile
+        ports:
+            - "8123:8000"
+        depends_on:
+            langgraph-redis:
+                condition: service_healthy
+            langgraph-postgres:
+                condition: service_healthy
+        env_file:
+            - .env
+        environment:
+            REDIS_URI: redis://langgraph-redis:6379
+            LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+            POSTGRES_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
+            POLYGON_API_KEY: ${POLYGON_API_KEY}
+            PYTHONUNBUFFERED: 1
+            WATCHFILES_FORCE_POLLING: "true"
+        volumes:
+            - ./src/agent:/app/agent
+            - ./src/agent/market_intelligence_agent:/app/market_intelligence_agent
+        command: ["langgraph", "dev", "-allow-blocking"]
+        restart: unless-stopped
+        tty: true
+        stdin_open: true
+    web-api:
+        build:
+            context: .
+            dockerfile: src/web/Dockerfile
+        ports:
+            - "80:8000"
+        depends_on:
+            - langgraph-api
+            - mongodb
+        env_file:
+            - .env
+        environment:
+            LANGGRAPH_API_URL: http://langgraph-api:8000
+            MONGODB_URI: mongodb://admin:password@mongodb:27017/
+            MONGODB_DB: langalpha
+            PORT: 8000
+            HOST: 0.0.0.0
+            LOG_LEVEL: info
+            PYTHONUNBUFFERED: 1
+            WATCHFILES_FORCE_POLLING: 'true'
+        volumes:
+            - ./src/web:/app/web:cached
+            - ./src/web/static:/app/web/static:cached
+            - ./src/agent:/app/agent:cached
+            - ./src/agent/market_intelligence_agent/config:/app/agent/market_intelligence_agent/config:cached
+            - ./src/database:/app/database:cached
+        command: [
+            "sh", "-c", 
+            "cd /app/web && mkdir -p ./static/css && npm install && npx update-browserslist-db@latest && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch & python -m uvicorn web.main:app --host 0.0.0.0 --port 8000 --reload --reload-delay 0.1 --reload-dir /app/web --reload-include '*.html' --reload-include '*.css' --reload-include '*.js' --reload-exclude '__pycache__'"
+        ]
+        restart: unless-stopped
+        tty: true
+        stdin_open: true

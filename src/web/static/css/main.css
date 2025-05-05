@@ -1,0 +1,160 @@
+/* Main styles for LangAlpha web application */
+:root {
+    /* Core colors */
+    --primary-color: #2C7CF6;
+    --primary-light: #5D9CFF;
+    --primary-dark: #0051C3;
+    --background-color: #F5F7FA;
+    --card-background: #FFFFFF;
+    --text-primary: #1D1D1F;
+    --text-secondary: #6E6E73;
+    --border-color: #E5E5E7;
+    
+    /* Status colors */
+    --success-color: #34C759;
+    --info-color: #5AC8FA;
+    --warning-color: #FF9F0A;
+    --error-color: #FF3B30;
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    
+    /* Animations */
+    --transition-fast: 0.15s;
+    --transition-normal: 0.25s;
+    --transition-slow: 0.4s;
+    
+    /* Layout */
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #0A84FF;
+        --primary-light: #5E9EFF;
+        --primary-dark: #0066CC;
+        --background-color: #1A1A1A;
+        --card-background: #2C2C2E;
+        --text-primary: #F5F5F7;
+        --text-secondary: #98989D;
+        --border-color: #38383A;
+        
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+}
+
+/* Common markdown styling */
+.markdown-content h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.markdown-content h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 24px;
+    margin-bottom: 16px;
+}
+
+.markdown-content h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 20px;
+    margin-bottom: 12px;
+}
+
+.markdown-content p {
+    margin-bottom: 16px;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+}
+
+.markdown-content li {
+    margin-bottom: 8px;
+}
+
+.markdown-content code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.markdown-content pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid var(--border-color);
+    padding-left: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.markdown-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+.markdown-content table {
+    width: 100%;
+    margin-bottom: 16px;
+    border-collapse: collapse;
+}
+
+.markdown-content th, 
+.markdown-content td {
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+}
+
+.markdown-content th {
+    background-color: rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+} 
