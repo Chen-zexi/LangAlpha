@@ -263,7 +263,7 @@ function displayContent(element, markdown) {
     }
 }
 
-// Function to display text directly without typing effect
+// Function to display text
 function displayText(element, text) {
     element.innerHTML += sanitizeHTML(text);
     resizeResultsContainer();

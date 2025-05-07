@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => {
                         downloadButton.innerHTML = originalButtonText;
                         downloadButton.disabled = false;
-                    }, 3000);
+                    }, 1000);
                 });
         });
     }
@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('TradingView widget script loaded');
                 setTimeout(() => {
                     container.classList.remove('loading');
-                }, 500);
+                }, 10);
             };
             
             script.onerror = function(error) {
@@ -414,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('TradingView Mini Chart widget script loaded');
                 setTimeout(() => {
                     container.classList.remove('loading');
-                }, 500);
+                }, 0);
             };
             
             script.onerror = function(error) {
@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('TradingView Market Overview widget script loaded');
                 setTimeout(() => {
                     container.classList.remove('loading');
-                }, 500);
+                }, 0);
             };
             
             script.onerror = function(error) {
@@ -1007,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('TradingView Multiple Symbols widget script loaded');
                 setTimeout(() => {
                     container.classList.remove('loading');
-                }, 500);
+                }, 0);
             };
             
             script.onerror = function(error) {
@@ -1140,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('TradingView Compare Symbols widget script loaded');
                 setTimeout(() => {
                     container.classList.remove('loading');
-                }, 500);
+                }, 0);
             };
             
             script.onerror = function(error) {

@@ -57,4 +57,4 @@ EXPOSE 8000
 
 # Command to run the application with Tailwind in watch mode for development
 # Python will now resolve to /opt/venv/bin/python due to the PATH update
-CMD ["sh", "-c", "cd /app/web && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css && python -m web.run_server"] 
+CMD ["sh", "-c", "cd /app/web && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css && uv run web.run_server"] 

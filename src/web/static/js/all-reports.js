@@ -3,6 +3,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log("All reports page loaded.");
     
+    // Destructure animation functions from global Motion object if available
+    let animate, stagger;
+    if (typeof Motion !== 'undefined') {
+        ({ animate, stagger } = Motion);
+        console.log("Motion library loaded successfully.");
+    } else {
+        console.warn("Motion library not found. Animations will be disabled.");
+    }
+    
     // Elements
     const loadingIndicator = document.getElementById('loading-indicator');
     const emptyState = document.getElementById('empty-state');
@@ -198,18 +207,57 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get reports for current page
         const currentPageReports = filteredReports.slice(startIndex, endIndex);
         
-        // Create report cards
+        // Create report cards and store references
+        const cards = [];
         currentPageReports.forEach(report => {
             const card = createReportCard(report);
             reportsContainer.appendChild(card);
+            cards.push(card); // Store card element
         });
+        
+        // Staggered entrance animation using Motion One
+        if (cards.length > 0 && animate && stagger) { // Check if functions are available
+            animate( // Use destructured animate
+                cards, // Target all newly added cards
+                { 
+                    opacity: [0, 1], // Fade in
+                    y: [20, 0]      // Slide up slightly
+                }, 
+                { 
+                    delay: stagger(0.05), // Use destructured stagger
+                    duration: 0.4,              // Animation duration
+                    easing: "ease-out"          // Easing function
+                }
+            );
+        } else if (cards.length > 0) {
+            // Fallback if animation library isn't loaded: just make cards visible
+            cards.forEach(card => card.style.opacity = 1);
+        }
+        
+        // Add hover effect using standard event listeners and Motion One animate
+        if (cards.length > 0 && animate) { // Check if animate function is available
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    animate(card, 
+                        { scale: 1.05 }, 
+                        { duration: 0.2, easing: 'ease-out' }
+                    );
+                });
+                card.addEventListener('mouseleave', () => {
+                    animate(card, 
+                        { scale: 1.0 }, 
+                        { duration: 0.2, easing: 'ease-out' }
+                    );
+                });
+            });
+        }
     }
     
     // Function to get ticker badge text based on report metadata
     function getTickerBadgeText(report) {
         // Check if report has ticker metadata
         if (!report.metadata || !report.metadata.tickers || !Array.isArray(report.metadata.tickers) || report.metadata.tickers.length === 0) {
-            return null; // No ticker info available
+            return 'Market'; // No ticker info available
         }
         
         // Get ticker type (default to 'market' if not provided)
@@ -218,30 +266,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // Determine badge text based on ticker type
         if (tickerType === 'market') {
             return 'Market';
-        } else if (tickerType === 'company' && report.metadata.tickers[0] && report.metadata.tickers[0].company) {
-            return report.metadata.tickers[0].company;
-        } else if (report.metadata.tickers[0] && report.metadata.tickers[0].company) {
+        } else if (tickerType === 'company' && report.metadata.tickers[0]) {
+            return report.metadata.tickers[0].ticker;
+        } else if (report.metadata.tickers[0]) {
             // For all other types, use the first ticker's company name if available
-            return report.metadata.tickers[0].company;
+            return report.metadata.tickers[0].ticker;
+        } else {
+            return 'Market';
         }
-        
-        // Fallback if no company name is available but we have a ticker
-        if (report.metadata.tickers[0]) {
-            if (typeof report.metadata.tickers[0] === 'object' && report.metadata.tickers[0].ticker) {
-                return report.metadata.tickers[0].ticker;
-            } else if (typeof report.metadata.tickers[0] === 'string') {
-                return report.metadata.tickers[0];
-            }
-        }
-        
-        return null; // No suitable ticker info found
     }
     
     // Function to create a report card element
     function createReportCard(report) {
         const card = document.createElement('div');
-        // Improved card design with consistent spacing and better alignment
-        card.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200 dark:border-gray-700 mb-4';
+        // Remove Tailwind hover classes, keep base transition
+        card.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-md transition-all duration-300 ease-in-out border border-gray-200 dark:border-gray-700 mb-4 flex flex-col opacity-0'; // Start transparent for animation
         
         // Format date more nicely and make it muted
         const reportDate = new Date(report.timestamp);
@@ -256,24 +295,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get ticker badge text if available
         const tickerBadgeText = getTickerBadgeText(report);
         
+        // Use flex-grow on the content area to push the footer down
         card.innerHTML = `
-            <div class="p-6">
-                <div class="flex items-start justify-between">
-                    <div class="flex-grow mr-4">
-                        <div class="flex items-center mb-2">
-                            <h3 class="text-md font-semibold text-gray-900 dark:text-gray-100 line-clamp-2" title="${reportTitle}">${reportTitle}</h3>
-                        </div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Generated: ${friendlyTimestamp}</p>
-                    </div>
+            <div class="p-6 flex flex-col flex-grow">
+                <div class="flex-grow mb-4">
+                    <h3 class="text-md font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2" title="${reportTitle}">${reportTitle}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Generated: ${friendlyTimestamp}</p>
                 </div>
-                <div class="flex justify-between items-center mt-2">
+                
+                <div class="flex justify-between items-center mt-auto">
                     ${tickerBadgeText ? `
-                    <span class="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs font-medium px-2 py-1.5 rounded-md flex items-center">
-                        <i class="fa-solid fa-chart-line mr-1"></i>${tickerBadgeText}
+                    <span class="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs font-medium px-2 py-1.5 rounded-md flex items-center whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-100px)]" title="${tickerBadgeText}">
+                        <i class="fa-solid fa-chart-line mr-1 flex-shrink-0"></i><span class="truncate">${tickerBadgeText}</span>
                     </span>` : 
                     `<span></span>`}
                     <a href="/report?session_id=${report.session_id}" 
-                       class="inline-flex items-center px-2 py-1.5 text-xs font-medium bg-primary-600 hover:bg-primary-800 text-white rounded-md transition-colors shadow-sm">
+                       class="inline-flex items-center px-2 py-1.5 text-xs font-medium bg-primary-600 hover:bg-primary-800 text-white rounded-md transition-colors shadow-sm flex-shrink-0 ml-2">
                         View Report
                     </a>
                 </div>
