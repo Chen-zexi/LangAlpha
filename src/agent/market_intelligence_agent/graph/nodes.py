@@ -114,7 +114,7 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
     prompt_messages = await apply_prompt_template("market", state)
     
     polygon_api_key = os.getenv('POLYGON_API_KEY')
-    alpha_vantage_api_key = os.getenv('ALPHAVANTAGE_API_KEY')
+    alphavantage_api_key = os.getenv('ALPHAVANTAGE_API_KEY')
     async with MultiServerMCPClient(
         {
             "market_data": {
@@ -127,7 +127,7 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
                 "command": "python",
                 "args": [str(source_dir / "tools" / "fundamental_data.py")],
                 "transport": "stdio",
-                "env": {"ALPHA_VANTAGE_API_KEY": alpha_vantage_api_key}
+                "env": {"ALPHAVANTAGE_API_KEY": alphavantage_api_key}
             }
         }
     ) as client:

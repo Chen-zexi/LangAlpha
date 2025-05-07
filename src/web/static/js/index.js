@@ -10,9 +10,9 @@ let supervisorStatusMessages = []; // NEW: Track supervisor status messages
 
 // Default config values (matching .env.example)
 const DEFAULT_LLM_CONFIGS = {
-    reasoning: { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
+    reasoning: { model: 'gemini-2.5-pro-preview-05-06', provider: 'GEMINI' },
     basic:     { model: 'gpt-4.1', provider: 'OPENAI' },
-    coding:    { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
+    coding:    { model: 'gemini-2.5-pro-preview-05-06', provider: 'GEMINI' },
     economic:  { model: 'gpt-4.1-mini', provider: 'OPENAI' },
 };
 
