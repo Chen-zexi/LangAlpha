@@ -50,7 +50,6 @@ const PROVIDER_DEFAULTS = {
     'GEMINI': 'gemini-2.5-pro-preview-05-06',
     'XAI': 'grok-3-beta',
     'ANTHROPIC': 'claude-3-7-sonnet-latest',
-    'VERTEXAI': 'gemini-2.5-pro-preview-05-06'
 };
 
 // Set up button handlers
