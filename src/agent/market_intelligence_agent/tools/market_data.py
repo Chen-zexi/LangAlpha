@@ -266,8 +266,6 @@ def get_ticker_snapshot(ticker: str) -> Dict[str, Any]:
 
     Returns:
         A dictionary containing the snapshot data for the ticker, converted from the client response.
-        Returns a dictionary with an 'error' key if the client is not initialized,
-        the ticker is not found, or another error occurs.
     """
     if rest_client is None:
         return {"error": "Polygon RESTClient is not initialized. Check API Key."}
