@@ -30,9 +30,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Default config values (matching .env.example)
 const DEFAULT_LLM_CONFIGS = {
-    reasoning: { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
+    reasoning: { model: 'gemini-2.5-pro-preview-05-06', provider: 'GEMINI' },
     basic:     { model: 'gpt-4.1', provider: 'OPENAI' },
-    coding:    { model: 'gemini-2.5-pro-preview-03-25', provider: 'GEMINI' },
+    coding:    { model: 'gemini-2.5-pro-preview-05-06', provider: 'GEMINI' },
     economic:  { model: 'gpt-4.1-mini', provider: 'OPENAI' },
 };
 
@@ -47,9 +47,9 @@ let currentWorkflowConfig = null;
 // Define default models for each provider
 const PROVIDER_DEFAULTS = {
     'OPENAI': 'gpt-4.1',
-    'GEMINI': 'gemini-2.5-pro-preview-03-25',
+    'GEMINI': 'gemini-2.5-pro-preview-05-06',
     'XAI': 'grok-3-beta',
-    'ANTHROPIC': 'claude-3-7-sonnet-latest'
+    'ANTHROPIC': 'claude-3-7-sonnet-latest',
 };
 
 // Set up button handlers
@@ -323,7 +323,7 @@ function loadRecentReports() {
                 const reportItem = document.createElement('li');
                 reportItem.className = 'mb-1';
                 reportItem.innerHTML = `
-                    <a href="/report?report_id=${report._id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
+                    <a href="/report?session_id=${report.session_id}" class="flex items-center p-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors">
                         <i class="fa-regular fa-file-lines mr-3 w-5 text-center"></i>
                         <div class="flex flex-col">
                             <span class="text-sm">${shortTitle}</span>

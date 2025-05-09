@@ -12,7 +12,7 @@ langchain-experimental==0.3.4
 langchain-fireworks==0.2.9
 langchain-google-genai==2.1.2
 langchain-groq==0.3.2
-langchain-mcp-adapters==0.0.8
+langchain-mcp-adapters==0.0.9
 langchain-ollama==0.3.0
 langchain-openai>=0.3.11
 langchain-tavily==0.1.5

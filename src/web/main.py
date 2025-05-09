@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Literal
 from pathlib import Path
 import uuid
+import yfinance as yf
 
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Depends
@@ -364,7 +365,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         report_saved_or_failed = False # Flag to track if report status was sent
         report_save_status = None # 'saved' or 'error'
         ticker_type = None # Store ticker type from the state
-        ticker_info_list = None  # Store tickers from the state
+        ticker_info_list: Optional[List[Dict[str, Any]]] = None  # Store tickers from the state, ensure type hint
 
         async for chunk in lg_client.runs.stream(
             thread_info["thread_id"],
@@ -400,21 +401,87 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                             except (json.JSONDecodeError, TypeError):
                                 logger.warning(f"Could not parse planner content for title: {content_str}")
                 
-                # 2. Check for ticker info in the state (similar to final_report)
-                ticker_type = chunk.data.get("ticker_type", None)
-                if ticker_type:
-                    ticker_type = ticker_type.lower()
-                    logger.info(f"Received ticker type: {ticker_type} for session {session_id}")
-                tickers = chunk.data.get("tickers", None)
-                if tickers:
-                    ticker_info_list = tickers
-                    logger.info(f"Received ticker information for session {session_id}: {ticker_info_list}")
+                # 2. Check for ticker info in the state
+                # Get potential updates from the chunk
+                chunk_ticker_type = chunk.data.get("ticker_type", None)
+                if chunk_ticker_type:
+                    ticker_type = chunk_ticker_type.lower() # Update if new value found
+                    logger.info(f"Received ticker type update: {ticker_type} for session {session_id}")
+
+                chunk_tickers = chunk.data.get("tickers", None)
+                if chunk_tickers:
+                    ticker_info_list = chunk_tickers # Update if new value found
+                    logger.info(f"Received ticker information update for session {session_id}: {ticker_info_list}")
                 
                 # 3. Check for final report content in the chunk
                 current_final_report = chunk.data.get("final_report", None)
                 if current_final_report:
                     final_report_content = current_final_report # Store it
                     logger.info(f"Received final_report content for session {session_id}. Preparing to save.")
+
+                    # --- Start: Ticker Validation before saving ---
+                    validated_ticker_info_list = []
+                    if ticker_info_list:
+                        logger.info(f"Attempting validation for tickers: {ticker_info_list}")
+                        possible_exchanges = ["NASDAQ", "NYSE", "AMEX"] # Order to try
+                        
+                        for ticker_info in ticker_info_list:
+                            original_symbol = ticker_info.get('tradingview_symbol') or ticker_info.get('ticker') # Get best guess
+                            if not original_symbol:
+                                logger.warning(f"Skipping validation for ticker_info with no symbol: {ticker_info}")
+                                validated_ticker_info_list.append(ticker_info) # Keep original if no symbol
+                                continue
+
+                            base_ticker = original_symbol.split(':')[-1] # Extract base ticker like 'AAPL'
+                            validated = False
+                            validated_symbol = None
+
+                            # Prioritize provided exchange if available
+                            exchanges_to_try = possible_exchanges
+                            if ':' in original_symbol:
+                                provided_exchange = original_symbol.split(':')[0].upper()
+                                if provided_exchange in exchanges_to_try:
+                                     # Move provided exchange to the front
+                                     exchanges_to_try = [provided_exchange] + [ex for ex in possible_exchanges if ex != provided_exchange]
+                                else:
+                                     exchanges_to_try = [provided_exchange] + possible_exchanges # Add if unknown
+
+                            logger.debug(f"Validation order for {base_ticker}: {exchanges_to_try}")
+
+                            for exchange in exchanges_to_try:
+                                try_symbol = f"{exchange}:{base_ticker}"
+                                try:
+                                    logger.debug(f"Trying yfinance validation for: {try_symbol}")
+                                    yf_ticker = yf.Ticker(base_ticker) # yfinance often prefers base ticker
+                                    # Check if info is available and contains a symbol (basic check)
+                                    info = yf_ticker.info
+                                    if info and info.get('symbol'): 
+                                        # Simple validation: if yfinance returns info, assume exchange is likely okay for TradingView too
+                                        # We use the exchange prefix format for TradingView consistency
+                                        validated_symbol = f"{exchange}:{base_ticker}"
+                                        logger.info(f"Validation successful for {base_ticker} on {exchange}. Using: {validated_symbol}")
+                                        validated = True
+                                        break # Stop trying exchanges once validated
+                                    else:
+                                         logger.debug(f"No sufficient info from yfinance for {base_ticker} (tried as {try_symbol})")
+                                except Exception as yf_error:
+                                    logger.warning(f"yfinance error validating {try_symbol}: {yf_error}")
+                                    # Continue to next exchange
+
+                            if validated:
+                                ticker_info['tradingview_symbol'] = validated_symbol # Update with validated symbol
+                            else:
+                                logger.warning(f"Could not validate {base_ticker} on {exchanges_to_try}. Keeping original/best guess: {original_symbol}")
+                                # Keep original if validation fails, maybe TradingView handles it differently
+                                ticker_info['tradingview_symbol'] = original_symbol 
+                            
+                            validated_ticker_info_list.append(ticker_info)
+                    else:
+                         validated_ticker_info_list = ticker_info_list # Assign None or empty list if no tickers
+
+                    ticker_info_list = validated_ticker_info_list # Use the validated list going forward
+                    # --- End: Ticker Validation ---
+
 
                     # 4. Save the report immediately when final_report is received
                     if session_id and planner_title and final_report_content and not report_saved_or_failed:
@@ -424,7 +491,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                         }
                         if ticker_type:
                             report_metadata["ticker_type"] = ticker_type
-                        if ticker_info_list:
+                        if ticker_info_list: # Use the potentially validated list
                             report_metadata["tickers"] = ticker_info_list
                             
                         report_to_save: Report = {
@@ -432,7 +499,7 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                             "timestamp": datetime.now(),
                             "title": planner_title,
                             "content": final_report_content,
-                            "metadata": report_metadata  # Include original query and tickers
+                            "metadata": report_metadata # Include potentially validated tickers
                         }
                         saved_report = save_report(report_to_save)
                         if saved_report:
@@ -626,12 +693,6 @@ async def health_check():
             status_code=500,
             content={"status": "error", "message": str(e)}
         )
-
-# Remove the /api/create-report endpoint entirely
-# @app.post("/api/create-report") ...
-
-# Remove direct-index fallback if static files are working reliably
-# @app.get("/direct-index") ...
 
 # --- MongoDB History Endpoints --- 
 

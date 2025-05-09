@@ -14,11 +14,16 @@ RUN pip install --no-cache-dir uv
 # Copy the web application code
 COPY src/web /app/web
 
+# Copy the requirements file
+COPY src/web/requirements.txt /app/web/requirements.txt
+
+# Install dependencies from requirements.txt using uv
+RUN python -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    uv pip install --no-cache-dir -r /app/web/requirements.txt
+
 # Copy necessary config from the agent
 COPY src/agent/market_intelligence_agent/config /app/agent/market_intelligence_agent/config
-
-# Install the web package as editable using uv
-RUN uv pip install --system --no-cache-dir -e ./web
 
 # Set up Tailwind CSS
 WORKDIR /app/web
@@ -39,8 +44,10 @@ RUN ./node_modules/.bin/tailwindcss -i /app/web/static/css/input.css -o /app/web
 
 WORKDIR /app
 
-# Set environment variables
-ENV PYTHONPATH=/app
+# Add the venv bin directory to the PATH
+ENV PATH="/opt/venv/bin:$PATH"
+# Add the app directory to PYTHONPATH so the local web code can be imported
+ENV PYTHONPATH="/app:${PYTHONPATH}"
 ENV LANGGRAPH_API_URL=http://langgraph-api:8000
 ENV PORT=8000
 ENV HOST=0.0.0.0
@@ -49,4 +56,5 @@ ENV HOST=0.0.0.0
 EXPOSE 8000
 
 # Command to run the application with Tailwind in watch mode for development
-CMD ["sh", "-c", "cd /app/web && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css && python -m web.run_server"] 
+# Python will now resolve to /opt/venv/bin/python due to the PATH update
+CMD ["sh", "-c", "cd /app/web && ./node_modules/.bin/tailwindcss -i ./static/css/input.css -o ./static/css/output.css && uv run web.run_server"] 

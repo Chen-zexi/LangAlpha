@@ -11,7 +11,7 @@ authors = [
     { name = "Alan Chen", email = "zc2610@nyu.edu" },
 ]
 dependencies = [
-    "browser-use>=0.1.41",
+    "browser-use>=0.1.45",
     "devtools==0.12.2",
     "dotenv>=0.9.0",
     "python-dotenv>=1.0.1",
@@ -28,6 +28,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.0.9",
     "langchain-ollama==0.3.0",
     "langchain-openai>=0.3.11",
+    "langchain-google-vertexai>=2.0.0",
     "langchain-tavily==0.1.5",
     "langchain-text-splitters>=0.3.0",
     "langchain-xai>=0.2.2",

@@ -4,9 +4,10 @@ from typing import Literal, Dict, Any, Optional
 
 from ..graph.types import AgentResult
 from ..tools import (
-    bash_tool,
-    python_repl_tool,
+    #bash_tool,
+    #python_code_tool,
     browser_tool,
+    python_repl_tool
 )
 from .llm import get_llm_by_type
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_coder_agent(llm_type: Literal["basic", "reasoning", "economic", "coding"], llm_configs: Optional[Dict[str, Any]] = None):
-    tools = [bash_tool, python_repl_tool]
+    tools = [python_repl_tool]
     coder_llm = get_llm_by_type(llm_type, llm_configs)
     return create_react_agent(
         coder_llm,
