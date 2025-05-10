@@ -11,12 +11,12 @@ from mcp.server.fastmcp import FastMCP
 
 # Setup
 load_dotenv()
-API_KEY = os.getenv("ALPHAVANTAGE_API_KEY")
+API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 BASE_URL = "https://www.alphavantage.co/query"
 
 if not API_KEY:
     raise EnvironmentError(
-        "Missing ALPHAVANTAGE_API_KEY in environment. "
+        "Missing ALPHA_VANTAGE_API_KEY in environment. "
     )
 
 

@@ -64,7 +64,7 @@ services:
             LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
             POSTGRES_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
             POLYGON_API_KEY: ${POLYGON_API_KEY}
-            ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY}
+            ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
             FINANCIALMODELINGPREP_API_KEY: ${FINANCIALMODELINGPREP_API_KEY}
             PYTHONUNBUFFERED: 1
             WATCHFILES_FORCE_POLLING: "true"
