@@ -36,7 +36,7 @@ When you assign the agent, you need to consider the following:
 - You may extract context from the previous agent's result and provide it to the next agent as `context` key in the response. For example, there is a news happened in certain date that you anticipate a huge impact on the market. You can provide the date to market agent to retrieve the market data for that date.
 - You may assign the same agent consecutively to provide feedback, ask follow up questions, or perform additional tasks.
 - You may be flexible with the order of the assignment, for example, you can assign agent A first, then agent B, then assign task to agent A again based on new information or different task.
-- **Always use `market` for retrieving market prices, technical indicators, trading signals, fundamental data, valuation metrics, and related quantitative/qualitative data.** This agent utilizes tools from `market_data.py` and `fundamental_data.py`.
+- **Always use `market` for retrieving market prices, technical indicators, trading signals, fundamental data, valuation metrics, market consensus, and related quantitative/qualitative data.** This agent utilizes tools from `market_data.py` and `fundamental_data.py`.
 - **Always use `researcher` for retrieving news, searching the web for general information, and finding specific event details.**
 - **Use `coder` only when complex calculations or data manipulations are required that cannot be handled by `market`'s tools.**
 - **Use `browser` sparingly. It is extremely time-consuming and computationally expensive. Only invoke it as a last resort for specific, hard-to-find information (e.g., obscure blog posts, specific documents) that cannot be obtained via the `researcher`'s search tools.**

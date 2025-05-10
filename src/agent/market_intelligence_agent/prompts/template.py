@@ -49,10 +49,8 @@ async def apply_prompt_template(prompt_name: str, state: Dict[str, Any]) -> list
     last_message = messages[-1] if messages else None
 
     if prompt_name in ["researcher", "coder", "browser", "market"]:
-        # These agents seem to expect system prompt + last message content as user input
         if last_message and hasattr(last_message, 'content'):
             last_message_content = last_message.content
-            # Assuming the last message content should be treated as user input
             prompt = [{"role": "system", "content": system_prompt}, {"role": "user", "content": str(last_message_content)}]
             logger.debug(f"{prompt_name.capitalize()} prompt constructed.")
             return prompt

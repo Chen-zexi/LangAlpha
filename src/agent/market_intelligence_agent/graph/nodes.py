@@ -49,7 +49,7 @@ async def research_node(state: State) -> Command[Literal["supervisor"]]:
     agent_llm_map = _get_map_from_state(state)
     llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
     researcher_llm_type = agent_llm_map.get("researcher", "economic") # Determine type
-
+    logger.info(f"Using researcher LLM type: {researcher_llm_type}")
     prompt_messages = await apply_prompt_template("researcher", state)
     async with MultiServerMCPClient(
         {
@@ -110,11 +110,12 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
     agent_llm_map = _get_map_from_state(state)
     llm_configs = _get_llm_configs_from_state(state) # Get LLM configs
     market_llm_type = agent_llm_map.get("market", "economic") # Determine type
-    
+    logger.info(f"Using market LLM type: {market_llm_type}")
     prompt_messages = await apply_prompt_template("market", state)
     
     polygon_api_key = os.getenv('POLYGON_API_KEY')
     alphavantage_api_key = os.getenv('ALPHAVANTAGE_API_KEY')
+    financialmodelingprep_api_key = os.getenv('FINANCIALMODELINGPREP_API_KEY')
     async with MultiServerMCPClient(
         {
             "market_data": {
@@ -128,6 +129,12 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
                 "args": [str(source_dir / "tools" / "fundamental_data.py")],
                 "transport": "stdio",
                 "env": {"ALPHAVANTAGE_API_KEY": alphavantage_api_key}
+            },
+            "fundamental_data_fmp": {
+                "command": "python",
+                "args": [str(source_dir / "tools" / "fundamental_data_fmp.py")],
+                "transport": "stdio",
+                "env": {"FINANCIALMODELINGPREP_API_KEY": financialmodelingprep_api_key}
             }
         }
     ) as client:
@@ -174,14 +181,8 @@ async def market_node(state: State) -> Command[Literal["supervisor"]]:
 async def coder_node(state: State) -> Command[Literal["supervisor"]]:
     """Async Code node that executes Python code."""
     agent_llm_map = _get_map_from_state(state) 
-    # We pass the type to get_coder_agent, which now internally handles getting the right LLM based on state configs
     coder_llm_type = agent_llm_map.get("coder", "coding") 
     logger.info(f"Using coder LLM type: {coder_llm_type}")
-    # get_coder_agent implicitly uses get_llm_by_type, which needs llm_configs
-    # We need to update get_coder_agent to accept llm_configs or modify get_llm_by_type lookup
-    # Easiest is likely to modify get_coder_agent call signature again or handle inside get_coder_agent.
-    # For now, assuming get_coder_agent will be refactored or uses a global/contextual lookup.
-    # Let's assume we modify get_coder_agent to accept llm_configs
     llm_configs = _get_llm_configs_from_state(state)
     agent = await get_coder_agent(llm_type=coder_llm_type, llm_configs=llm_configs) # Hypothetical modification
 
