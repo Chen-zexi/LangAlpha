@@ -326,6 +326,56 @@ async def format_chunk_for_streaming(chunk, report_status: Optional[str] = None)
         logger.error(f"Error formatting chunk for streaming: {e}", exc_info=True)
         return json.dumps({"error": f"Error formatting chunk: {str(e)}"}) # Keep error reporting
 
+async def stream_with_heartbeat(langgraph_stream, heartbeat_interval=20): # Interval of 20s
+    """Wraps a LangGraph stream to inject heartbeat messages if the stream is idle."""
+    logger.debug(f"Heartbeat wrapper activated with interval: {heartbeat_interval}s")
+    langgraph_iter = langgraph_stream.__aiter__()
+    
+    # The task for fetching the next item from the langgraph_stream
+    next_item_task = None
+
+    while True:
+        if next_item_task is None:
+            next_item_task = asyncio.create_task(langgraph_iter.__anext__())
+        
+        # Task for the heartbeat timeout
+        timeout_task = asyncio.create_task(asyncio.sleep(heartbeat_interval))
+        
+        done, pending = await asyncio.wait(
+            [next_item_task, timeout_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+        
+        if next_item_task in done:
+            # Data arrived or stream ended/failed
+            if timeout_task in pending: # Data arrived before timeout
+                timeout_task.cancel()
+                try:
+                    await timeout_task # Ensure cancellation is processed
+                except asyncio.CancelledError:
+                    pass # Expected
+
+            try:
+                chunk = await next_item_task # Retrieve result or exception from next_item_task
+                yield chunk
+                next_item_task = None # Reset to create a new task in the next iteration
+            except StopAsyncIteration:
+                logger.debug("Upstream LangGraph stream finished.")
+                # next_item_task will be None in the next iteration if loop doesn't break,
+                # but we break here.
+                break # Exit the loop
+            except Exception as e:
+                logger.error(f"Error in stream_with_heartbeat (data task): {e}", exc_info=True)
+                next_item_task = None # Reset before re-raising to avoid reusing a failed/completed task
+                raise # Re-raise the exception from the data task
+        
+        elif timeout_task in done:
+            # Heartbeat interval reached, next_item_task is still pending
+            logger.debug("Sending heartbeat message due to stream inactivity.")
+            yield {"type": "heartbeat", "timestamp": datetime.now().isoformat(), "session_id": "heartbeat_session"}
+            # next_item_task remains in `pending` and will be waited on in the next iteration.
+            # Do not cancel next_item_task here.
+
 async def stream_workflow_results(query: str, config: WorkflowConfig, session_id: str):
     """Stream results from the LangGraph workflow and save report directly.""" # Updated docstring
     logger.info(f"Starting workflow stream for query: '{query}' with budget: {config.budget}, session_id: {session_id}")
@@ -367,7 +417,11 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
         ticker_type = None # Store ticker type from the state
         ticker_info_list: Optional[List[Dict[str, Any]]] = None  # Store tickers from the state, ensure type hint
 
-        async for chunk in lg_client.runs.stream(
+        # Original LangGraph stream call:
+        # async for chunk in lg_client.runs.stream( ... )
+        # Now wrapped with heartbeat:
+        
+        langgraph_actual_stream = lg_client.runs.stream(
             thread_info["thread_id"],
             "market_intelligence_agent",
             input={
@@ -385,8 +439,25 @@ async def stream_workflow_results(query: str, config: WorkflowConfig, session_id
                 "recursion_limit": config.stream_config.recursion_limit
             },
             stream_mode=["values", "custom"]
-        ):
+        )
+
+        async for item in stream_with_heartbeat(langgraph_actual_stream):
             try:
+                if isinstance(item, dict) and item.get("type") == "heartbeat":
+                    # This is a heartbeat, format and send it
+                    heartbeat_message_content = {
+                        "type": "heartbeat",
+                        "session_id": session_id, # Use the actual session_id
+                        "timestamp": item["timestamp"]
+                    }
+                    heartbeat_sse_message = json.dumps(heartbeat_message_content)
+                    logger.debug(f"Yielding heartbeat SSE: {heartbeat_sse_message}")
+                    yield f"data: {heartbeat_sse_message}\n\n"
+                    continue # Move to the next item from the stream_with_heartbeat
+
+                # If not a heartbeat, it's a regular chunk from LangGraph
+                chunk = item
+
                 # 1. Extract planner title if available
                 messages_data = chunk.data.get("messages", [])
                 if messages_data:

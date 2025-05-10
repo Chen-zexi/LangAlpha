@@ -995,6 +995,15 @@ submitBtn.addEventListener('click', async () => {
                 // Log the raw data for debugging
                 console.log("Received SSE data:", event.data);
 
+                // Handle heartbeat messages first
+                if (data.type === "heartbeat") {
+                    console.log("Received heartbeat:", data.timestamp, "Session ID:", data.session_id);
+                    // Optionally, you could update a last_heartbeat_timestamp variable here
+                    // or reset a client-side inactivity timer if you had one.
+                    // For now, we just log it and don't process it further for UI display.
+                    return;
+                }
+
                 // Verify session ID matches (optional but good practice)
                 if (data.session_id && data.session_id !== currentSessionId) {
                     console.warn(`Received message for different session (${data.session_id}), expected (${currentSessionId}). Ignoring.`);

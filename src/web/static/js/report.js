@@ -251,11 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Improved regex to handle all heading levels correctly
         processed = processed.replace(/^(#{1,6})(?!\s|\#)(.+)$/gm, '$1 $2');
         
-        // NEW: Special handling for financial notation with tildes to prevent markdown strikethrough
-        // This replaces standalone tildes used in financial context (~$X.XX) with a special character
-        // and then we'll handle it with CSS
-        processed = processed.replace(/(\(?)~\$(\d+(\.\d+)?)/g, '$1<span class="approx-price">~</span>$$2');
-        processed = processed.replace(/(\s)~\$(\d+(\.\d+)?)/g, '$1<span class="approx-price">~</span>$$2');
         
         // Also check for other financial notation patterns
         processed = processed.replace(/([^~])~(\d+(\.\d+)?%?)/g, '$1<span class="approx-price">~</span>$2');
