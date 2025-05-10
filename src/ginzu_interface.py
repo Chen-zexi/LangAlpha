@@ -863,7 +863,7 @@ print(f"Tuned CPS: {result['best_cps']:.2f}")
 # ## Value Drivers (Target Pre-Tax Operating Margin, Years to Convergence)
 
 # %%
-def forecast_operating_margin(symbol: str, history_years: int = 5, api_key: str = ALPHA_VANTAGE_API_KEY) -> dict:
+def forecast_pretarget_operating_margin(symbol: str, history_years: int = 5, api_key: str = ALPHA_VANTAGE_API_KEY) -> dict:
     """
     Forecasts the Target Pre-Tax Operating Margin and estimates
     how many years it'll take to converge using Alpha Vantage API data.
@@ -962,9 +962,8 @@ def forecast_operating_margin(symbol: str, history_years: int = 5, api_key: str 
         'margin_trend_df': margin_trend_df
     }
 
-
 # %%
-result = forecast_operating_margin(company_ticker, history_years=5, api_key=ALPHA_VANTAGE_API_KEY)
+result = forecast_pretarget_operating_margin(company_ticker, history_years=5, api_key=ALPHA_VANTAGE_API_KEY)
 
 print(f"Current Margin: {result['current_margin']:.2f}%")
 print(f"Target Margin (5yr): {result['target_margin']:.2f}%")
