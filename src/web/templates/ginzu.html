@@ -4,190 +4,156 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ginzu Financial Analysis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .chart-container { max-width: 600px; margin: 10px auto; border: 1px solid #e2e8f0; padding:10px; border-radius: 8px; }
-        .chart-image { max-width: 100%; height: auto; border-radius: 4px; }
-        .input-group { margin-bottom: 1rem; }
-        .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .input-group input[type="number"], .input-group input[type="text"] {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #cbd5e1;
-            border-radius: 0.375rem;
-            box-shadow: sm;
-        }
-        .input-group input:focus {
-            outline: 2px solid transparent;
-            outline-offset: 2px;
-            border-color: #4f46e5; /* Indigo-500 */
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); /* Indigo-500 with opacity */
-        }
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.375rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
-        }
-        .btn-primary {
-            background-color: #4f46e5; /* Indigo-600 */
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #4338ca; /* Indigo-700 */
-        }
-        .section-title {
-            font-size: 1.5rem; /* 24px */
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: #1f2937; /* Gray-800 */
-            border-bottom: 2px solid #e5e7eb; /* Gray-200 */
-            padding-bottom: 0.5rem;
-        }
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .result-card {
-            background-color: #f9fafb; /* Gray-50 */
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,.07), 0 1px 2px -1px rgba(0,0,0,.07);
-        }
-        .result-card h3 {
-            font-size: 1.125rem; /* 18px */
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: #374151; /* Gray-700 */
-        }
-        .loader {
-            border: 4px solid #f3f3f3; /* Light grey */
-            border-top: 4px solid #4f46e5; /* Indigo-600 */
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Ensure Inter font is loaded if not available system-wide */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    </style>
+    <!-- TailwindCSS -->
+    <link href="/static/css/output.css" rel="stylesheet">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/css/index.css">
+    <!-- Font Awesome for icons (if needed, add the link like in index.html) -->
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"> -->
 </head>
-<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 md:p-8">
 
-    <div class="container mx-auto max-w-4xl bg-white p-6 md:p-8 rounded-lg shadow-xl">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-indigo-600">Ginzu Financial Analysis</h1>
+    <div class="container mx-auto max-w-4xl bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-xl">
+        <header class="flex justify-between items-center mb-8 py-4 border-b border-gray-200 dark:border-gray-700 px-2">
+            <div class="flex items-center">
+                <h1 class="text-3xl md:text-4xl font-bold text-primary-600 dark:text-primary-400">Ginzu Financial Analysis</h1>
+            </div>
+            <div class="flex gap-3">
+                <button id="backToHomeBtn" class="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors animated-button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-2">
+                        <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Back to Home
+                </button>
+            </div>
         </header>
 
         <section id="ticker-input-section" class="mb-6">
-            <h2 class="section-title">1. Enter Company Ticker</h2>
-            <div class="input-group max-w-sm mx-auto">
-                <label for="companyTicker">Company Ticker (e.g., AAPL)</label>
-                <input type="text" id="companyTicker" name="companyTicker" placeholder="AAPL">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-700 pb-2">1. Enter Company Ticker</h2>
+            <div class="mb-4 max-w-sm mx-auto">
+                <label for="companyTicker" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Company Ticker (e.g., AAPL)</label>
+                <input type="text" id="companyTicker" name="companyTicker" placeholder="AAPL" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
             </div>
+
+            <div class="mb-4 max-w-sm mx-auto">
+                <label for="countrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Country of Incorporation</label>
+                <select id="countrySelect" name="countrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                    <option value="" disabled selected>Loading countries...</option>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <div class="mb-4 max-w-sm mx-auto">
+                <label for="usIndustrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">US Industry</label>
+                <select id="usIndustrySelect" name="usIndustrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                    <option value="" disabled selected>Loading US industries...</option>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <div class="mb-4 max-w-sm mx-auto">
+                <label for="globalIndustrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Global Industry</label>
+                <select id="globalIndustrySelect" name="globalIndustrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                    <option value="" disabled selected>Loading global industries...</option>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+
             <div class="text-center mt-4">
-                <button id="getInitialAnalysisBtn" class="btn btn-primary">Get Initial Analysis & Forecasts</button>
+                <button id="getInitialAnalysisBtn" class="py-3 px-6 rounded-md font-semibold cursor-pointer transition-colors duration-200 ease-in-out shadow-md bg-primary-600 hover:bg-primary-700 text-white animated-button">Get Initial Analysis & Forecasts</button>
             </div>
         </section>
 
-        <div id="loader" class="loader hidden my-6"></div>
-        <div id="errorMessage" class="text-red-600 bg-red-100 border border-red-400 p-3 rounded-md hidden my-4 text-center"></div>
-        <div id="successMessage" class="text-green-600 bg-green-100 border border-green-400 p-3 rounded-md hidden my-4 text-center"></div>
+        <div id="loader" class="border-4 border-gray-100 dark:border-gray-700 border-t-primary-600 dark:border-t-primary-400 rounded-full w-10 h-10 animate-spin mx-auto my-6 hidden"></div>
+        <div id="errorMessage" class="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500 p-3 rounded-md hidden my-4 text-center"></div>
+        <div id="successMessage" class="text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20 border border-green-400 dark:border-green-500 p-3 rounded-md hidden my-4 text-center"></div>
 
 
         <section id="initial-analysis-results" class="hidden mb-8">
-            <h2 class="section-title">2. Review Forecasts & Provide Inputs</h2>
-            <div class="mb-4 p-4 bg-indigo-50 rounded-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-700 pb-2">2. Review Forecasts & Provide Inputs</h2>
+            <div class="mb-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-md text-gray-700 dark:text-gray-300">
                 <p><strong>Company:</strong> <span id="displayCompanyName">N/A</span></p>
                 <p><strong>Ticker:</strong> <span id="displayCompanyTicker">N/A</span></p>
             </div>
 
-            <div class="results-grid">
-                <div class="result-card" id="b26-card">
-                    <h3>Revenue Growth Rate Next Year (%)</h3>
-                    <p class="text-sm text-gray-600 mb-1">Suggested: <span id="b26_rev_growth_suggested_pct">N/A</span>%</p>
-                    <div class="chart-container mb-2"><img id="b26_rev_growth_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Revenue+Growth+Plot" alt="Revenue Growth Plot" class="chart-image"></div>
-                    <div class="input-group">
-                        <label for="b26_rev_growth_input">Your Input (%):</label>
-                        <input type="number" id="b26_rev_growth_input" step="0.01">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b26-card">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Revenue Growth Rate Next Year (%)</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b26_rev_growth_suggested_pct">N/A</span>%</p>
+                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b26_rev_growth_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Revenue+Growth+Plot" alt="Revenue Growth Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-4">
+                        <label for="b26_rev_growth_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                        <input type="number" id="b26_rev_growth_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card" id="b27-card">
-                    <h3>Operating Margin Next Year (%)</h3>
-                    <p class="text-sm text-gray-600 mb-1">Suggested: <span id="b27_op_margin_suggested_pct">N/A</span>%</p>
-                    <div class="chart-container mb-2"><img id="b27_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Operating+Margin+Plot" alt="Operating Margin Plot" class="chart-image"></div>
-                    <div class="input-group">
-                        <label for="b27_op_margin_input">Your Input (%):</label>
-                        <input type="number" id="b27_op_margin_input" step="0.01">
+                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b27-card">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Operating Margin Next Year (%)</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b27_op_margin_suggested_pct">N/A</span>%</p>
+                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b27_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Operating+Margin+Plot" alt="Operating Margin Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-4">
+                        <label for="b27_op_margin_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                        <input type="number" id="b27_op_margin_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card" id="b28-card">
-                    <h3>5-Year Revenue CAGR (%)</h3>
-                    <p class="text-sm text-gray-600 mb-1">Suggested: <span id="b28_cagr_suggested_pct">N/A</span>%</p>
-                    <div class="chart-container mb-2"><img id="b28_cagr_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=CAGR+Plot" alt="CAGR Plot" class="chart-image"></div>
-                    <div class="input-group">
-                        <label for="b28_cagr_input">Your Input (%):</label>
-                        <input type="number" id="b28_cagr_input" step="0.01">
+                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b28-card">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">5-Year Revenue CAGR (%)</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b28_cagr_suggested_pct">N/A</span>%</p>
+                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b28_cagr_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=CAGR+Plot" alt="CAGR Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-4">
+                        <label for="b28_cagr_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                        <input type="number" id="b28_cagr_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card" id="b29-card">
-                    <h3>Target Pre-Tax Operating Margin (%)</h3>
-                    <p class="text-sm text-gray-600 mb-1">Suggested: <span id="b29_target_op_margin_suggested_pct">N/A</span>%</p>
-                    <div class="chart-container mb-2"><img id="b29_target_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Target+Op.Margin+Plot" alt="Target Operating Margin Plot" class="chart-image"></div>
-                    <div class="input-group">
-                        <label for="b29_target_op_margin_input">Your Input (%):</label>
-                        <input type="number" id="b29_target_op_margin_input" step="0.01">
+                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b29-card">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Target Pre-Tax Operating Margin (%)</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b29_target_op_margin_suggested_pct">N/A</span>%</p>
+                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b29_target_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Target+Op.Margin+Plot" alt="Target Operating Margin Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-4">
+                        <label for="b29_target_op_margin_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                        <input type="number" id="b29_target_op_margin_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
                 
-                <div class="result-card" id="b30-card">
-                    <h3>Years of Convergence for Margin</h3>
-                    <p class="text-sm text-gray-600 mb-1">Suggested: <span id="b30_years_to_converge_suggested">N/A</span></p>
-                    <div class="input-group">
-                        <label for="b30_years_to_converge_input">Your Input (Years):</label>
-                        <input type="number" id="b30_years_to_converge_input" step="0.1">
+                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b30-card">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Years of Convergence for Margin</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b30_years_to_converge_suggested">N/A</span></p>
+                    <div class="mb-4">
+                        <label for="b30_years_to_converge_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (Years):</label>
+                        <input type="number" id="b30_years_to_converge_input" step="0.1" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card" id="b31b32-card">
-                    <h3>Sales to Capital Ratio</h3>
-                    <p class="text-sm text-gray-600 mb-1">Suggested (Years 1-5): <span id="b31_sc_ratio_1_5_suggested">N/A</span></p>
-                    <p class="text-sm text-gray-600 mb-1">Suggested (Years 6-10): <span id="b32_sc_ratio_6_10_suggested">N/A</span></p>
-                    <div class="chart-container mb-2"><img id="b31_sc_ratio_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Sales+to+Capital+Plot" alt="Sales to Capital Ratio Plot" class="chart-image"></div>
-                    <div class="input-group">
-                        <label for="b31_sc_ratio_1_5_input">Your Input (Years 1-5):</label>
-                        <input type="number" id="b31_sc_ratio_1_5_input" step="0.01">
+                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b31b32-card">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Sales to Capital Ratio</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested (Years 1-5): <span id="b31_sc_ratio_1_5_suggested">N/A</span></p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested (Years 6-10): <span id="b32_sc_ratio_6_10_suggested">N/A</span></p>
+                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b31_sc_ratio_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Sales+to+Capital+Plot" alt="Sales to Capital Ratio Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-4">
+                        <label for="b31_sc_ratio_1_5_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (Years 1-5):</label>
+                        <input type="number" id="b31_sc_ratio_1_5_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
-                    <div class="input-group mt-2">
-                        <label for="b32_sc_ratio_6_10_input">Your Input (Years 6-10):</label>
-                        <input type="number" id="b32_sc_ratio_6_10_input" step="0.01">
+                    <div class="mb-4 mt-2">
+                        <label for="b32_sc_ratio_6_10_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (Years 6-10):</label>
+                        <input type="number" id="b32_sc_ratio_6_10_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
             </div>
 
             <div class="text-center mt-6">
-                <button id="finalizeAnalysisBtn" class="btn btn-primary">Finalize Analysis & Update Sheet</button>
+                <button id="finalizeAnalysisBtn" class="py-3 px-6 rounded-md font-semibold cursor-pointer transition-colors duration-200 ease-in-out shadow-md bg-primary-600 hover:bg-primary-700 text-white animated-button">Finalize Analysis & Update Sheet</button>
             </div>
         </section>
 
         <section id="final-valuation-results" class="hidden mt-8">
-            <h2 class="section-title">3. Final Valuation</h2>
-            <div class="result-card max-w-md mx-auto text-center">
-                 <p class="text-lg"><strong>Estimated value /share:</strong> <span id="final_estimated_value" class="text-indigo-600 font-bold">$0.00</span></p>
-                 <p class="text-lg mt-2"><strong>Price:</strong> <span id="final_price" class="text-indigo-600 font-bold">$0.00</span></p>
-                 <p class="text-lg mt-2"><strong>Price as % of value:</strong> <span id="final_price_as_percent" class="text-indigo-600 font-bold">0.00%</span></p>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-700 pb-2">3. Final Valuation</h2>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 max-w-md mx-auto text-center">
+                 <p class="text-lg"><strong>Estimated value /share:</strong> <span id="final_estimated_value" class="text-primary-600 dark:text-primary-400 font-bold">$0.00</span></p>
+                 <p class="text-lg mt-2"><strong>Price:</strong> <span id="final_price" class="text-primary-600 dark:text-primary-400 font-bold">$0.00</span></p>
+                 <p class="text-lg mt-2"><strong>Price as % of value:</strong> <span id="final_price_as_percent" class="text-primary-600 dark:text-primary-400 font-bold">0.00%</span></p>
             </div>
         </section>
     </div>
@@ -204,6 +170,11 @@
 
         const initialAnalysisResultsSection = document.getElementById('initial-analysis-results');
         const finalValuationResultsSection = document.getElementById('final-valuation-results');
+
+        // Dropdown Select Elements
+        const countrySelect = document.getElementById('countrySelect');
+        const usIndustrySelect = document.getElementById('usIndustrySelect');
+        const globalIndustrySelect = document.getElementById('globalIndustrySelect');
 
         // Display elements for initial analysis
         const displayCompanyName = document.getElementById('displayCompanyName');
@@ -240,8 +211,46 @@
         const finalPrice = document.getElementById('final_price');
         const finalPriceAsPercent = document.getElementById('final_price_as_percent');
 
+        // Back to home button
+        const backToHomeBtn = document.getElementById('backToHomeBtn');
+
         // API Base URL (Update this when your FastAPI is running)
         const API_BASE_URL = 'http://localhost:8000'; // Example
+
+        // Function to populate a dropdown
+        async function populateDropdown(selectElement, apiUrl, defaultOptionText) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${apiUrl}`);
+                if (!response.ok) {
+                    console.error(`Failed to fetch from ${apiUrl}: ${response.status}`);
+                    selectElement.innerHTML = `<option value="" disabled selected>Error loading data (${response.status})</option>`;
+                    return;
+                }
+                const data = await response.json();
+                if (data.options && Array.isArray(data.options)) {
+                    selectElement.innerHTML = `<option value="" disabled selected>${defaultOptionText}</option>`;
+                    data.options.forEach(optionText => {
+                        if (optionText) { // Ensure optionText is not null or empty
+                            const opt = document.createElement('option');
+                            opt.value = optionText;
+                            opt.textContent = optionText;
+                            selectElement.appendChild(opt);
+                        }
+                    });
+                } else {
+                    selectElement.innerHTML = `<option value="" disabled selected>No options found</option>`;
+                }
+            } catch (error) {
+                console.error(`Error populating dropdown ${selectElement.id}:`, error);
+                selectElement.innerHTML = `<option value="" disabled selected>Error loading data</option>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (countrySelect) populateDropdown(countrySelect, '/api/ginzu/dropdowns/countries', 'Select Country');
+            if (usIndustrySelect) populateDropdown(usIndustrySelect, '/api/ginzu/dropdowns/us-industries', 'Select US Industry');
+            if (globalIndustrySelect) populateDropdown(globalIndustrySelect, '/api/ginzu/dropdowns/global-industries', 'Select Global Industry');
+        });
 
         function showLoader() { loader.classList.remove('hidden'); }
         function hideLoader() { loader.classList.add('hidden'); }
@@ -262,6 +271,11 @@
             successMessageDiv.classList.add('hidden');
         }
 
+        if (backToHomeBtn) {
+            backToHomeBtn.addEventListener('click', function() {
+                window.location.href = '/';
+            });
+        }
 
         getInitialAnalysisBtn.addEventListener('click', async () => {
             const ticker = companyTickerInput.value.trim().toUpperCase();
@@ -269,14 +283,32 @@
                 showMessage('Please enter a company ticker.', true);
                 return;
             }
+
+            const selectedCountry = countrySelect.value;
+            const selectedUSIndustry = usIndustrySelect.value;
+            const selectedGlobalIndustry = globalIndustrySelect.value;
+
+            // Basic validation for dropdowns (optional, but good practice)
+            if (!selectedCountry) {
+                showMessage('Please select a Country of Incorporation.', true);
+                return;
+            }
+            // Add similar checks for usIndustrySelect and globalIndustrySelect if they are mandatory
+
             clearMessages();
             showLoader();
             initialAnalysisResultsSection.classList.add('hidden');
             finalValuationResultsSection.classList.add('hidden');
 
             try {
-                // Replace with your actual FastAPI endpoint
-                const response = await fetch(`${API_BASE_URL}/api/analysis/${ticker}/initial`);
+                // Construct query parameters
+                const queryParams = new URLSearchParams({
+                    country: selectedCountry,
+                    us_industry: selectedUSIndustry,
+                    global_industry: selectedGlobalIndustry
+                });
+
+                const response = await fetch(`${API_BASE_URL}/api/analysis/${ticker}/initial?${queryParams.toString()}`);
                 hideLoader();
 
                 if (!response.ok) {
@@ -291,37 +323,37 @@
                     displayCompanyName.textContent = data.company_name || 'N/A';
                     displayCompanyTicker.textContent = data.ticker || 'N/A';
 
-                    // B26
-                    suggestedB26.textContent = data.b26_rev_growth_suggested_pct !== undefined ? data.b26_rev_growth_suggested_pct.toFixed(2) : 'N/A';
-                    inputB26.value = data.b26_rev_growth_suggested_pct !== undefined ? data.b26_rev_growth_suggested_pct.toFixed(2) : '';
-                    if(data.b26_rev_growth_plot_base64) plotB26.src = data.b26_rev_growth_plot_base64;
+                    // B26: Revenue Growth Rate Next Year (%)
+                    suggestedB26.textContent = data.b26_rev_growth_suggested_pct !== null && data.b26_rev_growth_suggested_pct !== undefined ? data.b26_rev_growth_suggested_pct.toFixed(2) : 'N/A';
+                    inputB26.value = data.b26_rev_growth_suggested_pct !== null && data.b26_rev_growth_suggested_pct !== undefined ? data.b26_rev_growth_suggested_pct.toFixed(2) : '';
+                    if(data.b26_rev_growth_plot_base64) plotB26.src = data.b26_rev_growth_plot_base64; else plotB26.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
-                    // B27
-                    suggestedB27.textContent = data.b27_op_margin_suggested_pct !== undefined ? data.b27_op_margin_suggested_pct.toFixed(2) : 'N/A';
-                    inputB27.value = data.b27_op_margin_suggested_pct !== undefined ? data.b27_op_margin_suggested_pct.toFixed(2) : '';
-                    if(data.b27_op_margin_plot_base64) plotB27.src = data.b27_op_margin_plot_base64;
+                    // B27: Operating Margin Next Year (%)
+                    suggestedB27.textContent = data.b27_op_margin_suggested_pct !== null && data.b27_op_margin_suggested_pct !== undefined ? data.b27_op_margin_suggested_pct.toFixed(2) : 'N/A';
+                    inputB27.value = data.b27_op_margin_suggested_pct !== null && data.b27_op_margin_suggested_pct !== undefined ? data.b27_op_margin_suggested_pct.toFixed(2) : '';
+                    if(data.b27_op_margin_plot_base64) plotB27.src = data.b27_op_margin_plot_base64; else plotB27.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
                     
-                    // B28
-                    suggestedB28.textContent = data.b28_cagr_suggested_pct !== undefined ? data.b28_cagr_suggested_pct.toFixed(2) : 'N/A';
-                    inputB28.value = data.b28_cagr_suggested_pct !== undefined ? data.b28_cagr_suggested_pct.toFixed(2) : '';
-                    if(data.b28_cagr_plot_base64) plotB28.src = data.b28_cagr_plot_base64;
+                    // B28: 5-Year Revenue CAGR (%)
+                    suggestedB28.textContent = data.b28_cagr_suggested_pct !== null && data.b28_cagr_suggested_pct !== undefined ? data.b28_cagr_suggested_pct.toFixed(2) : 'N/A';
+                    inputB28.value = data.b28_cagr_suggested_pct !== null && data.b28_cagr_suggested_pct !== undefined ? data.b28_cagr_suggested_pct.toFixed(2) : '';
+                    if(data.b28_cagr_plot_base64) plotB28.src = data.b28_cagr_plot_base64; else plotB28.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
-                    // B29
-                    suggestedB29.textContent = data.b29_target_op_margin_suggested_pct !== undefined ? data.b29_target_op_margin_suggested_pct.toFixed(2) : 'N/A';
-                    inputB29.value = data.b29_target_op_margin_suggested_pct !== undefined ? data.b29_target_op_margin_suggested_pct.toFixed(2) : '';
-                    if(data.b29_target_op_margin_plot_base64) plotB29.src = data.b29_target_op_margin_plot_base64;
+                    // B29: Target Pre-Tax Operating Margin (%)
+                    suggestedB29.textContent = data.b29_target_op_margin_suggested_pct !== null && data.b29_target_op_margin_suggested_pct !== undefined ? data.b29_target_op_margin_suggested_pct.toFixed(2) : 'N/A';
+                    inputB29.value = data.b29_target_op_margin_suggested_pct !== null && data.b29_target_op_margin_suggested_pct !== undefined ? data.b29_target_op_margin_suggested_pct.toFixed(2) : '';
+                    if(data.b29_target_op_margin_plot_base64) plotB29.src = data.b29_target_op_margin_plot_base64; else plotB29.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
-                    // B30
-                    suggestedB30.textContent = data.b30_years_to_converge_suggested !== undefined ? data.b30_years_to_converge_suggested.toFixed(1) : 'N/A';
-                    inputB30.value = data.b30_years_to_converge_suggested !== undefined ? data.b30_years_to_converge_suggested.toFixed(1) : '';
+                    // B30: Years of Convergence for Margin
+                    suggestedB30.textContent = data.b30_years_to_converge_suggested !== null && data.b30_years_to_converge_suggested !== undefined ? data.b30_years_to_converge_suggested.toFixed(1) : 'N/A';
+                    inputB30.value = data.b30_years_to_converge_suggested !== null && data.b30_years_to_converge_suggested !== undefined ? data.b30_years_to_converge_suggested.toFixed(1) : '';
+                    // No plot specified for B30 in current HTML structure
                     
-                    // B31 & B32
-                    suggestedB31.textContent = data.b31_sc_ratio_1_5_suggested !== undefined ? data.b31_sc_ratio_1_5_suggested.toFixed(2) : 'N/A';
-                    inputB31.value = data.b31_sc_ratio_1_5_suggested !== undefined ? data.b31_sc_ratio_1_5_suggested.toFixed(2) : '';
-                    suggestedB32.textContent = data.b32_sc_ratio_6_10_suggested !== undefined ? data.b32_sc_ratio_6_10_suggested.toFixed(2) : 'N/A';
-                    inputB32.value = data.b32_sc_ratio_6_10_suggested !== undefined ? data.b32_sc_ratio_6_10_suggested.toFixed(2) : '';
-                    if(data.b31_sc_ratio_plot_base64) plotB31.src = data.b31_sc_ratio_plot_base64;
-
+                    // B31 & B32: Sales to Capital Ratio
+                    suggestedB31.textContent = data.b31_sc_ratio_1_5_suggested !== null && data.b31_sc_ratio_1_5_suggested !== undefined ? data.b31_sc_ratio_1_5_suggested.toFixed(2) : 'N/A';
+                    inputB31.value = data.b31_sc_ratio_1_5_suggested !== null && data.b31_sc_ratio_1_5_suggested !== undefined ? data.b31_sc_ratio_1_5_suggested.toFixed(2) : '';
+                    suggestedB32.textContent = data.b32_sc_ratio_6_10_suggested !== null && data.b32_sc_ratio_6_10_suggested !== undefined ? data.b32_sc_ratio_6_10_suggested.toFixed(2) : 'N/A';
+                    inputB32.value = data.b32_sc_ratio_6_10_suggested !== null && data.b32_sc_ratio_6_10_suggested !== undefined ? data.b32_sc_ratio_6_10_suggested.toFixed(2) : '';
+                    if(data.b31_sc_ratio_plot_base64) plotB31.src = data.b31_sc_ratio_plot_base64; else plotB31.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
                     initialAnalysisResultsSection.classList.remove('hidden');
                     showMessage('Initial analysis complete. Review forecasts and provide your inputs.', false);
@@ -362,7 +394,6 @@
             // Filter out null values if backend expects only provided fields
             const payload = Object.fromEntries(Object.entries(userValueDrivers).filter(([_, v]) => v !== null));
 
-
             clearMessages();
             showLoader();
             finalValuationResultsSection.classList.add('hidden');
@@ -387,9 +418,9 @@
 
                 if (result.status === 'success' && result.data) {
                     const data = result.data;
-                    finalEstimatedValue.textContent = data.estimated_value_per_share !== null ? `$${data.estimated_value_per_share.toFixed(2)}` : 'N/A';
-                    finalPrice.textContent = data.price !== null ? `$${data.price.toFixed(2)}` : 'N/A';
-                    finalPriceAsPercent.textContent = data.price_as_percent_of_value !== null ? `${data.price_as_percent_of_value.toFixed(2)}%` : 'N/A';
+                    finalEstimatedValue.textContent = data.estimated_value_per_share !== null && data.estimated_value_per_share !== undefined ? `$${data.estimated_value_per_share.toFixed(2)}` : 'N/A';
+                    finalPrice.textContent = data.price !== null && data.price !== undefined ? `$${data.price.toFixed(2)}` : 'N/A';
+                    finalPriceAsPercent.textContent = data.price_as_percent_of_value !== null && data.price_as_percent_of_value !== undefined ? `${data.price_as_percent_of_value.toFixed(2)}%` : 'N/A';
                     
                     finalValuationResultsSection.classList.remove('hidden');
                     showMessage('Analysis finalized and sheet updated!', false);

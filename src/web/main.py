@@ -737,6 +737,11 @@ async def index(request: Request): # Pass request for templates
     """Render the index page."""
     return templates.TemplateResponse("index.html", {"request": request})
 
+@app.get("/ginzu")
+async def get_ginzu_page(request: Request):
+    """Serve the Ginzu page."""
+    return templates.TemplateResponse("ginzu.html", {"request": request})
+
 @app.get("/report")
 async def report_page(request: Request, session_id: Optional[str] = None): # Expect session_id
     """Serve the report page, expecting session_id."""
