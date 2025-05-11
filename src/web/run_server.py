@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Script to run the Market Intelligence API server.
 """
@@ -35,7 +34,6 @@ if __name__ == "__main__":
     # Determine the correct app import path based on our environment
     file_dir = Path(__file__).resolve().parent
     if file_dir.name == 'web' and (file_dir.parent / 'agent').exists():
-        # We're likely in Docker with /app/web structure
         print("Running in Docker environment with app module structure")
         app_module = "web.main:app"
         
@@ -46,7 +44,6 @@ if __name__ == "__main__":
         except ImportError:
             print("Warning: Failed to import database module. MongoDB connection may not be available.")
     else:
-        # We're likely in local dev environment with src/web structure
         print("Running in local environment with src module structure")
         app_module = "src.web.main:app"
         
