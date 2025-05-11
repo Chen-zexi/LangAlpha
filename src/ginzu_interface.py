@@ -1,7 +1,5 @@
-# %%
 import sys
 import pandas as pd
-import yfinance as yf
 import warnings
 
 from prophet import Prophet
@@ -10,80 +8,93 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
-import lightgbm as lgb
-
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+import gspread
 
-from yahooquery import Ticker
 from polygon import RESTClient
 
 import os
 import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import time
+
+from dotenv import load_dotenv
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
-
-# %%
-from dotenv import load_dotenv
-import os
-
+# --- Environment Variable Loading ---
 load_dotenv()
-
 POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
-
-if POLYGON_API_KEY:
-    print("API Key successfully loaded!")
-else:
-    print("Error: API Key not found!")
-
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 
-# %%
-import gspread
+if not POLYGON_API_KEY:
+    print("Warning: POLYGON_API_KEY not found in environment variables.")
+if not ALPHA_VANTAGE_API_KEY:
+    print("Warning: ALPHA_VANTAGE_API_KEY not found in environment variables.")
 
-# gc = gspread.service_account(filename='stocksflags-ec5c40f2f2ee.json')
-gc = gspread.service_account(filename='rational-diode-456114-m0-79243525427e.json')
+# --- Google Sheets Setup ---
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT_DIR = os.path.dirname(_SCRIPT_DIR)
 
+GOOGLE_CREDS_FILENAME = os.path.join(_PROJECT_ROOT_DIR, 'notebooks', 'rational-diode-456114-m0-79243525427e.json')
 
-ginzu_spreadsheet_link = 'https://docs.google.com/spreadsheets/d/1xclQf2xrgw0swp2CRwE25OBaEhQdDTOkm8VVkTcpVks/edit?usp=sharing'
-pricer = gc.open_by_url(ginzu_spreadsheet_link)
-input_worksheet = pricer.get_worksheet(0)
-valuation_worksheet = pricer.get_worksheet(1)
+GINZU_SPREADSHEET_LINK = 'https://docs.google.com/spreadsheets/d/1xclQf2xrgw0swp2CRwE25OBaEhQdDTOkm8VVkTcpVks/edit?usp=sharing'
+SPREADSHEET_ID = GINZU_SPREADSHEET_LINK.split('/d/')[1].split('/edit')[0]
+INPUT_SHEET_NAME = 'Input sheet' 
+VALUATION_SHEET_INDEX = 1
 
-# %%
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SERVICE_ACCOUNT_FILE = 'rational-diode-456114-m0-79243525427e.json'
+gc = None
+input_worksheet = None
+valuation_worksheet = None
+service = None
 
-spreadsheet_id = '1xclQf2xrgw0swp2CRwE25OBaEhQdDTOkm8VVkTcpVks'
-sheet_name = 'Input sheet'
+def initialize_google_sheets():
+    global gc, input_worksheet, valuation_worksheet, service
+    try:
+        print(f"Attempting to load Google credentials from: {GOOGLE_CREDS_FILENAME}")
+        gc = gspread.service_account(filename=GOOGLE_CREDS_FILENAME)
+        pricer = gc.open_by_url(GINZU_SPREADSHEET_LINK)
+        input_worksheet = pricer.get_worksheet(0)
+        valuation_worksheet = pricer.get_worksheet(VALUATION_SHEET_INDEX)
 
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-service = build('sheets', 'v4', credentials=creds)
+        creds = Credentials.from_service_account_file(GOOGLE_CREDS_FILENAME, scopes=['https://www.googleapis.com/auth/spreadsheets'])
+        service = build('sheets', 'v4', credentials=creds)
+        print("Google Sheets initialized successfully.")
+    except FileNotFoundError:
+        print(f"ERROR: Google credentials file not found at '{GOOGLE_CREDS_FILENAME}'.")
+        print("Please ensure the path is correct and the file exists.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error initializing Google Sheets: {e}")
+        print("Please ensure your Google credentials file is correctly set up, the sheet URL is accessible, and the service account has permissions.")
+        sys.exit(1)
 
-# %%
-def get_related_tickers(ticker):
-    client = RESTClient(POLYGON_API_KEY)
+# --- Helper Functions ---
+def safe_float(value, default=0.0):
+    try:
+        return float(value) if value not in [None, 'None', ''] else default
+    except (ValueError, TypeError):
+        return default
+
+def get_related_tickers(ticker, polygon_key):
+    if not polygon_key:
+        print("Polygon API key not available for get_related_tickers.")
+        return []
+    client = RESTClient(polygon_key)
     try:
         related = client.get_related_companies(ticker.upper())
         return [r.ticker for r in related]
     except Exception as e:
-        print(f"Error fetching related companies: {e}")
+        print(f"Error fetching related companies for {ticker}: {e}")
         return []
 
-# %%
 def get_dropdown_options(spreadsheet_id: str, sheet_name: str, cell: str) -> list:
-    """
-    Given a spreadsheet ID, sheet name, and cell (e.g., 'B7'),
-    returns the dropdown options (either hardcoded or from a range).
-    """
+    if not service:
+        print("Google Sheets service not initialized. Cannot get dropdown options.")
+        return []
     range_name = f"'{sheet_name}'!{cell}"
-    
     try:
         response = service.spreadsheets().get(
             spreadsheetId=spreadsheet_id,
@@ -92,1045 +103,688 @@ def get_dropdown_options(spreadsheet_id: str, sheet_name: str, cell: str) -> lis
             fields='sheets.data.rowData.values.dataValidation'
         ).execute()
 
-        validation = response['sheets'][0]['data'][0]['rowData'][0]['values'][0]['dataValidation']
-        condition = validation['condition']
+        validation_path = response.get('sheets', [{}])[0].get('data', [{}])[0].get('rowData', [{}])[0].get('values', [{}])[0].get('dataValidation')
+        if not validation_path:
+            print(f"No data validation found at {sheet_name}!{cell}.")
+            return []
+            
+        condition = validation_path['condition']
         dropdown_values = [v['userEnteredValue'] for v in condition.get('values', [])]
 
-        dropdown_ref = dropdown_values[0]
-        if dropdown_ref.startswith("="):
-            raw_ref = dropdown_ref.lstrip("=").replace("'", "")
-            ref_sheet, ref_range = raw_ref.split("!")
+        if not dropdown_values:
+             return []
 
+        dropdown_ref = dropdown_values[0]
+        if isinstance(dropdown_ref, str) and dropdown_ref.startswith("="):
+            raw_ref = dropdown_ref.lstrip("=").replace("'", "")
+            ref_sheet_parts = raw_ref.split("!")
+            if len(ref_sheet_parts) != 2:
+                print(f"Could not parse dropdown range reference: {dropdown_ref}")
+                return dropdown_values
+            
+            ref_sheet, ref_range = ref_sheet_parts
+            
+            range_query = f"{ref_sheet}!{ref_range}"
+            print(f"Fetching dropdown options from range: {range_query}")
             country_resp = service.spreadsheets().values().get(
                 spreadsheetId=spreadsheet_id,
-                range=f"{ref_sheet}!{ref_range}"
+                range=range_query
             ).execute()
-
-            return [row[0].strip() for row in country_resp.get("values", []) if row and row[0].strip()]
-        else:
-            return dropdown_values
-
-    except (KeyError, IndexError):
-        print(f"No dropdown (data validation) found at {sheet_name}!{cell}.")
+            return [row[0].strip() for row in country_resp.get("values", []) if row and row[0] and isinstance(row[0], str) and row[0].strip()]
+        else: # Hardcoded list
+            return [str(v).strip() for v in dropdown_values if str(v).strip()]
+    except (KeyError, IndexError, TypeError) as e:
+        print(f"Error parsing dropdown at {sheet_name}!{cell}: {e}. Check sheet structure and validation rules.")
+        return []
+    except Exception as e:
+        print(f"An unexpected error occurred in get_dropdown_options for {cell}: {e}")
         return []
 
 
-# %%
-def get_alpha_vantage_data(function, symbol):
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={symbol}&apikey={ALPHA_VANTAGE_API_KEY}"
-    response = requests.get(url)
-    return response.json()
-
-# %%
-def safe_float(value):
+def get_alpha_vantage_data(function, symbol, api_key):
+    if not api_key:
+        print(f"Alpha Vantage API key not available for function {function}, symbol {symbol}.")
+        return {}
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={symbol}&apikey={api_key}"
     try:
-        # Attempt to convert to float; if it fails, return 0
-        return float(value) if value not in [None, 'None', ''] else 0
-    except ValueError:
-        return 0.0
+        response = requests.get(url, timeout=30) # Added timeout
+        response.raise_for_status() 
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching Alpha Vantage data for {function} ({symbol}): {e}")
+        return {}
+    except ValueError as e: 
+        print(f"Error decoding JSON from Alpha Vantage for {function} ({symbol}): {e}")
+        return {}
 
-# %%
-def get_latest_10k_financials(symbol):
-    overview_data = get_alpha_vantage_data("OVERVIEW", symbol)
-    income_data = get_alpha_vantage_data("INCOME_STATEMENT", symbol)
-    balance_data = get_alpha_vantage_data("BALANCE_SHEET", symbol)
-    quote_data = get_alpha_vantage_data("TIME_SERIES_DAILY", symbol)
 
+def get_latest_10k_financials(symbol, api_key):
+    print(f"Fetching financial data for {symbol} from Alpha Vantage...")
+    overview_data = get_alpha_vantage_data("OVERVIEW", symbol, api_key)
+    income_data = get_alpha_vantage_data("INCOME_STATEMENT", symbol, api_key)
+    balance_data = get_alpha_vantage_data("BALANCE_SHEET", symbol, api_key)
+    quote_data_daily = get_alpha_vantage_data("TIME_SERIES_DAILY", symbol, api_key)
+
+    financials = {}
     try:
-        company_name = overview_data["Name"]
-        inc_reports = income_data["annualReports"]
-        bal_reports = balance_data["annualReports"]
-        price_series = quote_data["Time Series (Daily)"]
-    except KeyError:
-        raise ValueError("Missing data from Alpha Vantage. Check symbol or API limit.")
+        financials["B4"] = overview_data.get("Name", "N/A")
+        if financials["B4"] == "N/A":
+            print(f"Warning: Could not get company name for {symbol}.")
+        
+        inc_reports = income_data.get("annualReports", [])
+        bal_reports = balance_data.get("annualReports", [])
+        price_series = quote_data_daily.get("Time Series (Daily)", {})
 
-    inc_reports.sort(key=lambda x: x["fiscalDateEnding"], reverse=True)
-    bal_reports.sort(key=lambda x: x["fiscalDateEnding"], reverse=True)
+        if not inc_reports or len(inc_reports) < 2:
+            print(f"Warning: Insufficient annual income reports for {symbol} (found {len(inc_reports)}). Need at least 2.")
+            return {"B4": financials["B4"], "error": "Insufficient income data"}
+        if not bal_reports or len(bal_reports) < 2:
+            print(f"Warning: Insufficient annual balance sheet reports for {symbol} (found {len(bal_reports)}). Need at least 2.")
+            return {"B4": financials["B4"], "error": "Insufficient balance sheet data"}
+        
+        inc_reports.sort(key=lambda x: x.get("fiscalDateEnding", "0000-00-00"), reverse=True)
+        bal_reports.sort(key=lambda x: x.get("fiscalDateEnding", "0000-00-00"), reverse=True)
 
-    inc_curr, inc_prev = inc_reports[0], inc_reports[1]
-    bal_curr, bal_prev = bal_reports[0], bal_reports[1]
+        inc_curr, inc_prev = inc_reports[0], inc_reports[1]
+        bal_curr, bal_prev = bal_reports[0], bal_reports[1]
 
-    b11 = safe_float(inc_curr.get("totalRevenue", 0))
-    c11 = safe_float(inc_prev.get("totalRevenue", 0))
+        financials["B11"] = safe_float(inc_curr.get("totalRevenue"))
+        financials["C11"] = safe_float(inc_prev.get("totalRevenue"))
+        financials["B12"] = safe_float(inc_curr.get("ebit", inc_curr.get("operatingIncome")))
+        financials["C12"] = safe_float(inc_prev.get("ebit", inc_prev.get("operatingIncome")))
+        financials["B13"] = safe_float(inc_curr.get("interestExpense"))
+        financials["C13"] = safe_float(inc_prev.get("interestExpense"))
+        financials["B14"] = safe_float(bal_curr.get("totalShareholderEquity"))
+        financials["C14"] = safe_float(bal_prev.get("totalShareholderEquity"))
+        
+        financials["B15"] = safe_float(bal_curr.get("shortTermDebt", 0)) + safe_float(bal_curr.get("longTermDebtNoncurrent", bal_curr.get("longTermDebt",0)))
+        financials["C15"] = safe_float(bal_prev.get("shortTermDebt", 0)) + safe_float(bal_prev.get("longTermDebtNoncurrent", bal_prev.get("longTermDebt",0)))
+        
+        financials["B18"] = safe_float(bal_curr.get("cashAndCashEquivalentsAtCarryingValue"))
+        financials["C18"] = safe_float(bal_prev.get("cashAndCashEquivalentsAtCarryingValue"))
+        
+        financials["B19"] = safe_float(bal_curr.get("otherCurrentAssets"))
+        financials["C19"] = safe_float(bal_prev.get("otherCurrentAssets"))
 
-    b12 = safe_float(inc_curr.get("ebit", 0))
-    c12 = safe_float(inc_prev.get("ebit", 0))
+        financials["B20"] = safe_float(bal_curr.get("minorityInterest", bal_curr.get("noncontrollingInterest", 0)))
+        financials["C20"] = safe_float(bal_prev.get("minorityInterest", bal_prev.get("noncontrollingInterest", 0)))
 
-    b13 = safe_float(inc_curr.get("interestExpense", 0))
-    c13 = safe_float(inc_prev.get("interestExpense", 0))
+        financials["B21"] = int(safe_float(overview_data.get("SharesOutstanding", bal_curr.get("commonStockSharesOutstanding", 0))))
 
-    b14 = safe_float(bal_curr.get("totalShareholderEquity", 0))
-    c14 = safe_float(bal_prev.get("totalShareholderEquity", 0))
+        if price_series:
+            latest_day = sorted(price_series.keys())[-1]
+            financials["B22"] = safe_float(price_series[latest_day].get("4. close"))
+        else:
+            quote_data_global = get_alpha_vantage_data("GLOBAL_QUOTE", symbol, api_key)
+            financials["B22"] = safe_float(quote_data_global.get("Global Quote", {}).get("05. price")) if quote_data_global else 0.0
+            if financials["B22"] == 0.0: print(f"Warning: Could not get current stock price for {symbol}.")
 
-    current_debt = safe_float(bal_curr.get("currentDebt", 0))
-    long_term_debt = safe_float(bal_curr.get("currentLongTermDebt", 0))  
-    b15 = current_debt + long_term_debt 
+        date_curr_str = inc_curr.get("fiscalDateEnding")
+        date_prev_str = inc_prev.get("fiscalDateEnding")
+        if date_curr_str and date_prev_str:
+            date_curr = datetime.strptime(date_curr_str, "%Y-%m-%d")
+            date_prev = datetime.strptime(date_prev_str, "%Y-%m-%d")
+            financials["D11"] = relativedelta(date_curr, date_prev).years
+        else:
+            financials["D11"] = 1 
 
-    prev_current_debt = safe_float(bal_prev.get("currentDebt", 0))
-    prev_long_term_debt = safe_float(bal_prev.get("currentLongTermDebt", 0)) 
-    c15 = prev_current_debt + prev_long_term_debt
+        financials["B16"] = "Yes" if safe_float(inc_curr.get("researchAndDevelopment")) > 0 else "No"
+        financials["B17"] = "No"
 
-    b18 = safe_float(bal_curr.get("cashAndCashEquivalentsAtCarryingValue", 0))
-    c18 = safe_float(bal_prev.get("cashAndCashEquivalentsAtCarryingValue", 0))
+        income_tax_expense = safe_float(inc_curr.get("incomeTaxExpense"))
+        pre_tax_income = safe_float(inc_curr.get("incomeBeforeTax", financials["B12"] - financials["B13"])) # incomeBeforeTax or EBIT - Interest
+        financials["B23"] = (income_tax_expense / pre_tax_income) if pre_tax_income != 0 else 0.0
 
-    b19 = safe_float(bal_curr.get("otherCurrentAssets", 0)) 
-    c19 = safe_float(bal_prev.get("otherCurrentAssets", 0)) 
+        rf_rate_str = overview_data.get("10YearTreasuryRate", "0.04")
+        financials["B34"] = safe_float(rf_rate_str, 0.04)
+        if financials["B34"] == 0.04 and rf_rate_str != "0.04":
+             print(f"Warning: Could not parse 10-Year Treasury Rate '{rf_rate_str}', using default {financials['B34']}.")
+        
+        print(f"Successfully fetched and processed base financials for {symbol}.")
+        return financials
 
-    b20 = safe_float(bal_curr.get("totalShareholderEquity", 0)) - safe_float(bal_curr.get("commonStockEquity", 0))
-    c20 = safe_float(bal_prev.get("totalShareholderEquity", 0)) - safe_float(bal_prev.get("commonStockEquity", 0))
+    except KeyError as e:
+        print(f"KeyError while processing financial data for {symbol}: {e}. Data might be missing from Alpha Vantage.")
+        return {"B4": financials.get("B4", "N/A"), "error": f"Missing key {e}"}
+    except IndexError as e:
+        print(f"IndexError while processing financial data for {symbol}: {e}. Likely insufficient historical reports.")
+        return {"B4": financials.get("B4", "N/A"), "error": f"Insufficient reports {e}"}
+    except Exception as e:
+        print(f"Unexpected error in get_latest_10k_financials for {symbol}: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"B4": financials.get("B4", "N/A"), "error": f"Unexpected error: {str(e)}"}
 
-    b21 = int(bal_curr.get("commonStockSharesOutstanding", 0))
 
-    # Get most recent stock price
-    latest_day = sorted(price_series.keys())[-1]
-    b22 = safe_float(price_series[latest_day]["4. close"])
-
-    d11 = relativedelta(datetime.strptime(inc_curr["fiscalDateEnding"], "%Y-%m-%d"),
-                        datetime.strptime(inc_prev["fiscalDateEnding"], "%Y-%m-%d")).years
-
-    b16 = "Yes" if "researchAndDevelopment" in inc_curr or "researchAndDevelopment" in inc_prev else "No"
-
-    b17 = "Yes" if "operatingLease" in inc_curr or "operatingLease" in inc_prev else "No"
-
-    # Calculate Effective Tax Rate (B23)
-    income_tax_expense = safe_float(inc_curr.get("incomeTaxExpense", 0))
-    pre_tax_income = safe_float(inc_curr.get("ebit", 0))  # EBIT as proxy for pre-tax income
-    b23 = income_tax_expense / pre_tax_income if pre_tax_income != 0 else 0
-
-    b24 = 0.21 
-
-    # Define rf w/ 10 year treasury yield
-    b33 = 0.04378
-
-    return {
-        "B11": b11, "C11": c11, "D11": d11,
-        "B12": b12, "C12": c12, "B13": b13, "C13": c13,
-        "B14": b14, "C14": c14, "B15": b15, "C15": c15,
-        "B16": b16, "B17": b17,
-        "B18": b18, "C18": c18, "B19": b19, "C19": c19,
-        "B20": b20, "C20": c20, "B21": b21, "B22": b22,
-        "B23": b23, "B24": b24, "B4": company_name,
-        "B33": b33,
-    }
-
-# %%
-company_ticker = input("Enter the company ticker: ")
-
-# %%
-financials = get_latest_10k_financials(company_ticker)
-
-# %%
-financials
-
-# %% [markdown]
-# ## Date of Valuation and Company Name
-
-# %%
 def retrieve_date():
     valuation_date = datetime.today()
-    formatted_date = valuation_date.strftime('%b-%d')
-    return formatted_date
+    return valuation_date.strftime('%b-%d')
 
-# %%
-date_of_valuation = retrieve_date()
-company_name = financials["B4"]
-input_worksheet.update('B3', [[date_of_valuation]])
-input_worksheet.update('B4', [[company_name]])
-
-# %% [markdown]
-# ## Country of Incorporation, Industry (Global) and Industry (US)
-
-# %%
 def prompt_user_choice(options_list, prompt_message="Please choose an option:"):
-    print("\nYou can type part of the name to search for matches.")
-    print("Example: typing 'tech' will show 'Technology', 'Biotech', etc.\n")
+    if not options_list:
+        print(f"No options provided for: {prompt_message}")
+        manual_input = input(f"{prompt_message} (No predefined options, please enter manually): ").strip()
+        return manual_input
 
+    print(f"\n{prompt_message}")
+    print("You can type part of the name to search for matches, or its number from the list.")
+    
     while True:
-        search_input = input(f"{prompt_message} (type to search): ").strip().lower()
-        
-        matching_options = [opt for opt in options_list if search_input in opt.lower()]
-        
+        search_input = input(f"Search or type number: ").strip()
+        matching_options = []
+
+        if search_input.isdigit():
+            try:
+                choice_idx = int(search_input) -1
+                if 0 <= choice_idx < len(options_list):
+                    return options_list[choice_idx]
+                else:
+                    print("Invalid number. Please choose from the list below or type to search.")
+            except ValueError:
+                pass
+
+        search_term_lower = search_input.lower()
+        matching_options = [opt for opt in options_list if search_term_lower in str(opt).lower()]
+
         if not matching_options:
-            print("No matches found. Please try again.")
+            print("No matches found. Displaying all options:")
+            for idx, opt in enumerate(options_list[:20], start=1):
+                print(f"{idx}. {opt}")
+            if len(options_list) > 20: print("...and more.")
             continue
 
         print("\nMatches found:")
-        for idx, opt in enumerate(matching_options[:10], start=1):
+        for idx, opt in enumerate(matching_options[:15], start=1):
             print(f"{idx}. {opt}")
         
-        if len(matching_options) > 10:
-            print(f"...and {len(matching_options) - 10} more matches.\n")
+        if len(matching_options) > 15:
+            print(f"...and {len(matching_options) - 15} more matches. Refine your search or choose by number.\n")
         else:
-            print("") 
+            print("")
 
-        selected_option = input("Type your exact choice from the matches above: ").strip()
-        selected_exact = [opt for opt in matching_options if opt.lower() == selected_option.lower()]
+        selected_option_input = input("Type your exact choice from the matches above (or number from this filtered list): ").strip()
+        
+        try: # Try number from filtered list
+            choice_idx = int(selected_option_input) -1
+            if 0 <= choice_idx < len(matching_options): # Check against current matching_options
+                 return matching_options[choice_idx]
+        except ValueError:
+            pass 
+
+        selected_exact = [opt for opt in matching_options if str(opt).lower() == selected_option_input.lower()]
         
         if selected_exact:
             return selected_exact[0]
         else:
-            print("Invalid selection from matches. Please try again.\n")
+            print("Invalid selection. Please type the exact name or number from the list.\n")
 
-
-# %%
-country_names = get_dropdown_options(spreadsheet_id, sheet_name, 'B7')
-us_industry = get_dropdown_options(spreadsheet_id, sheet_name, 'B8')
-global_industry = get_dropdown_options(spreadsheet_id, sheet_name, 'B9')
-
-# %%
-country_names
-
-# %%
-us_industry
-
-# %%
-global_industry
-
-# %%
-country = prompt_user_choice(country_names, "Choose a country from the list above:")
-
-# %%
-us_industry_choice = prompt_user_choice(us_industry, "Choose a US industry from the list above:")
-
-# %%
-global_industry_choice = prompt_user_choice(global_industry, "Choose a Global industry from the list above:")
-
-# %%
-input_worksheet.update('B7', [[country]])
-input_worksheet.update('B8', [[us_industry_choice]])
-input_worksheet.update('B9', [[global_industry_choice]])
-
-# %% [markdown]
-# ## Years Since Last 10K
-
-# %%
-years_since_last_10k = financials["D11"]
-input_worksheet.update('D11',[[years_since_last_10k]])
-
-# %% [markdown]
-# ## Revenues (Most Recent 12 Months, Last 10K)
-
-# %%
-current_revenues = financials["B11"]/10000000
-last_10k_revenues = financials["C11"]/10000000
-input_worksheet.update('B11', [[current_revenues]])
-input_worksheet.update('C11', [[last_10k_revenues]])
-
-# %% [markdown]
-# ## Operating Income / EBIT (Most Recent 12 Months, Last 10K)
-
-# %%
-current_operating_income = financials["B12"]/10000000
-last_10k_operating_income = financials["C12"]/10000000
-input_worksheet.update('B12', [[current_operating_income]])
-input_worksheet.update('C12', [[last_10k_operating_income]])
-
-# %% [markdown]
-# ## Interest Expense (Most Recent 12 Months, Last 10K)
-
-# %%
-current_interest_expense = financials["B13"]/10000000
-last_10k_interest_expense = financials["C13"]/10000000
-input_worksheet.update('B13', [[current_interest_expense]])
-input_worksheet.update('C13', [[last_10k_interest_expense]])
-
-# %% [markdown]
-# ## Book Value of Equity (Most Recent 12 Months, Last 10K)
-
-# %%
-current_book_value_of_equity = financials["B14"]/10000000
-last_10k_book_value_of_equity = financials["C14"]/10000000
-input_worksheet.update('B14', [[current_book_value_of_equity]])
-input_worksheet.update('C14', [[last_10k_book_value_of_equity]])
-
-# %% [markdown]
-# ## Book Value of Debt (Most Recent 12 Months, Last 10K)
-
-# %%
-current_book_value_of_debt = financials["B15"]/10000000
-last_10k_book_value_of_debt = financials["C15"]/10000000
-input_worksheet.update('B15', [[current_book_value_of_debt]])
-input_worksheet.update('C15', [[last_10k_book_value_of_debt]])
-
-# %% [markdown]
-# ## R&D Expenses to Capitalize + Operating Lease Commitments
-
-# %%
-r_and_d = financials["B16"]
-operating_lease_commitments = financials["B17"]
-input_worksheet.update('B16', [[r_and_d]])
-input_worksheet.update('B17', [[operating_lease_commitments]])
-
-# %% [markdown]
-# ## Cash and Marketable Securities (Most Recent 12 Months, Last 10K)
-
-# %%
-current_cash_and_marketable_securities = financials["B18"]/10000000
-last_10k_cash_and_marketable_securities = financials["C18"]/10000000
-input_worksheet.update('B18', [[current_cash_and_marketable_securities]])
-input_worksheet.update('C18', [[last_10k_cash_and_marketable_securities]])
-
-# %% [markdown]
-# ## Investments (Most Recent 12 Months, Last 10K)
-
-# %%
-if financials.get("B19") is not None:
-    cross_holdings_and_other_non_operating_assets = financials["B19"] / 1e7
-    input_worksheet.update('B19', [[cross_holdings_and_other_non_operating_assets]])
-else:
-    print("B19 (Cross holdings and other non-operating assets) is missing.")
-
-if financials.get("C19") is not None:
-    last_10k_cross_holdings_and_other_non_operating_assets = financials["C19"] / 1e7
-    input_worksheet.update('C19', [[last_10k_cross_holdings_and_other_non_operating_assets]])
-else:
-    print("C19 (Last 10K cross holdings and other non-operating assets) is missing.")
-
-
-# %% [markdown]
-# ## Minority Interests (Most Recent 12 Months, Last 10K)
-
-# %%
-current_minority_interests = financials["B20"]/10000000
-last_10k_minority_interests = financials["C20"]/10000000
-input_worksheet.update('B20', [[current_minority_interests]])
-input_worksheet.update('C20', [[last_10k_minority_interests]])
-
-# %% [markdown]
-# ## Number of Shares Outstanding, Current Stock Price, Effect and Marginal Tax Rate
-
-# %%
-number_of_shares_outstanding = financials["B21"]/10000000
-current_stock_price = financials["B22"]
-effective_tax_rate = financials["B23"]
-marginal_tax_rate = financials["B24"]
-input_worksheet.update('B21', [[number_of_shares_outstanding]])
-input_worksheet.update('B22', [[current_stock_price]])
-input_worksheet.update('B23', [[effective_tax_rate]])
-input_worksheet.update('B24', [[marginal_tax_rate]])
-
-# %% [markdown]
-# ## Value Drivers (Rev Growth)
-
-# %%
-def get_annual_revenue(symbol, api_key):
-    url = (
-        f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={symbol}"
-        f"&apikey={api_key}"
-    )
-    response = requests.get(url)
+# --- Forecasting Functions ---
+def get_annual_financial_data(symbol, api_key, data_type="revenue", history_years=15):
+    url = f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={symbol}&apikey={api_key}"
+    response = requests.get(url, timeout=30)
     if response.status_code != 200:
-        raise ValueError(f"Request failed with status code {response.status_code}")
+        print(f"Request failed for {symbol} income statement (status {response.status_code}).")
+        return pd.DataFrame()
     
     data = response.json()
-    if "annualReports" not in data:
-        raise ValueError(f"No annualReports found for symbol {symbol}. Response: {data}")
-    
+    if "annualReports" not in data or not data["annualReports"]:
+        print(f"No annualReports found for symbol {symbol}. Response: {data.get('Information', data.get('Note', 'No further info'))}")
+        return pd.DataFrame()
+
     reports = data["annualReports"]
     records = []
     for report in reports:
         try:
             date = pd.to_datetime(report["fiscalDateEnding"])
-            revenue = int(report["totalRevenue"])
-            records.append({"ds": date, "y": revenue})
-        except Exception as e:
-            print(f"Skipping report due to error: {e}")
+            value = None
+            if data_type == "revenue":
+                value = safe_float(report.get("totalRevenue"))
+            elif data_type == "operating_margin":
+                operating_income = safe_float(report.get("operatingIncome", report.get("ebit")))
+                total_revenue = safe_float(report.get("totalRevenue"))
+                value = (operating_income / total_revenue) * 100 if total_revenue != 0 else 0.0
+            
+            if value is not None:
+                 records.append({"ds": date, "y": value})
+        except (KeyError, TypeError, ValueError) as e:
+            print(f"Skipping report for {symbol} due to error processing {data_type}: {e} in report: {report.get('fiscalDateEnding')}")
     
     df = pd.DataFrame(records).sort_values("ds").reset_index(drop=True)
+    
+    if not df.empty:
+        cutoff_date = pd.Timestamp.today() - pd.DateOffset(years=history_years)
+        df = df[df['ds'] >= cutoff_date]
+    
     return df
 
-# %%
-# Main forecasting function with automatic tuning of cps
-def forecast_revenue_growth_rate(symbol, api_key, history_years=5, cps_grid=None):
-    if cps_grid is None:
-        cps_grid = [0.01, 0.05, 0.1, 0.2, 0.3]  # Grid for tuning
-    
-    df_revenue = get_annual_revenue(symbol, api_key)
-
-    # Filter last N years of data
-    cutoff_date = pd.Timestamp.today() - pd.DateOffset(years=history_years)
-    df_revenue = df_revenue[df_revenue['ds'] >= cutoff_date]
+def forecast_revenue_growth_rate(symbol, api_key, history_years=5, cps_grid=None, plot=True):
+    print(f"\nForecasting Revenue Growth Rate for {symbol}...")
+    if cps_grid is None: cps_grid = [0.01, 0.05, 0.1, 0.2, 0.3]
+    df_revenue = get_annual_financial_data(symbol, api_key, "revenue", history_years)
     
     if len(df_revenue) < 4:
-        raise ValueError(f"Not enough data to train Prophet for {symbol}")
+        print(f"Not enough revenue data for Prophet CV for {symbol} (need at least 4 years, got {len(df_revenue)}).")
+        if len(df_revenue) >=2: # Basic forecast if at least 2 points
+            model = Prophet(yearly_seasonality=False, changepoint_prior_scale=0.05).fit(df_revenue)
+            future = model.make_future_dataframe(periods=1, freq='A')
+            forecast = model.predict(future)
+            last_actual = df_revenue.iloc[-1]["y"]
+            next_forecast = forecast.iloc[-1]["yhat"]
+            growth_rate = (next_forecast - last_actual) / last_actual if last_actual else 0.0
+            if plot: model.plot(forecast); plt.title(f"Revenue Forecast (Simple) for {symbol}"); plt.show()
+            return {"growth_rate": growth_rate, "best_cps": 0.05, "error": "Insufficient data for CV, simple forecast used."}
+        return {"growth_rate": 0.0, "error": "Insufficient data for any forecast"}
 
-    # Hyperparameter tuning using cross-validation
     tuning = []
     days_per_year = 365.25
-    initial_years = min(3, len(df_revenue) - 1)
+    n_years_data = len(df_revenue)
+    initial_cv_years = min(max(2, n_years_data - 2), n_years_data -1) 
     
-    for cps in cps_grid:
-        m = Prophet(
-            yearly_seasonality=False,
-            changepoint_prior_scale=cps,
-            n_changepoints=min(5, len(df_revenue)-1)
-        )
-        m.fit(df_revenue)
-        try:
-            df_cv = cross_validation(
-                m,
-                initial=f"{int(initial_years * days_per_year)} days",
-                period=f"{int(1 * days_per_year)} days",
-                horizon=f"{int(1 * days_per_year)} days",
-                parallel="processes"
-            )
-            perf = performance_metrics(df_cv)
-            tuning.append({
-                "cps": cps,
-                "mae": perf['mae'].mean(),
-                "mape": perf['mape'].mean(),
-                "rmse": perf['rmse'].mean()
-            })
-        except Exception as e:
-            print(f"Cross-validation failed for cps={cps}: {e}")
-    
-    if not tuning:
-        raise RuntimeError("All Prophet cross-validations failed.")
-
-    # Choose best cps by lowest MAPE
-    best_cps = min(tuning, key=lambda x: x["mape"])["cps"]
-
-    # Final model with best cps
-    model = Prophet(
-        yearly_seasonality=False,
-        changepoint_prior_scale=best_cps,
-        n_changepoints=min(5, len(df_revenue)-1)
-    )
-    model.fit(df_revenue)
-
-    # Forecast next year
-    future = model.make_future_dataframe(periods=1, freq='Y')
-    forecast = model.predict(future)
-    
-    last_actual = df_revenue.iloc[-1]["y"]
-    next_forecast = forecast.iloc[-1]["yhat"]
-
-    growth_rate = (next_forecast - last_actual) / last_actual * 100
-
-    # Optional: Plot
-    model.plot(forecast)
-    plt.title(f"Forecasted Revenue for {symbol}")
-    plt.xlabel("Date")
-    plt.ylabel("Revenue")
-    plt.tight_layout()
-    plt.show()
-
-    return {
-        "symbol": symbol,
-        "last_actual_revenue": last_actual,
-        "forecasted_next_year_revenue": next_forecast,
-        "growth_rate": growth_rate,
-        "best_cps": best_cps
-    }
-
-# %%
-result = forecast_revenue_growth_rate(company_ticker, ALPHA_VANTAGE_API_KEY)
-print(f"\nForecasted Revenue Growth for {result['symbol']}: {result['growth_rate']:.2f}%")
-print(f"Last Revenue: {result['last_actual_revenue']:.0f}")
-print(f"Forecasted Revenue: {result['forecasted_next_year_revenue']:.0f}")
-print(f"Optimal changepoint prior scale: {result['best_cps']}")
-
-# %% [markdown]
-# ## Value Drivers (Operating Margin)
-
-# %%
-def get_annual_revenue_and_operating_income(symbol: str, api_key: str):
-    """
-    Fetches the annual income statement data from Alpha Vantage and calculates operating margin.
-    Returns a DataFrame with the operating margin over time.
-    """
-    url = f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={symbol}&apikey={api_key}"
-    response = requests.get(url)
-    
-    if response.status_code != 200:
-        raise ValueError(f"Request failed with status code {response.status_code}")
-    
-    data = response.json()
-    if "annualReports" not in data:
-        raise ValueError(f"No annualReports found for symbol {symbol}. Response: {data}")
-    
-    reports = data["annualReports"]
-    records = []
-    
-    for report in reports:
-        try:
-            date = pd.to_datetime(report["fiscalDateEnding"])
-            operating_income = float(report["operatingIncome"])
-            total_revenue = float(report["totalRevenue"])
-            if total_revenue != 0:
-                margin = (operating_income / total_revenue) * 100
-                records.append({"ds": date, "y": margin})
-        except Exception as e:
-            print(f"Skipping report due to error: {e}")
-    
-    df = pd.DataFrame(records).sort_values("ds").reset_index(drop=True)
-    return df
-
-# %%
-def forecast_operating_margin(symbol: str, api_key: str, history_years: int = 10, cps_grid=None) -> dict:
-    """
-    Forecasts next year's operating margin (%) using Prophet,
-    tuning changepoint_prior_scale via time-series CV on annual data from Alpha Vantage.
-
-    Returns:
-      {
-        best_cps: float,
-        cv_results: DataFrame,
-        margin_forecast: float,    # next-year operating margin (%)
-        lower_bound: float,
-        upper_bound: float,
-        forecast_df: DataFrame     # ds, yhat, yhat_lower, yhat_upper
-      }
-    """
-    # Default changepoint prior scale grid
-    if cps_grid is None:
-        cps_grid = [0.01, 0.05, 0.1, 0.3, 0.5]
-    
-    # 1) Pull annual statements from Alpha Vantage
-    df_margin = get_annual_revenue_and_operating_income(symbol, api_key)
-
-    # 2) Use only the last `history_years` years of data
-    cutoff_date = pd.Timestamp.today() - pd.DateOffset(years=history_years)
-    df_margin = df_margin[df_margin['ds'] >= cutoff_date]
-    
-    if len(df_margin) < 2:
-        raise ValueError(f"Not enough data to train Prophet for {symbol}")
-    
-    # 3) Prepare data for Prophet
-    df = df_margin[['ds', 'y']]
-
-    # 4) Determine if tuning is feasible
-    cv_results = pd.DataFrame()
-    total_days = (df['ds'].max() - df['ds'].min()).days
-    horizon_days = 365
-    if total_days >= 2 * horizon_days:
-        # Compute initial window to leave horizon_days for testing
-        initial_days = total_days - horizon_days
-        tuning = []
+    best_cps = 0.05
+    if n_years_data >= initial_cv_years + 2:
         for cps in cps_grid:
-            m = Prophet(
-                yearly_seasonality=False,
-                changepoint_prior_scale=cps,
-                n_changepoints=min(5, len(df)-1)
-            )
-            m.fit(df)
-            df_cv = cross_validation(
-                m,
-                initial=f"{initial_days} days",
-                period="365 days",    # One year
-                horizon="365 days",
-                parallel="processes"
-            )
-            perf = performance_metrics(df_cv)
-            tuning.append({
-                'cps': cps,
-                'mae': perf['mae'].mean(),
-                'mape': perf['mape'].mean(),
-                'rmse': perf['rmse'].mean()
-            })
-        cv_results = pd.DataFrame(tuning)
-        best_cps = cv_results.loc[cv_results['mape'].idxmin(), 'cps']
+            m = Prophet(yearly_seasonality=False, changepoint_prior_scale=cps, n_changepoints=min(5, len(df_revenue)-1))
+            m.fit(df_revenue)
+            try:
+                df_cv = cross_validation(m, initial=f"{int(initial_cv_years * days_per_year)} days", period="365 days", horizon="365 days", parallel=None) # None for no parallel
+                perf = performance_metrics(df_cv)
+                tuning.append({"cps": cps, "mape": perf['mape'].mean()})
+            except Exception as e:
+                print(f"Prophet CV (Rev Growth) for {symbol} with cps={cps} failed: {e}")
+        if tuning: best_cps = min(tuning, key=lambda x: x["mape"])["cps"]
     else:
-        best_cps = 0.05
+        print(f"Skipping Prophet CV for {symbol} (Rev Growth) due to limited data ({n_years_data}). Using default CPS.")
 
-    # 5) Fit final model with the best changepoint prior scale
-    model = Prophet(
-        yearly_seasonality=False,
-        changepoint_prior_scale=best_cps,
-        n_changepoints=min(5, len(df)-1)
-    )
-    model.fit(df)
-
-    # 6) Forecast the next year
+    model = Prophet(yearly_seasonality=False, changepoint_prior_scale=best_cps, n_changepoints=min(5, len(df_revenue)-1))
+    model.fit(df_revenue)
     future = model.make_future_dataframe(periods=1, freq='A')
     forecast = model.predict(future)
-    last = forecast.iloc[-1]
-    margin_forecast = last['yhat']
-    lower, upper = last['yhat_lower'], last['yhat_upper']
-
-    # 7) Visualization
-    plt.figure(figsize=(10,6))
-    plt.plot(df['ds'], df['y'], 'o-', label='Historical Margin')
-    plt.plot(forecast['ds'], forecast['yhat'], '--', label='Forecast')
-    plt.fill_between(
-        forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'],
-        color='orange', alpha=0.3, label='Uncertainty'
-    )
-    plt.axvline(df['ds'].iloc[-1], color='gray', linestyle=':')
-    plt.title(f"{symbol} Operating Margin Forecast (cps={best_cps})")
-    plt.xlabel("Year")
-    plt.ylabel("Operating Margin (%)")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-    return {
-        'best_cps': best_cps,
-        'cv_results': cv_results,
-        'margin_forecast': margin_forecast,
-        'lower_bound': lower,
-        'upper_bound': upper,
-        'forecast_df': forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
-    }
-
-# %%
-result = forecast_operating_margin(company_ticker, ALPHA_VANTAGE_API_KEY)
-latest_year = result['forecast_df']['ds'].dt.year.max()
-forecasted_year = latest_year + 1
-print(f"Forecasted Operating Margin for {forecasted_year}: {result['margin_forecast']:.2f}%")
-print(f"Lower Bound: {result['lower_bound']:.2f}%")
-print(f"Upper Bound: {result['upper_bound']:.2f}%")
-print(f"Optimal changepoint prior scale: {result['best_cps']}")
-
-# %% [markdown]
-# ## Value Drivers (CAGR)
-
-# %%
-def get_annual_revenue(symbol: str, api_key: str, history_years: int = 15) -> pd.DataFrame:
-    """
-    Fetches the annual income statement data from Alpha Vantage and extracts revenue.
     
-    Args:
-      symbol (str): stock ticker
-      api_key (str): Alpha Vantage API key
-      history_years (int): number of years of historical data to fetch
-
-    Returns:
-      DataFrame with revenue history for the last `history_years` years
-    """
-    url = f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={symbol}&apikey={api_key}"
-    response = requests.get(url)
+    last_actual_revenue = df_revenue.iloc[-1]["y"]
+    next_forecast_revenue = forecast.iloc[-1]["yhat"]
+    growth_rate = (next_forecast_revenue - last_actual_revenue) / last_actual_revenue if last_actual_revenue else 0.0
     
-    if response.status_code != 200:
-        raise ValueError(f"Request failed with status code {response.status_code}")
-    
-    data = response.json()
-    
-    if "annualReports" not in data:
-        raise ValueError(f"No annualReports found for symbol {symbol}. Response: {data}")
-    
-    reports = data["annualReports"]
-    records = []
-    
-    for report in reports:
-        try:
-            date = pd.to_datetime(report["fiscalDateEnding"])
-            total_revenue = float(report["totalRevenue"])
-            records.append({"ds": date, "y": total_revenue})
-        except Exception as e:
-            print(f"Skipping report due to error: {e}")
-    
-    df = pd.DataFrame(records).sort_values("ds").reset_index(drop=True)
-    
-    # Use only the last `history_years` years of data
-    cutoff_date = pd.Timestamp.today() - pd.DateOffset(years=history_years)
-    df = df[df['ds'] >= cutoff_date]
-    
-    return df
-
-def forecast_revenue_cagr(
-    symbol: str,
-    api_key: str,
-    forecast_years: int = 5,
-    history_years: int = 15,
-    cps_grid: list = [0.05, 0.1, 0.2, 0.3, 0.5],
-    growth: str = 'linear',
-    plot: bool = True
-) -> dict:
-    """
-    Forecast revenue with Prophet, auto-tuning changepoint_prior_scale (CPS).
-
-    Args:
-      symbol (str): stock ticker
-      api_key (str): Alpha Vantage API key
-      forecast_years (int): how many years forward to forecast
-      history_years (int): how much historical data to use
-      cps_grid (list): list of CPS values to try
-      growth (str): 'linear' or 'logistic'
-      plot (bool): whether to plot results
-
-    Returns:
-      dict with initial revenue, forecast revenue, CAGR, bounds, best CPS
-    """
-    # 1) Pull data from Alpha Vantage
-    df = get_annual_revenue(symbol, api_key, history_years)
-    
-    if len(df) < 3:
-        raise ValueError(f"Not enough revenue history for tuning ({symbol})")
-
-    # 2) Auto-tune CPS by splitting into train/validation
-    errors = []
-    for cps in cps_grid:
-        model = Prophet(
-            growth=growth,
-            yearly_seasonality=False,
-            changepoint_prior_scale=cps,
-            n_changepoints=min(10, len(df)-1)
-        )
-        if growth == 'logistic':
-            cap = df['y'].max() * 1.5
-            df['cap'] = cap
-
-        model.fit(df.iloc[:-1])  # train on all but last year
-
-        future = model.make_future_dataframe(periods=1, freq='A')
-        if growth == 'logistic':
-            future['cap'] = cap
-
-        forecast = model.predict(future)
-
-        predicted = forecast['yhat'].iloc[-1]
-        actual = df['y'].iloc[-1]
-        error = np.abs(predicted - actual) / actual  # relative error
-        errors.append((cps, error))
-
-    # 3) Choose best CPS
-    best_cps, best_error = min(errors, key=lambda x: x[1])
-    print(f"Best CPS: {best_cps:.3f} with validation error: {best_error:.2%}")
-
-    # 4) Retrain model on full data
-    model = Prophet(
-        growth=growth,
-        yearly_seasonality=False,
-        changepoint_prior_scale=best_cps,
-        n_changepoints=min(10, len(df)-1)
-    )
-    if growth == 'logistic':
-        cap = df['y'].max() * 1.5
-        df['cap'] = cap
-
-    model.fit(df)
-
-    future = model.make_future_dataframe(periods=forecast_years, freq='A')
-    if growth == 'logistic':
-        future['cap'] = cap
-
-    forecast = model.predict(future)
-
-    # 5) Compute CAGRs
-    initial_revenue = df['y'].iloc[-1]
-    forecast_row = forecast.iloc[-1]
-    forecast_revenue = forecast_row['yhat']
-    lower_revenue = forecast_row['yhat_lower']
-    upper_revenue = forecast_row['yhat_upper']
-
-    n = forecast_years
-    cagr_forecast = (forecast_revenue / initial_revenue) ** (1/n) - 1
-    lower_bound = (lower_revenue / initial_revenue) ** (1/n) - 1
-    upper_bound = (upper_revenue / initial_revenue) ** (1/n) - 1
-
     if plot:
-        plt.figure(figsize=(10,6))
-        plt.plot(df['ds'], df['y'], 'o-', label='Historical Revenue')
-        plt.plot(forecast['ds'], forecast['yhat'], '--', label='Forecast Revenue')
-        plt.fill_between(
-            forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'],
-            color='orange', alpha=0.3, label='Uncertainty'
-        )
-        plt.axvline(df['ds'].iloc[-1], color='gray', linestyle=':')
-        plt.title(f"{symbol} Revenue Forecast (5 Years) [Best CPS={best_cps}]")
-        plt.xlabel("Year")
-        plt.ylabel("Revenue (USD)")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+        try:
+            fig = model.plot(forecast); plt.title(f"Forecasted Revenue for {symbol} (Best CPS: {best_cps:.2f})"); plt.xlabel("Date"); plt.ylabel("Revenue"); plt.tight_layout(); plt.show()
+        except Exception as e: print(f"Error plotting revenue forecast for {symbol}: {e}")
 
-    return {
-        'initial_revenue': initial_revenue,
-        'forecast_revenue': forecast_revenue,
-        'cagr_forecast': cagr_forecast * 100,
-        'lower_bound': lower_bound * 100,
-        'upper_bound': upper_bound * 100,
-        'forecast_df': forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']],
-        'best_cps': best_cps
-    }
+    print(f"Revenue Growth Forecast for {symbol}: {growth_rate*100:.2f}% (CPS: {best_cps})")
+    return {"growth_rate": growth_rate, "last_actual_revenue": last_actual_revenue, "forecasted_next_year_revenue": next_forecast_revenue, "best_cps": best_cps}
 
-# %%
-result = forecast_revenue_cagr(
-    company_ticker,
-    ALPHA_VANTAGE_API_KEY,
-    forecast_years=5,
-    growth='logistic'
-)
+def forecast_operating_margin(symbol, api_key, history_years=10, cps_grid=None, plot=True):
+    print(f"\nForecasting Operating Margin for {symbol}...")
+    if cps_grid is None: cps_grid = [0.01, 0.05, 0.1, 0.3, 0.5]
+    df_margin = get_annual_financial_data(symbol, api_key, "operating_margin", history_years)
 
-print(f"5-Year Forecasted CAGR: {result['cagr_forecast']:.2f}%")
-print(f"90% confidence: {result['lower_bound']:.2f}% → {result['upper_bound']:.2f}%")
-print(f"Tuned CPS: {result['best_cps']:.2f}")
+    if len(df_margin) < 4:
+        print(f"Not enough op margin data for Prophet CV for {symbol} (need at least 4, got {len(df_margin)}).")
+        if len(df_margin) >=2:
+            model = Prophet(yearly_seasonality=False, changepoint_prior_scale=0.05).fit(df_margin)
+            future = model.make_future_dataframe(periods=1, freq='A'); forecast = model.predict(future)
+            if plot: model.plot(forecast); plt.title(f"Op Margin Forecast (Simple) for {symbol}"); plt.show()
+            return {"margin_forecast": forecast.iloc[-1]['yhat'], "best_cps": 0.05, "error": "Insufficient data for CV, simple forecast used."}
+        return {"margin_forecast": 0.0, "error": "Insufficient data for any forecast"}
 
-# %% [markdown]
-# ## Value Drivers (Target Pre-Tax Operating Margin, Years to Convergence)
+    best_cps = 0.05; tuning = []
+    n_years_data = len(df_margin)
+    initial_cv_years = min(max(2, n_years_data - 2), n_years_data -1)
 
-# %%
-def forecast_pretarget_operating_margin(symbol: str, history_years: int = 5, api_key: str = ALPHA_VANTAGE_API_KEY) -> dict:
-    """
-    Forecasts the Target Pre-Tax Operating Margin and estimates
-    how many years it'll take to converge using Alpha Vantage API data.
-
-    Returns:
-      {
-        'current_margin': float (%),
-        'target_margin': float (%),
-        'annual_change': float (%/year),
-        'years_to_converge': float,
-        'margin_trend_df': DataFrame
-      }
-    """
-    # 1. Pull financials from Alpha Vantage API
-    url = f'https://www.alphavantage.co/query'
-    params = {
-        'function': 'INCOME_STATEMENT',
-        'symbol': symbol,
-        'apikey': api_key
-    }
-    
-    try:
-        response = requests.get(url, params=params)
-        data = response.json()
-
-        # Check if the data was successfully fetched
-        if 'annualReports' not in data:
-            raise ValueError(f"No annual income statement data available for {symbol}")
-
-        income_statement = pd.DataFrame(data['annualReports'])
-    except Exception as e:
-        raise ValueError(f"Failed to fetch data from Alpha Vantage: {e}")
-    
-    # Ensure data is in correct format
-    income_statement = income_statement[['fiscalDateEnding', 'operatingIncome', 'totalRevenue']]
-    income_statement['fiscalDateEnding'] = pd.to_datetime(income_statement['fiscalDateEnding'])
-    income_statement = income_statement.sort_values('fiscalDateEnding')
-    
-    # 2. Calculate operating margin (EBIT / TotalRevenue)
-    income_statement['operating_margin'] = income_statement['operatingIncome'].astype(float) / income_statement['totalRevenue'].astype(float)
-    
-    # 3. Limit to recent history
-    recent = income_statement.tail(history_years)
-    
-    if len(recent) < 2:
-        raise ValueError("Not enough historical margin data for trend estimation.")
-
-    # 4. Fit linear trend (year vs margin)
-    X = recent['fiscalDateEnding'].dt.year.values.reshape(-1, 1)
-    y = recent['operating_margin'].values
-
-    model = LinearRegression()
-    model.fit(X, y)
-
-    slope = model.coef_[0]   # margin change per year
-    intercept = model.intercept_
-
-    # 5. Forecast target margin (say, extrapolate +5 years ahead)
-    future_year = X[-1][0] + 5
-    target_margin = model.predict(np.array([[future_year]]))[0]
-
-    # 6. Current margin
-    current_margin = y[-1]
-
-    # 7. Time to converge
-    if np.isclose(slope, 0):
-        years_to_converge = np.inf  # Never converges
+    if n_years_data >= initial_cv_years + 2:
+        for cps_val in cps_grid:
+            m = Prophet(yearly_seasonality=False, changepoint_prior_scale=cps_val, n_changepoints=min(5, len(df_margin)-1))
+            m.fit(df_margin)
+            try:
+                df_cv = cross_validation(m, initial=f"{int(initial_cv_years * 365.25)} days", period="365 days", horizon="365 days", parallel=None)
+                perf = performance_metrics(df_cv)
+                tuning.append({'cps': cps_val, 'mape': perf['mape'].mean()})
+            except Exception as e: print(f"Prophet CV (Op Margin) for {symbol} with cps={cps_val} failed: {e}")
+        if tuning: best_cps = min(tuning, key=lambda x: x['mape'])['cps']
     else:
-        years_to_converge = (target_margin - current_margin) / slope
+         print(f"Skipping Prophet CV for {symbol} (Op Margin) due to limited data ({n_years_data}). Using default CPS.")
 
-    # 8. Package results
-    margin_trend_df = pd.DataFrame({'year': X.flatten(), 'operating_margin': y})
-
-    # Visualization
-    plt.figure(figsize=(10, 6))
-    plt.plot(recent['fiscalDateEnding'].dt.year, recent['operating_margin'], 'o-', label='Historical Operating Margin', color='blue')
-    plt.plot(recent['fiscalDateEnding'].dt.year, model.predict(X), '--', label='Regression Line', color='green')
-    plt.axvline(future_year, color='red', linestyle=':', label=f'Forecast for {future_year}')
-    plt.scatter(future_year, target_margin, color='red', zorder=5)
-    plt.text(future_year, target_margin, f'Target Margin: {target_margin*100:.2f}%', 
-             verticalalignment='bottom', horizontalalignment='right', color='red')
+    model = Prophet(yearly_seasonality=False, changepoint_prior_scale=best_cps, n_changepoints=min(5, len(df_margin)-1))
+    model.fit(df_margin)
+    future = model.make_future_dataframe(periods=1, freq='A'); forecast = model.predict(future)
+    margin_forecast_val = forecast.iloc[-1]['yhat']
     
-    plt.title(f'{symbol} Operating Margin Forecast and Convergence')
-    plt.xlabel('Year')
-    plt.ylabel('Operating Margin (%)')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    if plot:
+        try:
+            fig = model.plot(forecast); plt.plot(df_margin['ds'], df_margin['y'], 'o-', label='Historical Margin'); plt.title(f"{symbol} Operating Margin Forecast (Best CPS: {best_cps:.2f})"); plt.xlabel("Year"); plt.ylabel("Operating Margin (%)"); plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+        except Exception as e: print(f"Error plotting operating margin for {symbol}: {e}")
 
-    return {
-        'current_margin': current_margin * 100,
-        'target_margin': target_margin * 100,
-        'annual_change': slope * 100,
-        'years_to_converge': years_to_converge,
-        'margin_trend_df': margin_trend_df
-    }
+    print(f"Operating Margin Forecast for {symbol}: {margin_forecast_val:.2f}% (CPS: {best_cps})")
+    return {'margin_forecast': margin_forecast_val, 'best_cps': best_cps}
 
-# %%
-result = forecast_pretarget_operating_margin(company_ticker, history_years=5, api_key=ALPHA_VANTAGE_API_KEY)
+def forecast_revenue_cagr(symbol, api_key, forecast_years=5, history_years=15, cps_grid=None, growth='logistic', plot=True): # Changed default growth to logistic
+    print(f"\nForecasting Revenue CAGR for {symbol} over {forecast_years} years (growth: {growth})...")
+    if cps_grid is None: cps_grid = [0.05, 0.1, 0.2, 0.3, 0.5]
+    df_revenue = get_annual_financial_data(symbol, api_key, "revenue", history_years)
 
-print(f"Current Margin: {result['current_margin']:.2f}%")
-print(f"Target Margin (5yr): {result['target_margin']:.2f}%")
-print(f"Annual Change: {result['annual_change']:.2f}% per year")
-print(f"Years to Converge: {result['years_to_converge']:.1f} years")
+    if len(df_revenue) < 3:
+        print(f"Not enough revenue history for CAGR tuning ({symbol}, got {len(df_revenue)}).")
+        if len(df_revenue) >=2:
+            initial_rev = df_revenue['y'].iloc[0]
+            final_rev = df_revenue['y'].iloc[-1]
+            num_years_hist = (df_revenue['ds'].iloc[-1].year - df_revenue['ds'].iloc[0].year)
+            if num_years_hist > 0 and initial_rev > 0:
+                hist_cagr = (final_rev / initial_rev) ** (1/num_years_hist) -1
+                return {'cagr_forecast': hist_cagr, 'best_cps': 0.05, 'error': "Insufficient data for Prophet, historical CAGR used."}
+        return {'cagr_forecast': 0.0, 'best_cps': 0.05, 'error': "Insufficient data for CAGR"}
 
-# %% [markdown]
-# ## Value Drivers (Sales to Capital Ratio)
+    best_cps = 0.05; errors = []
+    cap_val = df_revenue['y'].max() * 1.5 if growth == 'logistic' else None
+    
+    train_df_orig = df_revenue.iloc[:-1].copy()
+    if len(train_df_orig) < 2 :
+        print(f"Cannot perform CAGR CPS tuning for {symbol} (train data < 2). Using default CPS.")
+    else:
+        actual_last_year_revenue = df_revenue.iloc[-1]['y']
+        for cps_tune_val in cps_grid:
+            train_df = train_df_orig.copy()
+            model_tune = Prophet(growth=growth, yearly_seasonality=False, changepoint_prior_scale=cps_tune_val, n_changepoints=min(10, len(train_df)-1))
+            if growth == 'logistic': train_df['cap'] = cap_val
+            
+            model_tune.fit(train_df)
+            future_tune = model_tune.make_future_dataframe(periods=1, freq='A')
+            if growth == 'logistic': future_tune['cap'] = cap_val
+            
+            forecast_tune = model_tune.predict(future_tune)
+            predicted_last_year_revenue = forecast_tune['yhat'].iloc[-1]
+            error = np.abs(predicted_last_year_revenue - actual_last_year_revenue) / actual_last_year_revenue if actual_last_year_revenue else float('inf')
+            errors.append((cps_tune_val, error))
+        if errors: best_cps = min(errors, key=lambda x: x[1])[0]
+        print(f"Best CPS for CAGR forecast ({symbol}): {best_cps:.3f}")
 
-# %%
-def forecast_sales_to_capital_ratio(
-    symbol: str,
-    history_years: int = 15,
-    cps: float = 0.05,
-    api_key: str = ALPHA_VANTAGE_API_KEY
-) -> dict:
-    """
-    Forecasts the sales-to-capital ratio (Revenue / InvestedCapital) for
-    the next 1–5 years and 6–10 years using Alpha Vantage API data and Prophet.
+    final_model = Prophet(growth=growth, yearly_seasonality=False, changepoint_prior_scale=best_cps, n_changepoints=min(10, len(df_revenue)-1))
+    df_revenue_for_fit = df_revenue.copy()
+    if growth == 'logistic':
+        cap_val_final = df_revenue_for_fit['y'].max() * 1.5 
+        df_revenue_for_fit['cap'] = cap_val_final
+    
+    final_model.fit(df_revenue_for_fit)
+    future_final = final_model.make_future_dataframe(periods=forecast_years, freq='A')
+    if growth == 'logistic': future_final['cap'] = cap_val_final
 
-    Returns:
-      {
-        'avg_1_5': float,      # average ratio for years 1–5
-        'avg_6_10': float,     # average ratio for years 6–10
-        'forecast_df': DataFrame  # full 10-year forecast with yhat, yhat_lower, yhat_upper
-      }
-    """
-    # 1) Fetch annual data from Alpha Vantage API
-    # Fetch Income Statement (Total Revenue)
-    url_income = f'https://www.alphavantage.co/query'
-    params_income = {
-        'function': 'INCOME_STATEMENT',
-        'symbol': symbol,
-        'apikey': api_key
-    }
+    forecast_final = final_model.predict(future_final)
+    initial_revenue = df_revenue['y'].iloc[-1]
+    forecast_end_revenue = forecast_final['yhat'].iloc[-1]
+    cagr_forecast_val = ((forecast_end_revenue / initial_revenue) ** (1/forecast_years) - 1) if initial_revenue and forecast_end_revenue > 0 else 0.0
+    
+    if plot:
+        try:
+            fig = final_model.plot(forecast_final); plt.plot(df_revenue['ds'], df_revenue['y'], 'o-', label='Historical Revenue'); plt.title(f"{symbol} {forecast_years}-Yr Revenue Forecast (Best CPS={best_cps:.2f}, Growth: {growth})"); plt.xlabel("Year"); plt.ylabel("Revenue (USD)"); plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+        except Exception as e: print(f"Error plotting CAGR forecast for {symbol}: {e}")
+
+    print(f"{forecast_years}-Year Forecasted CAGR for {symbol}: {cagr_forecast_val*100:.2f}% (CPS: {best_cps})")
+    return {'cagr_forecast': cagr_forecast_val, 'best_cps': best_cps}
+
+def forecast_pretarget_operating_margin(symbol, api_key, history_years=5, plot=True):
+    print(f"\nForecasting Pre-Target Operating Margin & Convergence for {symbol}...")
+    df_margin = get_annual_financial_data(symbol, api_key, "operating_margin", history_years=max(history_years, 5))
+
+    if len(df_margin) < 2:
+        print(f"Not enough historical margin data for trend ({symbol}, got {len(df_margin)}).")
+        return {'target_margin': 0.0, 'years_to_converge': np.inf, 'error': "Insufficient data"}
+
+    recent_margins = df_margin.tail(history_years)
+    if len(recent_margins) < 2:
+        current_margin_val = df_margin['y'].iloc[-1] if not df_margin.empty else 0.0
+        print(f"Not enough recent margin data for linear trend ({symbol}). Using last margin as target.")
+        return {'current_margin': current_margin_val, 'target_margin': current_margin_val, 'annual_change_pct_points': 0.0, 'years_to_converge': 0.0}
+
+    X = recent_margins['ds'].dt.year.values.reshape(-1, 1)
+    y = recent_margins['y'].values
+
+    model = LinearRegression().fit(X, y)
+    slope = model.coef_[0]   
+    future_year_for_target = X[-1][0] + 5
+    target_margin_forecast = model.predict(np.array([[future_year_for_target]]))[0]
+    current_margin = y[-1]
+    years_to_converge_val = (target_margin_forecast - current_margin) / slope if not np.isclose(slope, 0) else np.inf
+    
+    if plot:
+        try:
+            plt.figure(figsize=(10, 6)); plt.plot(recent_margins['ds'].dt.year, y, 'o-', label='Historical Operating Margin (%)'); plt.plot(X, model.predict(X), '--', label='Linear Regression Trend'); plt.axvline(future_year_for_target, color='red', linestyle=':', label=f'Target Year ({future_year_for_target})'); plt.scatter(future_year_for_target, target_margin_forecast, color='red', zorder=5); plt.text(future_year_for_target, target_margin_forecast, f' Target: {target_margin_forecast:.2f}%', va='bottom', ha='right'); plt.title(f'{symbol} Operating Margin Trend & Target'); plt.xlabel('Year'); plt.ylabel('Operating Margin (%)'); plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+        except Exception as e: print(f"Error plotting pre-target operating margin for {symbol}: {e}")
+
+    print(f"Target Pre-Tax Operating Margin for {symbol} (to {future_year_for_target}): {target_margin_forecast:.2f}%")
+    print(f"Years to Converge: {years_to_converge_val:.1f} (Current: {current_margin:.2f}%, Slope: {slope:.2f}%/yr)")
+    return {'current_margin': current_margin, 'target_margin': target_margin_forecast, 'annual_change_pct_points': slope, 'years_to_converge': years_to_converge_val}
+
+def forecast_sales_to_capital_ratio(symbol, api_key, history_years=15, cps=0.05, plot=True):
+    print(f"\nForecasting Sales-to-Capital Ratio for {symbol}...")
+    url_income = f'https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={symbol}&apikey={api_key}'
     try:
-        response_income = requests.get(url_income, params=params_income)
-        data_income = response_income.json()
-        if 'annualReports' not in data_income:
-            raise ValueError(f"No income statement data available for {symbol}")
-        income_data = pd.DataFrame(data_income['annualReports'])
+        data_income = requests.get(url_income, timeout=30).json()
+        if 'annualReports' not in data_income or not data_income['annualReports']:
+            print(f"No income statement data for {symbol} for S/C ratio. Info: {data_income.get('Information')}")
+            return {'avg_1_5': 0.0, 'avg_6_10': 0.0, 'error': "No income data"}
+        income_df = pd.DataFrame(data_income['annualReports'])[['fiscalDateEnding', 'totalRevenue']]
+        income_df['fiscalDateEnding'] = pd.to_datetime(income_df['fiscalDateEnding'])
+        income_df['totalRevenue'] = pd.to_numeric(income_df['totalRevenue'], errors='coerce')
     except Exception as e:
-        raise ValueError(f"Failed to fetch income data from Alpha Vantage: {e}")
+        print(f"Failed to fetch/process income data for S/C ratio ({symbol}): {e}")
+        return {'avg_1_5': 0.0, 'avg_6_10': 0.0, 'error': str(e)}
 
-    # Fetch Balance Sheet (Total Assets as a proxy for Invested Capital)
-    url_balance = f'https://www.alphavantage.co/query'
-    params_balance = {
-        'function': 'BALANCE_SHEET',
-        'symbol': symbol,
-        'apikey': api_key
-    }
+    url_balance = f'https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol={symbol}&apikey={api_key}'
     try:
-        response_balance = requests.get(url_balance, params=params_balance)
-        data_balance = response_balance.json()
-        if 'annualReports' not in data_balance:
-            raise ValueError(f"No balance sheet data available for {symbol}")
-        balance_data = pd.DataFrame(data_balance['annualReports'])
+        data_balance = requests.get(url_balance, timeout=30).json()
+        if 'annualReports' not in data_balance or not data_balance['annualReports']:
+            print(f"No balance sheet data for {symbol} for S/C ratio. Info: {data_balance.get('Information')}")
+            return {'avg_1_5': 0.0, 'avg_6_10': 0.0, 'error': "No balance sheet data"}
+        balance_df = pd.DataFrame(data_balance['annualReports'])
+        balance_df['fiscalDateEnding'] = pd.to_datetime(balance_df['fiscalDateEnding'])
+        balance_df['investedCapital'] = pd.to_numeric(balance_df.get('totalAssets'), errors='coerce') # Using totalAssets as proxy
     except Exception as e:
-        raise ValueError(f"Failed to fetch balance sheet data from Alpha Vantage: {e}")
-    
-    # 2) Keep only 12M rows and parse dates
-    income_data = income_data[['fiscalDateEnding', 'totalRevenue']].copy()
-    balance_data = balance_data[['fiscalDateEnding', 'totalAssets']].copy()
-    
-    income_data['fiscalDateEnding'] = pd.to_datetime(income_data['fiscalDateEnding'])
-    balance_data['fiscalDateEnding'] = pd.to_datetime(balance_data['fiscalDateEnding'])
-    
-    # 3) Merge Revenue & Invested Capital on date
-    df = pd.merge(
-        income_data[['fiscalDateEnding', 'totalRevenue']],
-        balance_data[['fiscalDateEnding', 'totalAssets']],
-        on='fiscalDateEnding',
-        how='inner'
-    ).sort_values('fiscalDateEnding')
+        print(f"Failed to fetch/process balance sheet data for S/C ratio ({symbol}): {e}")
+        return {'avg_1_5': 0.0, 'avg_6_10': 0.0, 'error': str(e)}
+        
+    df = pd.merge(income_df, balance_df[['fiscalDateEnding', 'investedCapital']], on='fiscalDateEnding', how='inner')
+    df.dropna(subset=['totalRevenue', 'investedCapital'], inplace=True)
+    df = df.sort_values('fiscalDateEnding')
 
-    # 4) Limit to the last history_years (drop any nulls)
-    cutoff = df['fiscalDateEnding'].max() - pd.DateOffset(years=history_years)
-    df = df[df['fiscalDateEnding'] >= cutoff].dropna(subset=['totalRevenue', 'totalAssets'])
+    cutoff = df['fiscalDateEnding'].max() - pd.DateOffset(years=history_years) if not df.empty else pd.Timestamp.now()
+    df = df[df['fiscalDateEnding'] >= cutoff]
 
-    # 5) Compute the ratio (Revenue / Invested Capital)
-    df['ratio'] = df['totalRevenue'].astype(float) / df['totalAssets'].astype(float)
-
-    # 6) Prepare for Prophet
+    if df.empty or 'investedCapital' not in df.columns or df['investedCapital'].eq(0).all():
+        print(f"Not enough valid data for S/C ratio for {symbol} after filtering/merging.")
+        return {'avg_1_5': 0.0, 'avg_6_10': 0.0, 'error': "Insufficient merged data"}
+        
+    df['ratio'] = df['totalRevenue'] / df['investedCapital']
     df_prophet = df[['fiscalDateEnding', 'ratio']].rename(columns={'fiscalDateEnding': 'ds', 'ratio': 'y'})
+    
+    if len(df_prophet) < 2:
+        print(f"Not enough S/C ratio data points for Prophet for {symbol} (got {len(df_prophet)}).")
+        avg_hist_ratio = df_prophet['y'].mean() if not df_prophet.empty else 0.0
+        return {'avg_1_5': avg_hist_ratio, 'avg_6_10': avg_hist_ratio, 'error': "Insufficient data for forecast, used historical avg."}
 
-    # 7) Fit Prophet model
-    m = Prophet(
-        yearly_seasonality=False,
-        changepoint_prior_scale=cps
-    )
+    m = Prophet(yearly_seasonality=False, changepoint_prior_scale=cps, n_changepoints=min(5, len(df_prophet)-1))
     m.fit(df_prophet)
-
-    # 8) Forecast 10 years ahead (1–10)
     future = m.make_future_dataframe(periods=10, freq='A')
     fc = m.predict(future)
 
-    # 9) Extract just the 10 forecast points (after the last historical year)
-    last_hist = df_prophet['ds'].max()
-    fut = fc[fc['ds'] > last_hist].reset_index(drop=True)
+    last_hist_date = df_prophet['ds'].max()
+    forecast_points = fc[fc['ds'] > last_hist_date].reset_index(drop=True)
 
-    # 10) Compute averages for years 1–5 and 6–10
-    avg_1_5  = fut.loc[0:4, 'yhat'].mean()
-    avg_6_10 = fut.loc[5:9, 'yhat'].mean()
+    if len(forecast_points) < 10:
+        print(f"Warning: S/C forecast for {symbol} produced {len(forecast_points)} future points (expected 10).")
+        if forecast_points.empty:
+            avg_hist_ratio = df_prophet['y'].mean() if not df_prophet.empty else 0.0
+            return {'avg_1_5': avg_hist_ratio, 'avg_6_10': avg_hist_ratio, 'error': "No future forecast points, used historical avg."}
 
-    # 11) Plot historical + forecast
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_prophet['ds'], df_prophet['y'], 'o-', label='Historical Ratio')
-    plt.plot(fut['ds'], fut['yhat'], '--', label='Forecast Ratio')
-    plt.fill_between(fut['ds'], fut['yhat_lower'], fut['yhat_upper'],
-                     color='orange', alpha=0.3, label='Uncertainty')
-    plt.axvline(last_hist, color='gray', linestyle=':')
-    plt.title(f"{symbol} Sales-to-Capital Ratio Forecast")
-    plt.xlabel("Year")
-    plt.ylabel("Revenue / Invested Capital")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    avg_1_5_val = forecast_points.loc[0:min(4, len(forecast_points)-1), 'yhat'].mean()
+    avg_6_10_val = forecast_points.loc[5:min(9, len(forecast_points)-1), 'yhat'].mean() if len(forecast_points) > 5 else avg_1_5_val
 
-    return {
-        'avg_1_5': avg_1_5,
-        'avg_6_10': avg_6_10,
-        'forecast_df': fut[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+    if plot:
+        try:
+            fig = m.plot(fc); plt.plot(df_prophet['ds'], df_prophet['y'], 'o-', label='Historical S/C Ratio'); plt.title(f"{symbol} Sales-to-Capital Ratio Forecast (CPS: {cps:.2f})"); plt.xlabel("Year"); plt.ylabel("Sales / Invested Capital"); plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+        except Exception as e: print(f"Error plotting S/C ratio for {symbol}: {e}")
+    
+    print(f"Sales-to-Capital (Years 1–5 avg forecast) for {symbol}: {avg_1_5_val:.2f}")
+    print(f"Sales-to-Capital (Years 6–10 avg forecast) for {symbol}: {avg_6_10_val:.2f}")
+    return {'avg_1_5': avg_1_5_val, 'avg_6_10': avg_6_10_val}
+
+# --- Main Function ---
+def run_ginzu_analysis():
+    global input_worksheet, valuation_worksheet 
+
+    if not POLYGON_API_KEY or not ALPHA_VANTAGE_API_KEY:
+        print("API keys for Polygon or Alpha Vantage are missing. Please set them as environment variables.")
+        return
+
+    initialize_google_sheets()
+
+    company_ticker = input("Enter the company ticker (e.g., AAPL): ").strip().upper()
+    if not company_ticker:
+        print("No ticker entered. Exiting.")
+        return
+
+    print(f"\nStarting financial analysis for {company_ticker}...")
+
+    print("\nFetching latest 10-K financials...")
+    financials = get_latest_10k_financials(company_ticker, ALPHA_VANTAGE_API_KEY)
+    if "error" in financials:
+        print(f"Could not fetch initial financials for {company_ticker}: {financials['error']}")
+        return
+    
+    date_val = retrieve_date()
+    input_worksheet.update_acell('B3', date_val)
+    input_worksheet.update_acell('B4', financials.get("B4", company_ticker))
+    print(f"Updated B3 (Date): {date_val}, B4 (Company Name): {financials.get('B4', company_ticker)}")
+
+    country_names = get_dropdown_options(SPREADSHEET_ID, INPUT_SHEET_NAME, 'B7')
+    us_industry_names = get_dropdown_options(SPREADSHEET_ID, INPUT_SHEET_NAME, 'B8')
+    global_industry_names = get_dropdown_options(SPREADSHEET_ID, INPUT_SHEET_NAME, 'B9')
+
+    country = prompt_user_choice(country_names, "Choose Country of Incorporation:")
+    us_industry = prompt_user_choice(us_industry_names, "Choose US Industry:")
+    global_industry = prompt_user_choice(global_industry_names, "Choose Global Industry:")
+
+    input_worksheet.update_acell('B7', country)
+    input_worksheet.update_acell('B8', us_industry)
+    input_worksheet.update_acell('B9', global_industry)
+    print(f"Updated B7 (Country): {country}, B8 (US Industry): {us_industry}, B9 (Global Industry): {global_industry}")
+
+    financial_updates = {
+        'D11': financials.get("D11"),
+        'B11': financials.get("B11", 0) / 10000000, 'C11': financials.get("C11", 0) / 10000000,
+        'B12': financials.get("B12", 0) / 10000000, 'C12': financials.get("C12", 0) / 10000000,
+        'B13': financials.get("B13", 0) / 10000000, 'C13': financials.get("C13", 0) / 10000000,
+        'B14': financials.get("B14", 0) / 10000000, 'C14': financials.get("C14", 0) / 10000000,
+        'B15': financials.get("B15", 0) / 10000000, 'C15': financials.get("C15", 0) / 10000000,
+        'B16': financials.get("B16"), 'B17': financials.get("B17"),
+        'B18': financials.get("B18", 0) / 10000000, 'C18': financials.get("C18", 0) / 10000000,
+        'B19': financials.get("B19", 0) / 10000000, 'C19': financials.get("C19", 0) / 10000000,
+        'B20': financials.get("B20", 0) / 10000000, 'C20': financials.get("C20", 0) / 10000000,
+        'B21': financials.get("B21", 0) / 10000000, 
+        'B22': financials.get("B22"),
+        'B23': financials.get("B23"), 
+        'B24': financials.get("B24"),
+        'B34': financials.get("B34") 
     }
+    print("\nUpdating base financial data in sheet...")
+    for cell, value in financial_updates.items():
+        if value is not None:
+            input_worksheet.update_acell(cell, value)
+        else:
+            print(f"Skipped {cell} due to missing value from financials.")
+    print("Base financial data updated.")
+            
+    print("\n--- Generating Forecasts for Value Drivers (will show plots) ---")
+    rev_growth_forecast = forecast_revenue_growth_rate(company_ticker, ALPHA_VANTAGE_API_KEY, plot=True)
+    suggested_b26_val = rev_growth_forecast.get('growth_rate', 0.0) * 100
+    suggested_b26_str = f"{suggested_b26_val:.2f}" if "error" not in rev_growth_forecast else "N/A"
+    print(f"Suggested for B26 (Rev Growth Rate Next Yr %): {suggested_b26_str}")
 
-# %%
-result = forecast_sales_to_capital_ratio(company_ticker, history_years=10, cps=0.1, api_key=ALPHA_VANTAGE_API_KEY)
+    op_margin_forecast = forecast_operating_margin(company_ticker, ALPHA_VANTAGE_API_KEY, plot=True)
+    suggested_b27_val = op_margin_forecast.get('margin_forecast', 0.0)
+    suggested_b27_str = f"{suggested_b27_val:.2f}" if "error" not in op_margin_forecast else "N/A"
+    print(f"Suggested for B27 (Op Margin Next Yr %): {suggested_b27_str}")
 
-print(f"Sales-to-Capital (Years 1–5): {result['avg_1_5']:.2f}")
-print(f"Sales-to-Capital (Years 6–10): {result['avg_6_10']:.2f}")
+    cagr_forecast = forecast_revenue_cagr(company_ticker, ALPHA_VANTAGE_API_KEY, forecast_years=5, growth='logistic', plot=True)
+    suggested_b28_val = cagr_forecast.get('cagr_forecast', 0.0) * 100
+    suggested_b28_str = f"{suggested_b28_val:.2f}" if "error" not in cagr_forecast else "N/A"
+    print(f"Suggested for B28 (5yr Revenue CAGR %): {suggested_b28_str}")
 
-# %%
-rev_growth_rate_for_next_year = input('What is the revenue growth rate for the next year?')
-operating_margin_for_next_year = input('What is the operating margin for the next year?')
-compounded_annual_growth_rate = input('What is the compounded annual growth rate?')
-target_pre_tax_operating_margin = input('What is the target pre-tax operating margin?')
-years_of_convergence_for_margin = input('How many years of convergence for the margin?')
-sales_to_capital_ratio_for_years_1_to_5 = input('What is the sales to capital ratio for the first 5 years?')
-sales_to_capital_ratio_for_years_6_to_10 = input('What is the sales to capital ratio for the last 5 years?')
-input_worksheet.update('B26', [[rev_growth_rate_for_next_year]])
-input_worksheet.update('B27', [[operating_margin_for_next_year]])
-input_worksheet.update('B28', [[compounded_annual_growth_rate]])
-input_worksheet.update('B29', [[target_pre_tax_operating_margin]])
-input_worksheet.update('B30', [[years_of_convergence_for_margin]])
-input_worksheet.update('B31', [[sales_to_capital_ratio_for_years_1_to_5]])
-input_worksheet.update('B32', [[sales_to_capital_ratio_for_years_6_to_10]])
+    pre_target_margin_forecast = forecast_pretarget_operating_margin(company_ticker, ALPHA_VANTAGE_API_KEY, plot=True)
+    suggested_b29_val = pre_target_margin_forecast.get('target_margin', 0.0)
+    suggested_b29_str = f"{suggested_b29_val:.2f}" if "error" not in pre_target_margin_forecast else "N/A"
+    suggested_b30_val = pre_target_margin_forecast.get('years_to_converge', 0.0)
+    suggested_b30_str = f"{suggested_b30_val:.1f}" if "error" not in pre_target_margin_forecast else "N/A"
+    print(f"Suggested for B29 (Target Pre-Tax Op Margin %): {suggested_b29_str}")
+    print(f"Suggested for B30 (Years to Converge Margin): {suggested_b30_str}")
 
-# %% [markdown]
-# ## Market Numbers
+    sc_ratio_forecast = forecast_sales_to_capital_ratio(company_ticker, ALPHA_VANTAGE_API_KEY, plot=True)
+    suggested_b31_val = sc_ratio_forecast.get('avg_1_5', 0.0)
+    suggested_b31_str = f"{suggested_b31_val:.2f}" if "error" not in sc_ratio_forecast else "N/A"
+    suggested_b32_val = sc_ratio_forecast.get('avg_6_10', 0.0)
+    suggested_b32_str = f"{suggested_b32_val:.2f}" if "error" not in sc_ratio_forecast else "N/A"
+    print(f"Suggested for B31 (Sales/Capital Yrs 1-5): {suggested_b31_str}")
+    print(f"Suggested for B32 (Sales/Capital Yrs 6-10): {suggested_b32_str}")
 
-# %%
-rf = financials["B34"]
-input_worksheet.update('B34', [[rf]])
+    print("\n--- Please Review Visualizations and Suggested Values Above ---")
+    print("Enter your chosen values for the following (press Enter to use suggested value):")
 
-# %% [markdown]
-# ## Valuation Metrics
+    def get_user_input_for_driver(prompt_text, suggested_value_str, is_percentage=False):
+        user_val_str = input(f"{prompt_text} (Suggested: {suggested_value_str}): ").strip()
+        if not user_val_str:
+            if suggested_value_str == "N/A": return None
+            final_val_str = suggested_value_str
+        else:
+            final_val_str = user_val_str
+        
+        try:
+            numeric_val = float(final_val_str)
+            if is_percentage:
+                return numeric_val / 100.0
+            return numeric_val
+        except (ValueError, TypeError):
+            print(f"Warning: Could not convert '{final_val_str}' to a number for {prompt_text}. Skipping update for this cell or using raw string if applicable.")
+            return final_val_str if not is_percentage else None
 
-# %%
-valuation_worksheet.acell('B33').value
+    updates_b26_b32 = {
+        'B26': get_user_input_for_driver("Revenue growth rate for next year (%)", suggested_b26_str, is_percentage=True),
+        'B27': get_user_input_for_driver("Operating margin for next year (%)", suggested_b27_str, is_percentage=True),
+        'B28': get_user_input_for_driver("Compounded annual growth rate (CAGR %)", suggested_b28_str, is_percentage=True),
+        'B29': get_user_input_for_driver("Target pre-tax operating margin (%)", suggested_b29_str, is_percentage=True),
+        'B30': get_user_input_for_driver("Years of convergence for margin", suggested_b30_str),
+        'B31': get_user_input_for_driver("Sales to capital ratio (for years 1-5)", suggested_b31_str),
+        'B32': get_user_input_for_driver("Sales to capital ratio (for years 6-10)", suggested_b32_str),
+    }
+    
+    print("\nUpdating sheet with your chosen value drivers:")
+    for cell, value in updates_b26_b32.items():
+        if value is not None:
+            try:
+                input_worksheet.update_acell(cell, value)
+                print(f"Updated {cell}: {value}")
+            except Exception as e:
+                print(f"Error updating cell {cell} with value {value}: {e}")
+        else:
+            print(f"Skipped updating {cell} as input was invalid or N/A.")
 
-# %%
-valuation_worksheet.acell('B34').value
+    print("\n--- Key Valuation Metrics (from 'Valuation' sheet after calculations) ---")
+    try:
+        print("Pausing for a few seconds for sheet calculations...")
+        time.sleep(7) 
 
-# %%
-valuation_worksheet.acell('B35').value
+        val_b33_str = valuation_worksheet.acell('B33').value
+        val_b34_str = valuation_worksheet.acell('B34').value
+        val_b35_str = valuation_worksheet.acell('B35').value
 
-# %%
+        est_value_per_share = safe_float(val_b33_str, default="N/A")
+        price_val = safe_float(val_b34_str, default="N/A")
+        price_as_percent_val = safe_float(val_b35_str, default="N/A")
 
+        print(f"Estimated value /share: $ {est_value_per_share if isinstance(est_value_per_share, float) else est_value_per_share:.2f}")
+        print(f"Price: $ {price_val if isinstance(price_val, float) else price_val:.2f}")
+        print(f"Price as % of value: {price_as_percent_val if isinstance(price_as_percent_val, float) else price_as_percent_val:.2f}%")
 
+    except Exception as e:
+        print(f"Could not read or format final valuation metrics from sheet: {e}")
 
+    print(f"\nAnalysis for {company_ticker} complete. Check your Google Sheet.")
+
+if __name__ == '__main__':
+    run_ginzu_analysis()
