@@ -47,7 +47,7 @@ ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Assumes 'src' is one level down from project root, and 'notebooks' is a sibling to 'src'
 _PROJECT_ROOT_DIR = os.path.dirname(_SCRIPT_DIR) 
-GOOGLE_CREDS_FILENAME = os.path.join(_PROJECT_ROOT_DIR, 'notebooks', 'rational-diode-456114-m0-79243525427e.json')
+GOOGLE_CREDS_FILENAME = os.path.join(_PROJECT_ROOT_DIR, 'rational-diode-456114-m0-79243525427e.json')
 # If your credentials file is in the SAME directory as this script, you might use:
 # GOOGLE_CREDS_FILENAME = os.path.join(_SCRIPT_DIR, 'rational-diode-456114-m0-79243525427e.json')
 # Or if running from project root and this file is in 'src':

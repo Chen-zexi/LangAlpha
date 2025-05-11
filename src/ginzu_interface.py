@@ -38,7 +38,7 @@ if not ALPHA_VANTAGE_API_KEY:
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT_DIR = os.path.dirname(_SCRIPT_DIR)
 
-GOOGLE_CREDS_FILENAME = os.path.join(_PROJECT_ROOT_DIR, 'notebooks', 'rational-diode-456114-m0-79243525427e.json')
+GOOGLE_CREDS_FILENAME = os.path.join(_PROJECT_ROOT_DIR, 'gcp_credential.json')
 
 GINZU_SPREADSHEET_LINK = 'https://docs.google.com/spreadsheets/d/1xclQf2xrgw0swp2CRwE25OBaEhQdDTOkm8VVkTcpVks/edit?usp=sharing'
 SPREADSHEET_ID = GINZU_SPREADSHEET_LINK.split('/d/')[1].split('/edit')[0]
