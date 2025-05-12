@@ -23,7 +23,7 @@
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 md:p-8">
 
-    <div class="container mx-auto max-w-4xl bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-xl">
+    <div class="container mx-auto max-w-5xl bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-xl">
         <header class="flex justify-between items-center mb-8 py-4 border-b border-gray-200 dark:border-gray-700 px-2">
             <div class="flex items-center">
                 <h1 class="text-3xl md:text-4xl font-bold text-primary-600 dark:text-primary-400">Ginzu Financial Analysis</h1>
@@ -41,33 +41,36 @@
 
         <section id="ticker-input-section" class="mb-6">
             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-700 pb-2">1. Enter Company Ticker</h2>
-            <div class="mb-4 max-w-sm mx-auto">
-                <label for="companyTicker" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Company Ticker (e.g., AAPL)</label>
-                <input type="text" id="companyTicker" name="companyTicker" placeholder="AAPL" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
-            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="mb-2">
+                    <label for="companyTicker" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Company Ticker (e.g., AAPL)</label>
+                    <input type="text" id="companyTicker" name="companyTicker" placeholder="AAPL" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                </div>
 
-            <div class="mb-4 max-w-sm mx-auto">
-                <label for="countrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Country of Incorporation</label>
-                <select id="countrySelect" name="countrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
-                    <option value="" disabled selected>Loading countries...</option>
-                    <!-- Options will be populated by JavaScript -->
-                </select>
-            </div>
+                <div class="mb-2">
+                    <label for="countrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Country of Incorporation</label>
+                    <select id="countrySelect" name="countrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                        <option value="" disabled selected>Loading countries...</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
 
-            <div class="mb-4 max-w-sm mx-auto">
-                <label for="usIndustrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">US Industry</label>
-                <select id="usIndustrySelect" name="usIndustrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
-                    <option value="" disabled selected>Loading US industries...</option>
-                    <!-- Options will be populated by JavaScript -->
-                </select>
-            </div>
+                <div class="mb-2">
+                    <label for="usIndustrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">US Industry</label>
+                    <select id="usIndustrySelect" name="usIndustrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                        <option value="" disabled selected>Loading US industries...</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
 
-            <div class="mb-4 max-w-sm mx-auto">
-                <label for="globalIndustrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Global Industry</label>
-                <select id="globalIndustrySelect" name="globalIndustrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
-                    <option value="" disabled selected>Loading global industries...</option>
-                    <!-- Options will be populated by JavaScript -->
-                </select>
+                <div class="mb-2">
+                    <label for="globalIndustrySelect" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Global Industry</label>
+                    <select id="globalIndustrySelect" name="globalIndustrySelect" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
+                        <option value="" disabled selected>Loading global industries...</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
             </div>
 
             <div class="text-center mt-4">
@@ -87,67 +90,67 @@
                 <p><strong>Ticker:</strong> <span id="displayCompanyTicker">N/A</span></p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b26-card">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Revenue Growth Rate Next Year (%)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="result-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b26-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Revenue Growth Rate Next Year (%)</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b26_rev_growth_suggested_pct">N/A</span>%</p>
-                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b26_rev_growth_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Revenue+Growth+Plot" alt="Revenue Growth Plot" class="max-w-full h-auto rounded"></div>
-                    <div class="mb-4">
-                        <label for="b26_rev_growth_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                    <div class="max-w-full mx-auto my-2 border border-gray-200 dark:border-gray-700 p-2 rounded-lg mb-2"><img id="b26_rev_growth_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Revenue+Growth+Plot" alt="Revenue Growth Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-3">
+                        <label for="b26_rev_growth_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
                         <input type="number" id="b26_rev_growth_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b27-card">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Operating Margin Next Year (%)</h3>
+                <div class="result-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b27-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Operating Margin Next Year (%)</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b27_op_margin_suggested_pct">N/A</span>%</p>
-                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b27_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Operating+Margin+Plot" alt="Operating Margin Plot" class="max-w-full h-auto rounded"></div>
-                    <div class="mb-4">
-                        <label for="b27_op_margin_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                    <div class="max-w-full mx-auto my-2 border border-gray-200 dark:border-gray-700 p-2 rounded-lg mb-2"><img id="b27_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Operating+Margin+Plot" alt="Operating Margin Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-3">
+                        <label for="b27_op_margin_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
                         <input type="number" id="b27_op_margin_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b28-card">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">5-Year Revenue CAGR (%)</h3>
+                <div class="result-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b28-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">5-Year Revenue CAGR (%)</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b28_cagr_suggested_pct">N/A</span>%</p>
-                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b28_cagr_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=CAGR+Plot" alt="CAGR Plot" class="max-w-full h-auto rounded"></div>
-                    <div class="mb-4">
-                        <label for="b28_cagr_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                    <div class="max-w-full mx-auto my-2 border border-gray-200 dark:border-gray-700 p-2 rounded-lg mb-2"><img id="b28_cagr_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=CAGR+Plot" alt="CAGR Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-3">
+                        <label for="b28_cagr_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
                         <input type="number" id="b28_cagr_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b29-card">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Target Pre-Tax Operating Margin (%)</h3>
+                <div class="result-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b29-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Target Pre-Tax Operating Margin (%)</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b29_target_op_margin_suggested_pct">N/A</span>%</p>
-                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b29_target_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Target+Op.Margin+Plot" alt="Target Operating Margin Plot" class="max-w-full h-auto rounded"></div>
-                    <div class="mb-4">
-                        <label for="b29_target_op_margin_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
+                    <div class="max-w-full mx-auto my-2 border border-gray-200 dark:border-gray-700 p-2 rounded-lg mb-2"><img id="b29_target_op_margin_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Target+Op.Margin+Plot" alt="Target Operating Margin Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-3">
+                        <label for="b29_target_op_margin_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (%):</label>
                         <input type="number" id="b29_target_op_margin_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
                 
-                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b30-card">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Years of Convergence for Margin</h3>
+                <div class="result-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b30-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Years of Convergence for Margin</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested: <span id="b30_years_to_converge_suggested">N/A</span></p>
-                    <div class="mb-4">
-                        <label for="b30_years_to_converge_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (Years):</label>
+                    <div class="mb-3">
+                        <label for="b30_years_to_converge_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (Years):</label>
                         <input type="number" id="b30_years_to_converge_input" step="0.1" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
 
-                <div class="result-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b31b32-card">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">Sales to Capital Ratio</h3>
+                <div class="result-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700" id="b31b32-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Sales to Capital Ratio</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested (Years 1-5): <span id="b31_sc_ratio_1_5_suggested">N/A</span></p>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Suggested (Years 6-10): <span id="b32_sc_ratio_6_10_suggested">N/A</span></p>
-                    <div class="max-w-md mx-auto my-2.5 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg mb-2"><img id="b31_sc_ratio_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Sales+to+Capital+Plot" alt="Sales to Capital Ratio Plot" class="max-w-full h-auto rounded"></div>
-                    <div class="mb-4">
-                        <label for="b31_sc_ratio_1_5_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (Years 1-5):</label>
+                    <div class="max-w-full mx-auto my-2 border border-gray-200 dark:border-gray-700 p-2 rounded-lg mb-2"><img id="b31_sc_ratio_plot" src="https://placehold.co/600x400/e2e8f0/94a3b8?text=Sales+to+Capital+Plot" alt="Sales to Capital Ratio Plot" class="max-w-full h-auto rounded"></div>
+                    <div class="mb-3">
+                        <label for="b31_sc_ratio_1_5_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (Years 1-5):</label>
                         <input type="number" id="b31_sc_ratio_1_5_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
-                    <div class="mb-4 mt-2">
-                        <label for="b32_sc_ratio_6_10_input" class="block mb-2 font-medium text-gray-700 dark:text-gray-300">Your Input (Years 6-10):</label>
+                    <div class="mb-3 mt-2">
+                        <label for="b32_sc_ratio_6_10_input" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Your Input (Years 6-10):</label>
                         <input type="number" id="b32_sc_ratio_6_10_input" step="0.01" class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400">
                     </div>
                 </div>
