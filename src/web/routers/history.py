@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -10,6 +11,17 @@ from database.models.reports import get_all_reports, get_reports_by_session, get
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Define Timezones
+EST = ZoneInfo("America/New_York")
+UTC = ZoneInfo("UTC")
+
+def convert_to_est(dt_obj: datetime) -> datetime:
+    if dt_obj.tzinfo is None:  
+        dt_obj = dt_obj.replace(tzinfo=UTC)
+    elif dt_obj.tzinfo != UTC: 
+        dt_obj = dt_obj.astimezone(UTC)
+    return dt_obj.astimezone(EST)
 
 @router.get("/api/history/sessions", response_class=JSONResponse)
 async def get_sessions():
@@ -22,21 +34,28 @@ async def get_sessions():
             session_id = report.get("session_id")
             if session_id:
                 report_timestamp = report.get("timestamp")
-                if session_id not in sessions_dict or (report_timestamp and sessions_dict[session_id].get("last_updated") and report_timestamp > sessions_dict[session_id]["last_updated"]):
+                last_updated_val = report.get("last_updated")
+
+                # Determine the effective timestamp for comparison and storage
+                effective_timestamp = last_updated_val if last_updated_val else report_timestamp
+
+                if session_id not in sessions_dict or \
+                   (effective_timestamp and sessions_dict[session_id].get("last_updated") and \
+                    effective_timestamp > sessions_dict[session_id]["last_updated"]):
                     sessions_dict[session_id] = {
                         "session_id": session_id,
-                        "last_updated": report_timestamp,
+                        "last_updated": effective_timestamp,
                         "title": report.get("title", f"Analysis Session {session_id[:8]}")
                     }
         
         sessions = list(sessions_dict.values())
-        sessions.sort(key=lambda x: x.get("last_updated") or datetime.min, reverse=True)
+        sessions.sort(key=lambda x: x.get("last_updated") or datetime.min.replace(tzinfo=UTC), reverse=True)
         
         sessions = sessions[:100]
         
         for session in sessions:
              if isinstance(session.get("last_updated"), datetime):
-                session["last_updated"] = session["last_updated"].isoformat()
+                session["last_updated"] = convert_to_est(session["last_updated"]).isoformat()
                 
         return {"sessions": sessions}
     except Exception as e:
@@ -52,7 +71,7 @@ async def get_session_messages(session_id: str):
             if "_id" in message and hasattr(message["_id"], '__str__'):
                 message["_id"] = str(message["_id"])
             if isinstance(message.get("timestamp"), datetime):
-                message["timestamp"] = message["timestamp"].isoformat()
+                message["timestamp"] = convert_to_est(message["timestamp"]).isoformat()
                 
         return {"messages": messages}
     except Exception as e:
@@ -68,9 +87,9 @@ async def get_session_reports(session_id: str):
             if "_id" in report and hasattr(report["_id"], '__str__'):
                  report["_id"] = str(report["_id"])
             if isinstance(report.get("timestamp"), datetime):
-                report["timestamp"] = report["timestamp"].isoformat()
+                report["timestamp"] = convert_to_est(report["timestamp"]).isoformat()
             if isinstance(report.get("last_updated"), datetime):
-                report["last_updated"] = report["last_updated"].isoformat()
+                report["last_updated"] = convert_to_est(report["last_updated"]).isoformat()
                 
         return {"reports": reports}
     except Exception as e:
@@ -88,9 +107,9 @@ async def get_single_report_by_session(session_id: str):
         if "_id" in report and hasattr(report["_id"], '__str__'):
              report["_id"] = str(report["_id"])
         if isinstance(report.get("timestamp"), datetime):
-            report["timestamp"] = report["timestamp"].isoformat()
+            report["timestamp"] = convert_to_est(report["timestamp"]).isoformat()
         if isinstance(report.get("last_updated"), datetime):
-            report["last_updated"] = report["last_updated"].isoformat()
+            report["last_updated"] = convert_to_est(report["last_updated"]).isoformat()
             
         return report
     except HTTPException:
@@ -104,18 +123,20 @@ async def get_recent_reports_endpoint(limit: int = 5):
     """Get the most recent reports from MongoDB."""
     logger.info(f"Fetching {limit} recent reports")
     try:
-        reports = get_recent_reports(limit)
+        reports_data = get_recent_reports(limit)
         
-        for report in reports:
-            if '_id' in report and hasattr(report["_id"], '__str__'):
-                report['_id'] = str(report['_id'])
-            if 'timestamp' in report and isinstance(report['timestamp'], datetime):
-                report['timestamp'] = report['timestamp'].isoformat()
-            if 'last_updated' in report and isinstance(report['last_updated'], datetime):
-                report['last_updated'] = report['last_updated'].isoformat()
+        processed_reports = []
+        for report_item in reports_data:
+            if '_id' in report_item and hasattr(report_item["_id"], '__str__'):
+                report_item['_id'] = str(report_item['_id'])
+            if 'timestamp' in report_item and isinstance(report_item['timestamp'], datetime):
+                report_item['timestamp'] = convert_to_est(report_item['timestamp']).isoformat()
+            if 'last_updated' in report_item and isinstance(report_item['last_updated'], datetime):
+                report_item['last_updated'] = convert_to_est(report_item['last_updated']).isoformat()
+            processed_reports.append(report_item)
         
         return JSONResponse(
-            content={"reports": reports},
+            content={"reports": processed_reports},
             status_code=200
         )
     except Exception as e:
