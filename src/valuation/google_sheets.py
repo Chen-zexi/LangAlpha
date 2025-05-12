@@ -4,7 +4,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
-from config import GOOGLE_CREDS_FILENAME, GINZU_SPREADSHEET_LINK, VALUATION_SHEET_INDEX
+from .config import GOOGLE_CREDS_FILENAME, GINZU_SPREADSHEET_LINK, VALUATION_SHEET_INDEX
 
 # Globals for Google Sheets access
 gc = None
@@ -35,7 +35,7 @@ def initialize_google_sheets():
         gc = gspread.service_account(filename=current_creds_file)
         pricer = gc.open_by_url(GINZU_SPREADSHEET_LINK)
         input_worksheet = pricer.get_worksheet(0) # Input sheet is index 0
-        valuation_worksheet = pricer.get_worksheet(VALUATION_SHEET_INDEX)
+        valuation_worksheet = pricer.get_worksheet(1)
 
         creds = Credentials.from_service_account_file(current_creds_file, scopes=['https://www.googleapis.com/auth/spreadsheets'])
         service = build('sheets', 'v4', credentials=creds)

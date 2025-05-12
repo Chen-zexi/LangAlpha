@@ -1,5 +1,3 @@
-// JavaScript for the report.html page
-
 document.addEventListener('DOMContentLoaded', () => {
     // Configure marked.js for consistent rendering with index.js
     marked.setOptions({
@@ -220,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let processed = content;
         
         // Remove markdown code block wrapping if it exists - handle multiple variants
-        const markdownCodeBlockPattern = /^```(markdown|md)?\s+([\s\S]+?)\s+```$/;
+        const markdownCodeBlockPattern = /^```(markdown|md)?\\s+([\\s\\S]+?)\\s+```$/;
         const codeBlockMatch = processed.match(markdownCodeBlockPattern);
         
         if (codeBlockMatch) {
@@ -229,28 +227,60 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Also check for any nested markdown blocks
-        const nestedMarkdownPattern = /```(markdown|md)\s+([\s\S]+?)\s+```/g;
+        const nestedMarkdownPattern = /```(markdown|md)\\s+([\\s\\S]+?)\\s+```/g;
         if (nestedMarkdownPattern.test(processed)) {
             console.log('Found nested markdown blocks, unwrapping them');
             processed = processed.replace(nestedMarkdownPattern, '$2');
         }
         
         // 1. Handle escaped newlines that should be actual newlines (common in JSON)
-        processed = processed.replace(/\\n/g, '\n');
+        processed = processed.replace(/\\\\n/g, '\\n');
         
         // 2. Fix escaped quotes
-        processed = processed.replace(/\\"/g, '"');
+        processed = processed.replace(/\\\\"/g, '"');
         
         // 3. Fix escaped backslashes
-        processed = processed.replace(/\\\\/g, '\\');
+        processed = processed.replace(/\\\\\\\\/g, '\\\\');
         
         // 4. Fix improperly escaped code blocks
         processed = processed.replace(/\\`\\`\\`/g, '```');
         
         // 5. Fix markdown headings: Ensure a space after the # sequence
         // Improved regex to handle all heading levels correctly
-        processed = processed.replace(/^(#{1,6})(?!\s|\#)(.+)$/gm, '$1 $2');
+        processed = processed.replace(/^(#{1,6})(?!\s|#)(.+)$/gm, '$1 $2');
         
+        // NEW: Unwrap generic code blocks that ONLY contain a markdown table
+        // This runs after specific ```markdown block unwrapping.
+        processed = processed.replace(/```\\s*([\\s\\S]*?)\\s*```/g, (match, contentInsideBlock) => {
+            const contentTrimmed = contentInsideBlock.trim();
+            if (!contentTrimmed) return match; // Empty block, leave as is
+
+            const lines = contentTrimmed.split('\\n').map(l => l.trim());
+
+            if (lines.length < 2) { // Needs at least header and separator
+                return match;
+            }
+
+            // Check if all lines look like table rows (start and end with |)
+            const allLinesAreTableRows = lines.every(line => line.startsWith('|') && line.endsWith('|'));
+            
+            if (!allLinesAreTableRows) {
+                return match; // Block contains non-table-row lines, so it's not purely a table
+            }
+
+            // Check for a separator line: e.g., |---|---| or |:---|:--:|
+            // Regex: Starts with |, then one or more groups of (optional space, optional colon, one or more hyphens, optional colon, optional space, |), ends line.
+            const separatorLineRegex = /^\|(?:\s*:?-+:?\s*\|)+$/;
+            const hasSeparatorLine = lines.some(line => separatorLineRegex.test(line));
+
+            if (hasSeparatorLine) {
+                // This block is very likely a markdown table wrapped in a generic code block.
+                console.log('Found a markdown table wrapped in a generic code block, unwrapping it.');
+                return contentTrimmed; // Return the unwrapped table content
+            }
+
+            return match; // Not a table by this definition, or contains other content; leave the code block.
+        });
         
         // Also check for other financial notation patterns
         processed = processed.replace(/([^~])~(\d+(\.\d+)?%?)/g, '$1<span class="approx-price">~</span>$2');
@@ -267,8 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Replace them with markdown equivalents before the parsing happens
         processed = processed.replace(/<b>(.*?)<\/b>/g, '**$1**');
         processed = processed.replace(/<i>(.*?)<\/i>/g, '*$1*');
-        processed = processed.replace(/<h([1-6])>(.*?)<\/h\1>/g, (match, level, content) => {
-            return '#'.repeat(parseInt(level)) + ' ' + content;
+        processed = processed.replace(/<h([1-6])>(.*?)<\/h\1>/g, (match, level, hContent) => {
+            return '#'.repeat(parseInt(level)) + ' ' + hContent;
         });
         
         console.log('Preprocessed markdown content:', 

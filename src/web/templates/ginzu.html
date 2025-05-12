@@ -10,6 +10,16 @@
     <link rel="stylesheet" href="/static/css/index.css">
     <!-- Font Awesome for icons (if needed, add the link like in index.html) -->
     <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"> -->
+    <style>
+        /* Explicit animation for the spinner */
+        @keyframes spinner {
+            to {transform: rotate(360deg);}
+        }
+        
+        .custom-spinner {
+            animation: spinner 1s linear infinite;
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 md:p-8">
 
@@ -65,7 +75,7 @@
             </div>
         </section>
 
-        <div id="loader" class="border-4 border-gray-100 dark:border-gray-700 border-t-primary-600 dark:border-t-primary-400 rounded-full w-10 h-10 animate-spin mx-auto my-6 hidden"></div>
+        <div id="loader" class="border-4 border-gray-100 dark:border-gray-700 border-t-primary-600 dark:border-t-primary-400 rounded-full w-12 h-12 custom-spinner mx-auto my-8 hidden"></div>
         <div id="errorMessage" class="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500 p-3 rounded-md hidden my-4 text-center"></div>
         <div id="successMessage" class="text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20 border border-green-400 dark:border-green-500 p-3 rounded-md hidden my-4 text-center"></div>
 
@@ -145,6 +155,7 @@
 
             <div class="text-center mt-6">
                 <button id="finalizeAnalysisBtn" class="py-3 px-6 rounded-md font-semibold cursor-pointer transition-colors duration-200 ease-in-out shadow-md bg-primary-600 hover:bg-primary-700 text-white animated-button">Finalize Analysis & Update Sheet</button>
+                <div id="finalizeLoader" class="border-4 border-gray-100 dark:border-gray-700 border-t-primary-600 dark:border-t-primary-400 rounded-full w-12 h-12 custom-spinner mx-auto my-8 hidden"></div>
             </div>
         </section>
 
@@ -215,7 +226,7 @@
         const backToHomeBtn = document.getElementById('backToHomeBtn');
 
         // API Base URL (Update this when your FastAPI is running)
-        const API_BASE_URL = 'http://localhost:8000'; // Example
+        const API_BASE_URL = window.location.origin; // Dynamically use the same origin instead of hardcoding
 
         // Function to populate a dropdown
         async function populateDropdown(selectElement, apiUrl, defaultOptionText) {
@@ -227,10 +238,21 @@
                     return;
                 }
                 const data = await response.json();
-                if (data.options && Array.isArray(data.options)) {
+                // Check if data itself is an array and has items
+                if (Array.isArray(data) && data.length > 0) { 
+                    selectElement.innerHTML = `<option value="" disabled selected>${defaultOptionText}</option>`;
+                    data.forEach(optionText => {
+                        if (optionText !== null && optionText !== undefined && optionText.toString().trim() !== '') { // Ensure optionText is not null, undefined, or empty string
+                            const opt = document.createElement('option');
+                            opt.value = optionText;
+                            opt.textContent = optionText;
+                            selectElement.appendChild(opt);
+                        }
+                    });
+                } else if (data.options && Array.isArray(data.options)) { // Keep old check for backward compatibility or other structures if any
                     selectElement.innerHTML = `<option value="" disabled selected>${defaultOptionText}</option>`;
                     data.options.forEach(optionText => {
-                        if (optionText) { // Ensure optionText is not null or empty
+                        if (optionText !== null && optionText !== undefined && optionText.toString().trim() !== '') { 
                             const opt = document.createElement('option');
                             opt.value = optionText;
                             opt.textContent = optionText;
@@ -252,8 +274,14 @@
             if (globalIndustrySelect) populateDropdown(globalIndustrySelect, '/api/ginzu/dropdowns/global-industries', 'Select Global Industry');
         });
 
-        function showLoader() { loader.classList.remove('hidden'); }
-        function hideLoader() { loader.classList.add('hidden'); }
+        function showLoader() { 
+            loader.classList.remove('hidden'); 
+            console.log('Initial analysis loader displayed');
+        }
+        function hideLoader() { 
+            loader.classList.add('hidden'); 
+            console.log('Initial analysis loader hidden');
+        }
 
         function showMessage(message, isError = true) {
             const div = isError ? errorMessageDiv : successMessageDiv;
@@ -288,6 +316,17 @@
             const selectedUSIndustry = usIndustrySelect.value;
             const selectedGlobalIndustry = globalIndustrySelect.value;
 
+            // --- Store pre-existing user inputs before fetching new suggestions ---
+            const preExistingUserInputs = {
+                b26: inputB26.value.trim() !== '' ? getNumericInput(inputB26) : null,
+                b27: inputB27.value.trim() !== '' ? getNumericInput(inputB27) : null,
+                b28: inputB28.value.trim() !== '' ? getNumericInput(inputB28) : null,
+                b29: inputB29.value.trim() !== '' ? getNumericInput(inputB29) : null,
+                b30: inputB30.value.trim() !== '' ? getNumericInput(inputB30) : null,
+                b31: inputB31.value.trim() !== '' ? getNumericInput(inputB31) : null,
+                b32: inputB32.value.trim() !== '' ? getNumericInput(inputB32) : null,
+            };
+
             // Basic validation for dropdowns (optional, but good practice)
             if (!selectedCountry) {
                 showMessage('Please select a Country of Incorporation.', true);
@@ -296,7 +335,8 @@
             // Add similar checks for usIndustrySelect and globalIndustrySelect if they are mandatory
 
             clearMessages();
-            showLoader();
+            showLoader(); // Show the loading spinner
+            console.log("Initial analysis started, showing loader");
             initialAnalysisResultsSection.classList.add('hidden');
             finalValuationResultsSection.classList.add('hidden');
 
@@ -308,51 +348,86 @@
                     global_industry: selectedGlobalIndustry
                 });
 
-                const response = await fetch(`${API_BASE_URL}/api/analysis/${ticker}/initial?${queryParams.toString()}`);
-                hideLoader();
-
+                // MODIFIED URL: Use the new endpoint in web/routers/ginzu.py
+                const response = await fetch(`${API_BASE_URL}/api/ginzu/analysis/${ticker}/initial?${queryParams.toString()}`);
+                
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: "Unknown error occurred during initial analysis." }));
-                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                    hideLoader();
+                    // Try to parse error from JSON, then fallback to status text
+                    let errorDetail = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        // Use the error from the WebInitialAnalysisSuggestionsResponse model if present
+                        // or the detail from HTTPException
+                        errorDetail = errorData.error || errorData.detail || errorDetail;
+                        if (errorData.message && errorData.error) errorDetail = `${errorData.message} Details: ${errorData.error}`;
+                    } catch (e) {
+                        // If parsing JSON fails, use response.statusText if available
+                        errorDetail = response.statusText ? `${errorDetail} - ${response.statusText}` : errorDetail;
+                    }
+                    throw new Error(errorDetail);
                 }
                 
-                const result = await response.json();
+                const result = await response.json(); // This should now be WebInitialAnalysisSuggestionsResponse shaped
+                hideLoader(); // Hide the loader after all data is processed
+                console.log("Initial analysis response received, hiding loader");
 
-                if (result.status === 'success' && result.data) {
-                    const data = result.data;
+                // Check if the top-level response has an error (e.g., from the web-api proxy itself)
+                if (result.error) {
+                    showMessage(result.message ? `${result.message} Details: ${result.error}` : result.error, true);
+                    return;
+                }
+                // Assuming success if no top-level error and we have a result object (which is now the data itself)
+                if (result) { // result IS the data object from WebInitialAnalysisSuggestionsResponse
+                    const data = result; // No result.data anymore, result is the data.
                     displayCompanyName.textContent = data.company_name || 'N/A';
                     displayCompanyTicker.textContent = data.ticker || 'N/A';
 
                     // B26: Revenue Growth Rate Next Year (%)
-                    suggestedB26.textContent = data.b26_rev_growth_suggested_pct !== null && data.b26_rev_growth_suggested_pct !== undefined ? data.b26_rev_growth_suggested_pct.toFixed(2) : 'N/A';
-                    inputB26.value = data.b26_rev_growth_suggested_pct !== null && data.b26_rev_growth_suggested_pct !== undefined ? data.b26_rev_growth_suggested_pct.toFixed(2) : '';
+                    const suggestedB26Val = data.b26_rev_growth_suggested_pct;
+                    suggestedB26.textContent = suggestedB26Val !== null && suggestedB26Val !== undefined ? suggestedB26Val.toFixed(2) : 'N/A';
+                    inputB26.value = preExistingUserInputs.b26 !== null ? preExistingUserInputs.b26.toFixed(2) :
+                                     (suggestedB26Val !== null && suggestedB26Val !== undefined ? suggestedB26Val.toFixed(2) : '');
                     if(data.b26_rev_growth_plot_base64) plotB26.src = data.b26_rev_growth_plot_base64; else plotB26.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
                     // B27: Operating Margin Next Year (%)
-                    suggestedB27.textContent = data.b27_op_margin_suggested_pct !== null && data.b27_op_margin_suggested_pct !== undefined ? data.b27_op_margin_suggested_pct.toFixed(2) : 'N/A';
-                    inputB27.value = data.b27_op_margin_suggested_pct !== null && data.b27_op_margin_suggested_pct !== undefined ? data.b27_op_margin_suggested_pct.toFixed(2) : '';
+                    const suggestedB27Val = data.b27_op_margin_suggested_pct;
+                    suggestedB27.textContent = suggestedB27Val !== null && suggestedB27Val !== undefined ? suggestedB27Val.toFixed(2) : 'N/A';
+                    inputB27.value = preExistingUserInputs.b27 !== null ? preExistingUserInputs.b27.toFixed(2) :
+                                     (suggestedB27Val !== null && suggestedB27Val !== undefined ? suggestedB27Val.toFixed(2) : '');
                     if(data.b27_op_margin_plot_base64) plotB27.src = data.b27_op_margin_plot_base64; else plotB27.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
                     
                     // B28: 5-Year Revenue CAGR (%)
-                    suggestedB28.textContent = data.b28_cagr_suggested_pct !== null && data.b28_cagr_suggested_pct !== undefined ? data.b28_cagr_suggested_pct.toFixed(2) : 'N/A';
-                    inputB28.value = data.b28_cagr_suggested_pct !== null && data.b28_cagr_suggested_pct !== undefined ? data.b28_cagr_suggested_pct.toFixed(2) : '';
+                    const suggestedB28Val = data.b28_cagr_suggested_pct;
+                    suggestedB28.textContent = suggestedB28Val !== null && suggestedB28Val !== undefined ? suggestedB28Val.toFixed(2) : 'N/A';
+                    inputB28.value = preExistingUserInputs.b28 !== null ? preExistingUserInputs.b28.toFixed(2) :
+                                     (suggestedB28Val !== null && suggestedB28Val !== undefined ? suggestedB28Val.toFixed(2) : '');
                     if(data.b28_cagr_plot_base64) plotB28.src = data.b28_cagr_plot_base64; else plotB28.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
                     // B29: Target Pre-Tax Operating Margin (%)
-                    suggestedB29.textContent = data.b29_target_op_margin_suggested_pct !== null && data.b29_target_op_margin_suggested_pct !== undefined ? data.b29_target_op_margin_suggested_pct.toFixed(2) : 'N/A';
-                    inputB29.value = data.b29_target_op_margin_suggested_pct !== null && data.b29_target_op_margin_suggested_pct !== undefined ? data.b29_target_op_margin_suggested_pct.toFixed(2) : '';
+                    const suggestedB29Val = data.b29_target_op_margin_suggested_pct;
+                    suggestedB29.textContent = suggestedB29Val !== null && suggestedB29Val !== undefined ? suggestedB29Val.toFixed(2) : 'N/A';
+                    inputB29.value = preExistingUserInputs.b29 !== null ? preExistingUserInputs.b29.toFixed(2) :
+                                     (suggestedB29Val !== null && suggestedB29Val !== undefined ? suggestedB29Val.toFixed(2) : '');
                     if(data.b29_target_op_margin_plot_base64) plotB29.src = data.b29_target_op_margin_plot_base64; else plotB29.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
                     // B30: Years of Convergence for Margin
-                    suggestedB30.textContent = data.b30_years_to_converge_suggested !== null && data.b30_years_to_converge_suggested !== undefined ? data.b30_years_to_converge_suggested.toFixed(1) : 'N/A';
-                    inputB30.value = data.b30_years_to_converge_suggested !== null && data.b30_years_to_converge_suggested !== undefined ? data.b30_years_to_converge_suggested.toFixed(1) : '';
+                    const suggestedB30Val = data.b30_years_to_converge_suggested;
+                    suggestedB30.textContent = suggestedB30Val !== null && suggestedB30Val !== undefined ? suggestedB30Val.toFixed(1) : 'N/A';
+                    inputB30.value = preExistingUserInputs.b30 !== null ? preExistingUserInputs.b30.toFixed(1) :
+                                     (suggestedB30Val !== null && suggestedB30Val !== undefined ? suggestedB30Val.toFixed(1) : '');
                     // No plot specified for B30 in current HTML structure
                     
                     // B31 & B32: Sales to Capital Ratio
-                    suggestedB31.textContent = data.b31_sc_ratio_1_5_suggested !== null && data.b31_sc_ratio_1_5_suggested !== undefined ? data.b31_sc_ratio_1_5_suggested.toFixed(2) : 'N/A';
-                    inputB31.value = data.b31_sc_ratio_1_5_suggested !== null && data.b31_sc_ratio_1_5_suggested !== undefined ? data.b31_sc_ratio_1_5_suggested.toFixed(2) : '';
-                    suggestedB32.textContent = data.b32_sc_ratio_6_10_suggested !== null && data.b32_sc_ratio_6_10_suggested !== undefined ? data.b32_sc_ratio_6_10_suggested.toFixed(2) : 'N/A';
-                    inputB32.value = data.b32_sc_ratio_6_10_suggested !== null && data.b32_sc_ratio_6_10_suggested !== undefined ? data.b32_sc_ratio_6_10_suggested.toFixed(2) : '';
+                    const suggestedB31Val = data.b31_sc_ratio_1_5_suggested;
+                    suggestedB31.textContent = suggestedB31Val !== null && suggestedB31Val !== undefined ? suggestedB31Val.toFixed(2) : 'N/A';
+                    inputB31.value = preExistingUserInputs.b31 !== null ? preExistingUserInputs.b31.toFixed(2) :
+                                     (suggestedB31Val !== null && suggestedB31Val !== undefined ? suggestedB31Val.toFixed(2) : '');
+                    
+                    const suggestedB32Val = data.b32_sc_ratio_6_10_suggested;
+                    suggestedB32.textContent = suggestedB32Val !== null && suggestedB32Val !== undefined ? suggestedB32Val.toFixed(2) : 'N/A';
+                    inputB32.value = preExistingUserInputs.b32 !== null ? preExistingUserInputs.b32.toFixed(2) :
+                                     (suggestedB32Val !== null && suggestedB32Val !== undefined ? suggestedB32Val.toFixed(2) : '');
                     if(data.b31_sc_ratio_plot_base64) plotB31.src = data.b31_sc_ratio_plot_base64; else plotB31.src = 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Plot+Unavailable';
 
                     initialAnalysisResultsSection.classList.remove('hidden');
@@ -361,12 +436,26 @@
                     showMessage(result.message || 'Failed to get initial analysis data.', true);
                 }
             } catch (error) {
-                hideLoader();
+                hideLoader(); // Ensure the loader is hidden in case of error
                 console.error('Error fetching initial analysis:', error);
                 showMessage(error.message || 'An error occurred. Please try again.', true);
             }
         });
 
+        // Add new element reference
+        const finalizeLoader = document.getElementById('finalizeLoader');
+        
+        // Keep original functions but add new ones for finalize loader
+        function showFinalizeLoader() {
+            finalizeLoader.classList.remove('hidden');
+            console.log('Finalize loader displayed');
+        }
+        function hideFinalizeLoader() {
+            finalizeLoader.classList.add('hidden');
+            console.log('Finalize loader hidden');
+        }
+        
+        // Update the finalizeAnalysisBtn handler
         finalizeAnalysisBtn.addEventListener('click', async () => {
             const ticker = companyTickerInput.value.trim().toUpperCase();
             if (!ticker) {
@@ -380,47 +469,88 @@
                 return isNaN(val) ? null : val;
             };
             
-            // Collect user inputs. Percentages are divided by 100.
+            // Collect user inputs. 
             const userValueDrivers = {
-                b26_rev_growth: getNumericInput(inputB26) !== null ? getNumericInput(inputB26) / 100 : null,
-                b27_op_margin: getNumericInput(inputB27) !== null ? getNumericInput(inputB27) / 100 : null,
-                b28_cagr: getNumericInput(inputB28) !== null ? getNumericInput(inputB28) / 100 : null,
-                b29_target_op_margin: getNumericInput(inputB29) !== null ? getNumericInput(inputB29) / 100 : null,
-                b30_years_to_converge: getNumericInput(inputB30),
-                b31_sc_ratio_1_5: getNumericInput(inputB31),
-                b32_sc_ratio_6_10: getNumericInput(inputB32),
+                revenue_growth_rate_next_year: getNumericInput(inputB26),
+                operating_margin_next_year: getNumericInput(inputB27),
+                cagr_5yr_revenue: getNumericInput(inputB28),
+                target_pre_tax_operating_margin: getNumericInput(inputB29),
+                years_to_converge_margin: getNumericInput(inputB30),
+                sales_to_capital_ratio_yrs_1_5: getNumericInput(inputB31),
+                sales_to_capital_ratio_yrs_6_10: getNumericInput(inputB32),
             };
             
-            // Filter out null values if backend expects only provided fields
-            const payload = Object.fromEntries(Object.entries(userValueDrivers).filter(([_, v]) => v !== null));
-
             clearMessages();
-            showLoader();
+            showFinalizeLoader(); // Use the finalize-specific loader
             finalValuationResultsSection.classList.add('hidden');
 
             try {
-                // Replace with your actual FastAPI endpoint
-                const response = await fetch(`${API_BASE_URL}/api/analysis/${ticker}/finalize`, {
+                // The ticker is already available via companyTickerInput.value
+                // For country, us_industry, and global_industry, we need their current values.
+                const currentTicker = companyTickerInput.value.trim().toUpperCase(); // Ensure it's fresh
+                const currentCountry = countrySelect.value;
+                const currentUSIndustry = usIndustrySelect.value;
+                const currentGlobalIndustry = globalIndustrySelect.value;
+
+                if (!currentTicker) { // Re-check ticker, as it might be cleared or an issue arose
+                    hideFinalizeLoader(); // Use finalize-specific loader
+                    showMessage('Ticker is missing. Please perform initial analysis first or re-enter ticker.', true);
+                    return;
+                }
+                if (!currentCountry || !currentUSIndustry || !currentGlobalIndustry) {
+                    hideFinalizeLoader(); // Use finalize-specific loader
+                    showMessage('Country or Industry selection is missing. Please ensure they are selected.', true);
+                    return;
+                }
+
+                const payload = {
+                    ticker: currentTicker,
+                    country: currentCountry,
+                    us_industry: currentUSIndustry,
+                    global_industry: currentGlobalIndustry,
+                    ...Object.fromEntries(Object.entries(userValueDrivers).filter(([_, v]) => v !== null))
+                };
+                
+                // MODIFIED URL and PAYLOAD STRUCTURE
+                const response = await fetch(`${API_BASE_URL}/api/ginzu/run-analysis`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(payload), // Send the complete payload
                 });
-                hideLoader();
-
+                
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: "Unknown error occurred during finalization." }));
-                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                    hideFinalizeLoader(); // Use finalize-specific loader
+                    // Try to parse error from JSON, then fallback to status text
+                    let errorDetail = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        // Use the error from GinzuAnalysisResponse schema or detail from HTTPException
+                        errorDetail = errorData.error || errorData.detail || errorDetail;
+                        if (errorData.message && errorData.error) errorDetail = `${errorData.message} Details: ${errorData.error}`;
+                    } catch (e) {
+                        errorDetail = response.statusText ? `${errorDetail} - ${response.statusText}` : errorDetail;
+                    }
+                    throw new Error(errorDetail);
                 }
 
-                const result = await response.json();
+                const result = await response.json(); // Should be GinzuAnalysisResponse shaped
+                hideFinalizeLoader(); // Use finalize-specific loader
 
-                if (result.status === 'success' && result.data) {
-                    const data = result.data;
+                // Check for error in the response (e.g. from valuation service)
+                if (result.error) {
+                    showMessage(result.message ? `${result.message} Details: ${result.error}` : result.error, true);
+                    return;
+                }
+
+                // The GinzuAnalysisResponse has a 'status' like field in 'message' and 'error'
+                // but the actual data is at the top level if no error.
+                if (result.message && result.message.toLowerCase().includes("complete")) { // Check for a success message
+                    const data = result; // result IS the data object for GinzuAnalysisResponse
                     finalEstimatedValue.textContent = data.estimated_value_per_share !== null && data.estimated_value_per_share !== undefined ? `$${data.estimated_value_per_share.toFixed(2)}` : 'N/A';
                     finalPrice.textContent = data.price !== null && data.price !== undefined ? `$${data.price.toFixed(2)}` : 'N/A';
-                    finalPriceAsPercent.textContent = data.price_as_percent_of_value !== null && data.price_as_percent_of_value !== undefined ? `${data.price_as_percent_of_value.toFixed(2)}%` : 'N/A';
+                    finalPriceAsPercent.textContent = data.price_as_percentage_of_value !== null && data.price_as_percentage_of_value !== undefined ? `${data.price_as_percentage_of_value.toFixed(2)}%` : 'N/A';
                     
                     finalValuationResultsSection.classList.remove('hidden');
                     showMessage('Analysis finalized and sheet updated!', false);
@@ -428,7 +558,7 @@
                     showMessage(result.message || 'Failed to finalize analysis.', true);
                 }
             } catch (error) {
-                hideLoader();
+                hideFinalizeLoader(); // Use finalize-specific loader
                 console.error('Error finalizing analysis:', error);
                 showMessage(error.message || 'An error occurred during finalization. Please try again.', true);
             }

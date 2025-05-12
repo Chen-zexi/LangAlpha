@@ -4,9 +4,15 @@ def safe_float(value, default=0.0):
     """Safely convert a value to float, returning a default if conversion fails."""
     try:
         if isinstance(value, str):
-            value = value.replace(',', '') # Handle commas in numbers from sheets
+            # It might be useful to see the value before and after stripping whitespace, if that's a suspicion
+            # value_before_strip = value # For deeper debugging if needed
+            value = value.replace(',', '').strip() # Added .strip() for good measure
+            # print(f"DEBUG SAFE_FLOAT: Value before strip: '{value_before_strip}', after strip & replace: '{value}'")
+        
+        # print(f"DEBUG SAFE_FLOAT: Attempting float conversion for value: '{value}' (type: {type(value)}) with default: {default}")
         return float(value) if value not in [None, 'None', ''] else default
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
+        print(f"DEBUG SAFE_FLOAT: Conversion to float failed for input value: '{value}' (type: {type(value)}). Error: {e}. Returning default: {default}")
         return default
 
 def retrieve_date(): # Renamed from retrieve_date_str for consistency with original script

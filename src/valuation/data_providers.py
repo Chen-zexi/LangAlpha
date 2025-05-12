@@ -4,8 +4,8 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import traceback
 
-from config import POLYGON_API_KEY, ALPHA_VANTAGE_API_KEY
-from utils import safe_float
+from .config import POLYGON_API_KEY, ALPHA_VANTAGE_API_KEY
+from .utils import safe_float
 
 def get_related_tickers(ticker, polygon_key):
     if not polygon_key:

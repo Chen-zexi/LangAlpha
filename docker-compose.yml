@@ -88,6 +88,7 @@ services:
             - .env
         environment:
             LANGGRAPH_API_URL: http://langgraph-api:8000
+            VALUATION_API_URL: http://valuation-api:8000
             MONGODB_URI: mongodb://admin:password@mongodb:27017/
             MONGODB_DB: langalpha
             PORT: 8000
@@ -108,3 +109,33 @@ services:
         restart: unless-stopped
         tty: true
         stdin_open: true
+    valuation-api:
+        build:
+            context: .
+            dockerfile: src/valuation/Dockerfile
+        ports:
+            - "8001:8000"
+        env_file:
+            - .env
+        environment:
+            POLYGON_API_KEY: ${POLYGON_API_KEY}
+            ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
+            # GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS_VALUATION} # Commented out as google_sheets.py seems to use explicit path
+            LOG_LEVEL: info
+            PYTHONUNBUFFERED: 1
+            WATCHFILES_FORCE_POLLING: "true"
+            PORT: 8000
+            HOST: 0.0.0.0
+        volumes:
+            - ./src/valuation:/app/valuation:cached
+            # Mount the gcp_credential.json from project root to /gcp_credential.json in container
+            - ./gcp_credential.json:/gcp_credential.json:ro
+        restart: unless-stopped
+        tty: true
+        stdin_open: true
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
