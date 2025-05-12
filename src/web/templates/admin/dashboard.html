@@ -1,0 +1,40 @@
+s<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; min-height: 100vh; }
+        .container { max-width: 800px; margin: 40px auto; padding: 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        header { background-color: #2c3e50; color: white; padding: 15px 0; text-align: center; width: 100%; }
+        header h1 { margin: 0; font-size: 2em; }
+        nav ul { list-style: none; padding: 0; margin-top: 30px; }
+        nav ul li { margin-bottom: 15px; }
+        nav ul li a { display: block; padding: 15px 20px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 1.1em; transition: background-color 0.3s ease; }
+        nav ul li a:hover { background-color: #2980b9; }
+        .link-main-app { background-color: #2ecc71; }
+        .link-main-app:hover { background-color: #27ae60; }
+        footer { text-align: center; padding: 20px; margin-top: auto; font-size: 0.9em; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+    </header>
+
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="/admin/manage-users">Manage Users</a></li>
+                <li><a href="/admin/manage-reports">Manage Reports</a></li>
+                <li><a href="/" class="link-main-app">Back to Main Application</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <footer>
+        <p>&copy; LangAlpha Admin Panel</p>
+    </footer>
+</body>
+</html> 

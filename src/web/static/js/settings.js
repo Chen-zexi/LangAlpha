@@ -119,8 +119,8 @@ function applyRoleBasedRestrictions() {
 
     const allElements = [budgetSelect, ...modelInputs, ...providerSelects, saveBtn, resetBtn].filter(el => el !== null);
 
-    if (window.currentUserRole === 'user') {
-        console.log("[applyRoleBasedRestrictions] Applying restrictions for BASIC user ('user' role detected).");
+    if (window.currentUserRole === 'user' || window.currentUserRole === 'visitor') {
+        console.log("[applyRoleBasedRestrictions] Applying restrictions for BASIC user or VISITOR.");
         if (budgetSelect) {
             budgetSelect.value = 'low';
             budgetSelect.disabled = true;

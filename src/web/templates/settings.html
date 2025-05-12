@@ -209,7 +209,7 @@
     </button>
 
     <script>
-        window.currentUserRole = "{{ user.role.value if user else 'user' }}";
+        window.currentUserRole = "{{ user.role.value if user else 'visitor' }}";
     </script>
     <!-- External JavaScript -->
     <script src="/static/js/settings.js"></script>

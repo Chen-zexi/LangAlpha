@@ -73,7 +73,6 @@ def save_report(report: Report) -> Optional[Report]:
         return_document=ReturnDocument.AFTER # Return the modified document
     )
     
-    # 'result' will contain the document after the update/insert
     return result
 
 

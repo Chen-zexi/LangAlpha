@@ -1,15 +1,14 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Annotated
-import logging # Added for logging
+import logging
 
 from fastapi import Depends, HTTPException, status, Request, Response
-from fastapi.security import OAuth2PasswordBearer # We might not use this directly if using cookies
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-from .config import settings # This will now import the Settings instance
+from .config import settings 
 from database.utils.user_utils import get_user_by_username
-from database.models.user_model import UserInDB, UserRole # Added UserRole
+from database.models.user_model import UserInDB, UserRole
 from database.utils.mongo_client import get_database
 
 SECRET_KEY = settings.SECRET_KEY

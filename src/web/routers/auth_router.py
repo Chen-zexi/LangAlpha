@@ -2,17 +2,18 @@ from fastapi import APIRouter, Request, Depends, Form, HTTPException, status, Re
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import os
-import logging # Added for logging
-from datetime import datetime, timezone # For refresh token expiry calculation
+import logging
+from datetime import datetime, timezone
 import jwt
-from pymongo.database import Database # Added to fix NameError
+from pymongo.database import Database
+from typing import Optional
 
-from ..config import settings # Import the settings object
-from database.utils.user_utils import get_user_by_username, create_user, verify_password, update_refresh_token, pwd_context, update_user_role # Added update_user_role
-from database.models.user_model import UserCreate, UserInDB, UserRole # Added UserRole
-from database.utils.mongo_client import get_database # For dependency injection
+from ..config import settings
+from database.utils.user_utils import get_user_by_username, create_user, verify_password, update_refresh_token, pwd_context, update_user_role
+from database.models.user_model import UserCreate, UserInDB, UserRole
+from database.utils.mongo_client import get_database
 
-from ..security import create_access_token, ACCESS_TOKEN_COOKIE_NAME, create_refresh_token, REFRESH_TOKEN_COOKIE_NAME # Added refresh token items
+from ..security import create_access_token, ACCESS_TOKEN_COOKIE_NAME, create_refresh_token, REFRESH_TOKEN_COOKIE_NAME
 
 logger = logging.getLogger(__name__) # Get a logger instance
 
@@ -162,7 +163,7 @@ async def refresh_access_token(request: Request, response: Response, db: Databas
         secure=settings.ENVIRONMENT == "production",
         path="/"
     )
-    return {"message": "Access token refreshed successfully"} # Or just status.HTTP_200_OK
+    return {"message": "Access token refreshed successfully"}
 
 @router.post("/logout")
 async def logout_user(response: Response, request: Request, db: Database = Depends(get_database)):
@@ -196,16 +197,32 @@ async def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
 
 @router.post("/register")
-async def register_user(username: str = Form(...), password: str = Form(...)):
+async def register_user(
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    organization: Optional[str] = Form(None),
+    invitation_code: Optional[str] = Form(None)
+):
     db = get_database()
-    existing_user = get_user_by_username(db=db, username=username)
-    if existing_user:
+    existing_user_by_username = get_user_by_username(db=db, username=username)
+    if existing_user_by_username:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
     
-    user_create = UserCreate(username=username, password=password)
+    user_create = UserCreate(
+        username=username, 
+        email=email,
+        password=password, 
+        first_name=first_name,
+        last_name=last_name,
+        organization=organization,
+        invitation_code=invitation_code
+    )
     created_user = create_user(db=db, user_in=user_create) # Get the created user object
     
     # Check for initial admin promotion

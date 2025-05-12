@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | LangAlpha</title>
+    <link href="/static/css/output.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f9fafb; color: #1f2937; display: flex; flex-direction: column; min-height: 100vh; }
+        .admin-container { max-width: 1200px; margin: 30px auto; padding: 20px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        header { background: linear-gradient(to right, #4f46e5, #7c3aed); color: white; padding: 20px 0; text-align: center; width: 100%; border-bottom: 5px solid #6d28d9;}
+        header h1 { margin: 0; font-size: 2.25em; font-weight: 700; letter-spacing: -0.025em; }
+        nav ul { list-style: none; padding: 0; margin-top: 20px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        nav ul li a {
+            display: block; padding: 12px 25px; background-color: #4f46e5; color: white; text-decoration: none;
+            border-radius: 8px; font-size: 1em; font-weight: 500; transition: all 0.3s ease;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+        }
+        nav ul li a:hover { background-color: #4338ca; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        nav ul li a.link-main-app { background-color: #10b981; }
+        nav ul li a.link-main-app:hover { background-color: #059669; }
+        
+        .section { margin-top: 30px; padding: 25px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
+        .section h2 { font-size: 1.5em; font-weight: 600; color: #374151; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;}
+        
+        /* Form styles */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #4b5563; }
+        .form-group select, .form-group input[type='number'], .form-group input[type='text'] {
+            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95em;
+            box-sizing: border-box; transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .form-group select:focus, .form-group input[type='number']:focus, .form-group input[type='text']:focus {
+            border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        .btn-primary { 
+            padding: 10px 20px; background-color: #4f46e5; color: white; border: none; border-radius: 6px; 
+            cursor: pointer; font-size: 1em; font-weight: 500; transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover { background-color: #4338ca; }
+        .btn-danger { background-color: #ef4444; }
+        .btn-danger:hover { background-color: #dc2626; }
+
+        /* Table styles */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f3f4f6; font-weight: 600; color: #374151; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.05em; }
+        tr:hover { background-color: #f9fafb; }
+        .code-display { font-family: 'Courier New', Courier, monospace; background-color: #e5e7eb; padding: 3px 6px; border-radius: 4px; font-weight: 600; }
+        .status-active { color: #10b981; font-weight: bold; }
+        .status-inactive { color: #ef4444; font-weight: bold; }
+
+        .toast {
+            position: fixed; top: 20px; right: 20px; background-color: #2c3e50; color: white;
+            padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000; opacity: 0; transition: opacity 0.5s ease-in-out;
+        }
+        .toast.show { opacity: 1; }
+
+        footer { text-align: center; padding: 25px; margin-top: auto; font-size: 0.9em; color: #6b7280; border-top: 1px solid #e5e7eb; background-color: #f9fafb; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LangAlpha Admin Panel</h1>
+    </header>
+
+    <div class="admin-container">
+        <nav>
+            <ul>
+                <li><a href="/admin/manage-users"><i class="fas fa-users-cog mr-2"></i>Manage Users</a></li>
+                <li><a href="/admin/manage-reports"><i class="fas fa-chart-bar mr-2"></i>Manage Reports</a></li>
+                <li><a href="#" id="manage-invites-link"><i class="fas fa-ticket-alt mr-2"></i>Manage Invites</a></li>
+                <li><a href="/" class="link-main-app"><i class="fas fa-home mr-2"></i>Main Application</a></li>
+            </ul>
+        </nav>
+
+        <div id="invitation-code-section" class="section">
+            <h2><i class="fas fa-plus-circle mr-2"></i>Generate New Invitation Code</h2>
+            <div class="form-group">
+                <label for="invite-role">Assign Role:</label>
+                <select id="invite-role" name="role">
+                    <!-- Options will be populated by JS -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="invite-uses">Number of Uses (optional, blank for unlimited):</label>
+                <input type="number" id="invite-uses" name="uses_left" min="1" placeholder="e.g., 10">
+            </div>
+            <button id="generate-invite-btn" class="btn-primary"><i class="fas fa-cogs mr-2"></i>Generate Code</button>
+            <div id="generated-code-container" class="mt-4" style="display:none;">
+                <strong>New Code:</strong> <span id="new-invite-code" class="code-display"></span>
+            </div>
+            
+            <h2 class="mt-8"><i class="fas fa-list-ul mr-2"></i>Existing Invitation Codes</h2>
+            <table id="invites-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Role</th>
+                        <th>Uses Left</th>
+                        <th>Active</th>
+                        <th>Created At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    <div id="toast-notification" class="toast"></div>
+
+    <footer>
+        <p>&copy; LangAlpha Admin Panel</p>
+    </footer>
+
+    <script>
+        // Basic Admin Dashboard JS
+        document.addEventListener('DOMContentLoaded', function() {
+            const inviteRoleSelect = document.getElementById('invite-role');
+            const generateInviteBtn = document.getElementById('generate-invite-btn');
+            const inviteUsesInput = document.getElementById('invite-uses');
+            const generatedCodeContainer = document.getElementById('generated-code-container');
+            const newInviteCodeSpan = document.getElementById('new-invite-code');
+            const invitesTableBody = document.querySelector('#invites-table tbody');
+            const toastNotification = document.getElementById('toast-notification');
+
+            // User roles - ideally, fetch this or pass from template if dynamic
+            const userRoles = ["{{ UserRole.ADMIN.value }}", "{{ UserRole.USER.value }}", "{{ UserRole.PREMIUM_USER.value }}", "{{ UserRole.VISITOR.value }}"];
+            
+            function showToast(message, isError = false) {
+                toastNotification.textContent = message;
+                toastNotification.style.backgroundColor = isError ? '#ef4444' : '#2c3e50';
+                toastNotification.classList.add('show');
+                setTimeout(() => {
+                    toastNotification.classList.remove('show');
+                }, 3000);
+            }
+
+            // Populate role select dropdown
+            userRoles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+                inviteRoleSelect.appendChild(option);
+            });
+
+            async function fetchAndDisplayInvites() {
+                try {
+                    const response = await fetch('/admin/invitation-codes');
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch codes: ${response.statusText}`);
+                    }
+                    const codes = await response.json();
+                    invitesTableBody.innerHTML = ''; // Clear existing rows
+                    codes.forEach(code => {
+                        const row = invitesTableBody.insertRow();
+                        row.innerHTML = `
+                            <td><span class="code-display">${code.code}</span></td>
+                            <td>${code.role}</td>
+                            <td>${code.uses_left === null ? 'Unlimited' : code.uses_left}</td>
+                            <td><span class="${code.is_active ? 'status-active' : 'status-inactive'}">${code.is_active ? 'Yes' : 'No'}</span></td>
+                            <td>${new Date(code.created_at).toLocaleString()}</td>
+                            <td><button class="btn-danger btn-sm delete-invite-btn" data-code="${code.code}"><i class="fas fa-trash-alt"></i></button></td>
+                        `;
+                    });
+                } catch (error) {
+                    console.error('Error fetching invites:', error);
+                    showToast(error.message || 'Could not load invitation codes.', true);
+                }
+            }
+
+            generateInviteBtn.addEventListener('click', async () => {
+                const role = inviteRoleSelect.value;
+                const uses_left = inviteUsesInput.value ? parseInt(inviteUsesInput.value) : null;
+
+                try {
+                    const response = await fetch('/admin/invitation-codes/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ role: role, uses_left: uses_left })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || `Failed to generate code: ${response.statusText}`);
+                    }
+                    const newCode = await response.json();
+                    newInviteCodeSpan.textContent = newCode.code;
+                    generatedCodeContainer.style.display = 'block';
+                    inviteUsesInput.value = ''; // Clear input
+                    showToast('Invitation code generated successfully!');
+                    fetchAndDisplayInvites(); // Refresh the list
+                } catch (error) {
+                    console.error('Error generating invite:', error);
+                    showToast(error.message || 'Could not generate invitation code.', true);
+                }
+            });
+
+            invitesTableBody.addEventListener('click', async (event) => {
+                if (event.target.closest('.delete-invite-btn')) {
+                    const button = event.target.closest('.delete-invite-btn');
+                    const codeStr = button.dataset.code;
+                    if (confirm(`Are you sure you want to delete code ${codeStr}?`)) {
+                        try {
+                            const response = await fetch(`/admin/invitation-codes/${codeStr}`, {
+                                method: 'DELETE'
+                            });
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.detail || 'Failed to delete code.');
+                            }
+                            showToast(`Code ${codeStr} deleted successfully.`);
+                            fetchAndDisplayInvites(); // Refresh list
+                        } catch (error) {
+                            console.error('Error deleting invite:', error);
+                            showToast(error.message || 'Could not delete code.', true);
+                        }
+                    }
+                }
+            });
+
+            // Initial load
+            fetchAndDisplayInvites();
+        });
+    </script>
+</body>
+</html> 

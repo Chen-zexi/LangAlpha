@@ -9,17 +9,26 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     USER = "user"  # This will be our "basic" user
     PREMIUM_USER = "premium_user"
+    VISITOR = "visitor" # Added visitor role
 
 class UserInDB(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
+    email: Optional[str] = None # Added email
     hashed_password: str
+    first_name: Optional[str] = None # Added first_name
+    last_name: Optional[str] = None # Added last_name
+    organization: Optional[str] = None # Added organization
+    invitation_code: Optional[str] = None # Added invitation_code
     hashed_refresh_token: Optional[str] = None
     refresh_token_expires_at: Optional[datetime] = None
-    role: UserRole = UserRole.USER # Added role field with default
+    role: UserRole = UserRole.VISITOR 
 
 class UserCreate(BaseModel):
     username: str
+    email: str # Added email
     password: str
-    # We could add role here if we want to specify it on creation, 
-    # otherwise it defaults to UserRole.USER from UserInDB 
+    first_name: Optional[str] = None # Added first_name
+    last_name: Optional[str] = None # Added last_name
+    organization: Optional[str] = None # Added organization
+    invitation_code: Optional[str] = None # Added invitation_code
