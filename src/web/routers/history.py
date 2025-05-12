@@ -1,12 +1,10 @@
 import logging
 from datetime import datetime
-from typing import List, Dict, Any # Added for type hinting if necessary
+from typing import List, Dict, Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-# Assuming database models are accessible via these paths
-# These might need adjustment based on your project structure and PYTHONPATH
 from database.models.messages import get_messages_by_session
 from database.models.reports import get_all_reports, get_reports_by_session, get_report, get_recent_reports
 
@@ -23,7 +21,7 @@ async def get_sessions():
         for report in reports:
             session_id = report.get("session_id")
             if session_id:
-                report_timestamp = report.get("timestamp") # Ensure this is a datetime object or comparable
+                report_timestamp = report.get("timestamp")
                 if session_id not in sessions_dict or (report_timestamp and sessions_dict[session_id].get("last_updated") and report_timestamp > sessions_dict[session_id]["last_updated"]):
                     sessions_dict[session_id] = {
                         "session_id": session_id,
@@ -32,7 +30,6 @@ async def get_sessions():
                     }
         
         sessions = list(sessions_dict.values())
-        # Sort by timestamp descending (newest first), handling potential None timestamps
         sessions.sort(key=lambda x: x.get("last_updated") or datetime.min, reverse=True)
         
         sessions = sessions[:100]
@@ -52,7 +49,7 @@ async def get_session_messages(session_id: str):
     try:
         messages = get_messages_by_session(session_id)
         for message in messages:
-            if "_id" in message and hasattr(message["_id"], '__str__'): # Check if _id exists and can be str
+            if "_id" in message and hasattr(message["_id"], '__str__'):
                 message["_id"] = str(message["_id"])
             if isinstance(message.get("timestamp"), datetime):
                 message["timestamp"] = message["timestamp"].isoformat()
@@ -117,7 +114,6 @@ async def get_recent_reports_endpoint(limit: int = 5):
             if 'last_updated' in report and isinstance(report['last_updated'], datetime):
                 report['last_updated'] = report['last_updated'].isoformat()
         
-        # Return as JSONResponse directly if you want to ensure content is a dict for FastAPI processing
         return JSONResponse(
             content={"reports": reports},
             status_code=200

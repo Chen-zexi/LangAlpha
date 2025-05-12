@@ -16,26 +16,26 @@ from fastapi.templating import Jinja2Templates
 # Import configurations from config.py
 from .config import API_HOST, API_PORT, logger, static_dir, templates_dir, LANGGRAPH_API_URL 
 # Import routers
-from .routers import workflow, history, ui, health
+from .routers import workflow, history, ui, health, auth_router, protected_router, admin_router
 
 # Create FastAPI app
 app = FastAPI(
-    title="Market Intelligence Agent API",
-    description="API for interacting with the Market Intelligence Agent workflow",
-    version="0.1.0"
+    title="LangGraph API",
+    version="1.0",
+    description="API for LangGraph Chatbot",
+    # lifespan=lifespan,
 )
 
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Mount static files directory with proper error handling
-# static_dir is now imported from config.py
 try:
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     logger.info(f"Successfully mounted static directory at {static_dir}")
@@ -43,19 +43,20 @@ except Exception as e:
     logger.error(f"Error mounting static directory {static_dir}: {e}")
 
 # Setup templates
-# templates_dir is now imported from config.py
 templates = Jinja2Templates(directory=str(templates_dir))
 
 # Initialize shared state
-# This will be used by routers via request.app.state
 app.state.workflow_runs = {}
-app.state.templates = templates # Make templates accessible to routers
+app.state.templates = templates
 
 # Include routers
 app.include_router(workflow.router)
 app.include_router(history.router)
 app.include_router(ui.router)
 app.include_router(health.router)
+app.include_router(auth_router.router)
+app.include_router(protected_router.router)
+app.include_router(admin_router.router)
 
 # The following endpoint definitions have been moved to their respective routers:
 # - WorkflowRequest, StreamConfig, ModelConfig, LLMConfigs, WorkflowConfig (to schemas.py)
@@ -80,9 +81,5 @@ app.include_router(health.router)
 
 if __name__ == "__main__":
     import uvicorn
-    # API_HOST and API_PORT are imported from config.py
     logger.info(f"Starting Uvicorn server at {API_HOST}:{API_PORT} from main.py")
-    # The app object to run is this current `app` instance.
-    # The string "main:app" refers to the module `main` and the `app` object within it.
-    # Ensure that if this file is run directly, Python can find it as 'main'.
     uvicorn.run(app, host=API_HOST, port=API_PORT, reload=True)

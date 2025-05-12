@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Reports</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .container { max-width: 1000px; margin: auto; }
+        button { padding: 8px; margin-top: 5px; cursor: pointer; background-color: #f44336; color: white; border: none; border-radius: 4px;}
+        button:hover { background-color: #da190b; }
+        .status-message { margin-top: 10px; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .report-content { max-height: 100px; overflow-y: auto; display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Manage Reports</h1>
+        <p><a href="/admin/manage-users">Manage Users</a></p>
+
+        <div id="status-message-container"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Session ID</th>
+                    <th>Title</th>
+                    <th>Timestamp</th>
+                    <th>Content (Snippet)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="report-table-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const reportTableBody = document.getElementById('report-table-body');
+        const statusMessageContainer = document.getElementById('status-message-container');
+
+        function displayMessage(message, type) {
+            statusMessageContainer.innerHTML = ''; // Clear previous messages
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.className = `status-message ${type}`;
+            statusMessageContainer.appendChild(messageDiv);
+            setTimeout(() => { messageDiv.remove(); }, 5000);
+        }
+
+        async function fetchReports() {
+            try {
+                const response = await fetch('/admin/reports', { method: 'GET' });
+                if (response.status === 401 || response.status === 403) {
+                    const errorData = await response.json();
+                    displayMessage(`Error fetching reports: ${errorData.detail || response.statusText}`, 'error');
+                    if (response.status === 401) window.location.href = '/login';
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                const reports = await response.json();
+                populateReportTable(reports);
+            } catch (error) {
+                console.error('Error fetching reports:', error);
+                displayMessage(`Failed to load reports: ${error.message}`, 'error');
+            }
+        }
+
+        function populateReportTable(reports) {
+            reportTableBody.innerHTML = ''; // Clear existing rows
+            if (reports.length === 0) {
+                const row = reportTableBody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 5;
+                cell.textContent = 'No reports found.';
+                cell.style.textAlign = 'center';
+                return;
+            }
+            reports.forEach(report => {
+                const row = reportTableBody.insertRow();
+                row.insertCell().textContent = report.session_id;
+                row.insertCell().textContent = report.title || 'N/A';
+                row.insertCell().textContent = report.timestamp ? new Date(report.timestamp).toLocaleString() : 'N/A';
+                
+                const contentCell = row.insertCell();
+                const contentSpan = document.createElement('span');
+                contentSpan.className = 'report-content';
+                contentSpan.textContent = report.content ? report.content.substring(0, 100) + (report.content.length > 100 ? '...' : '') : 'N/A';
+                contentCell.appendChild(contentSpan);
+
+                const actionsCell = row.insertCell();
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => confirmDeleteReport(report.session_id);
+                actionsCell.appendChild(deleteButton);
+            });
+        }
+
+        function confirmDeleteReport(sessionId) {
+            if (confirm(`Are you sure you want to delete report for session ID: ${sessionId}?`)) {
+                deleteReport(sessionId);
+            }
+        }
+
+        async function deleteReport(sessionId) {
+            try {
+                const response = await fetch(`/admin/reports/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    displayMessage(`Error deleting report: ${result.detail || response.statusText}`, 'error');
+                    if (response.status === 401) window.location.href = '/login';
+                } else {
+                    displayMessage(result.message || 'Report deleted successfully!', 'success');
+                    fetchReports(); // Refresh the table
+                }
+            } catch (error) {
+                console.error('Error deleting report:', error);
+                displayMessage(`Failed to delete report: ${error.message}`, 'error');
+            }
+        }
+
+        // Initial load
+        fetchReports();
+    </script>
+</body>
+</html> 

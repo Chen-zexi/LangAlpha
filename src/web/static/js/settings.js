@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // --- Configuration Logic ---
 
-// Default config values (matching .env.example)
+
 const DEFAULT_LLM_CONFIGS = {
     reasoning: { model: 'gemini-2.5-pro-preview-05-06', provider: 'GEMINI' },
     basic:     { model: 'gpt-4.1', provider: 'OPENAI' },
@@ -37,7 +37,7 @@ const DEFAULT_LLM_CONFIGS = {
 };
 
 const DEFAULT_WORKFLOW_CONFIG = {
-    budget: 'low', // Match the default set in web/main.py WorkflowConfig
+    budget: 'low',
     llm_configs: DEFAULT_LLM_CONFIGS
 };
 
@@ -106,6 +106,46 @@ function setupProviderChangeHandlers() {
     });
 }
 
+// Add this new function to apply restrictions based on user role
+function applyRoleBasedRestrictions() {
+    console.log(`[applyRoleBasedRestrictions] window.currentUserRole is: '${window.currentUserRole}' (type: ${typeof window.currentUserRole})`); // More detailed log
+
+    const budgetSelect = document.getElementById('config-budget');
+    const llmTypes = ['reasoning', 'basic', 'coding', 'economic'];
+    const modelInputs = llmTypes.map(type => document.getElementById(`config-${type}-model`));
+    const providerSelects = llmTypes.map(type => document.getElementById(`config-${type}-provider`));
+    const saveBtn = document.getElementById('save-config-btn');
+    const resetBtn = document.getElementById('reset-config-btn');
+
+    const allElements = [budgetSelect, ...modelInputs, ...providerSelects, saveBtn, resetBtn].filter(el => el !== null);
+
+    if (window.currentUserRole === 'user') {
+        console.log("[applyRoleBasedRestrictions] Applying restrictions for BASIC user ('user' role detected).");
+        if (budgetSelect) {
+            budgetSelect.value = 'low';
+            budgetSelect.disabled = true;
+        }
+        
+        modelInputs.forEach(input => {
+            if (input) input.disabled = true;
+        });
+        providerSelects.forEach(select => {
+            if (select) select.disabled = true;
+        });
+
+        if (saveBtn) saveBtn.disabled = true;
+        if (resetBtn) resetBtn.disabled = true;
+        
+        showPremiumFeatureModal(); // Show the modal for basic users
+
+    } else {
+        console.log(`[applyRoleBasedRestrictions] Role is NOT 'user'. Detected role: '${window.currentUserRole}'. Ensuring all settings are enabled.`);
+        allElements.forEach(el => {
+            if (el) el.disabled = false;
+        });
+    }
+}
+
 // Load current config and populate the form
 function loadAndPopulateConfigForm() {
     // Load configuration 
@@ -113,6 +153,9 @@ function loadAndPopulateConfigForm() {
     
     // Populate the form fields
     populateConfigForm(currentWorkflowConfig);
+    
+    // Apply role-based restrictions *after* populating
+    applyRoleBasedRestrictions();
     
     console.log("Form populated with current config:", currentWorkflowConfig);
 }
@@ -188,6 +231,7 @@ function resetToDefaults() {
     localStorage.removeItem('workflowConfig');
     populateConfigForm(DEFAULT_WORKFLOW_CONFIG);
     console.log("Reset to default workflow config");
+    showToast('Settings reset to defaults');
 }
 
 // Load config from localStorage or use defaults
@@ -345,4 +389,47 @@ function loadRecentReports() {
                 </li>
             `;
         });
+}
+
+// Function to show a modal for basic users
+function showPremiumFeatureModal() {
+    // Check if modal already exists to prevent duplicates if function is called multiple times
+    if (document.getElementById('premium-feature-modal')) {
+        return;
+    }
+
+    const modalHTML = `
+        <div id="premium-feature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
+                <div class="mt-3 text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-primary-100 dark:bg-primary-900 mb-3">
+                        <i class="fa-solid fa-lock text-primary-600 dark:text-primary-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Premium Feature</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            Model configuration and budget settings are available for Premium users.
+                            Your current settings are locked to 'low' budget and default model configurations.
+                        </p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="close-premium-modal-btn" class="px-4 py-2 bg-primary-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const closeButton = document.getElementById('close-premium-modal-btn');
+    const modalElement = document.getElementById('premium-feature-modal');
+    
+    if (closeButton && modalElement) {
+        closeButton.addEventListener('click', () => {
+            modalElement.remove();
+        });
+    }
 } 

@@ -5,8 +5,8 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from fastapi.responses import StreamingResponse
 
-from ..schemas import WorkflowConfig # Relative import from parent directory's schemas module
-from ..langgraph_client import stream_workflow_results # Relative import for langgraph_client
+from ..schemas import WorkflowConfig
+from ..langgraph_client import stream_workflow_results
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,7 +22,6 @@ async def run_workflow_post(request: Request):
         config_data = body.get("config", {})
         logger.info(f"Extracted config_data: {config_data}")
         
-        # Validate config_data using Pydantic model
         try:
             config = WorkflowConfig(**config_data)
         except Exception as pydantic_error:
@@ -40,7 +39,6 @@ async def run_workflow_post(request: Request):
         session_id = str(uuid.uuid4())
         logger.info(f"Created workflow run ID: {run_id}, session ID: {session_id} for query: '{query}'")
         
-        # Access app.state through request.app.state
         if not hasattr(request.app.state, "workflow_runs"):
             request.app.state.workflow_runs = {}
         request.app.state.workflow_runs[run_id] = {

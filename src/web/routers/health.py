@@ -13,7 +13,6 @@ async def health_check():
         return {"status": "ok", "timestamp": datetime.now().isoformat()}
     except Exception as e:
         logger.error(f"Health check failed: {e}", exc_info=True)
-        # Ensure the response is a JSONResponse for consistency, especially for errors
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": str(e), "timestamp": datetime.now().isoformat()}

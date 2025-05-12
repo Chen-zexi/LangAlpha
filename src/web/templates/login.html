@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | LangAlpha</title>
+    <!-- Local TailwindCSS -->
+    <link href="/static/css/output.css" rel="stylesheet">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/index.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-xl w-full max-w-md">
+        <div class="flex items-center mb-8">
+            <div class="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-400 rounded flex items-center justify-center text-white font-bold breathing-animation">
+                <i class="fa-solid fa-chart-simple"></i>
+            </div>
+            <span class="ml-2 text-xl font-semibold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">LangAlpha</span>
+        </div>
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">Welcome Back</h2>
+        <form action="/login" method="post">
+            <div class="mb-6">
+                <label for="username" class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Username</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4">
+                        <i class="fa-solid fa-user text-gray-400 dark:text-gray-500"></i>
+                    </span>
+                    <input type="text" id="username" name="username" class="w-full pl-10 pr-3 py-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:border-primary-500 outline-none transition-all duration-300 text-gray-700 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Enter your username" required autocomplete="username">
+                </div>
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Password</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4">
+                        <i class="fa-solid fa-lock text-gray-400 dark:text-gray-500"></i>
+                    </span>
+                    <input type="password" id="password" name="password" class="w-full pl-10 pr-3 py-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:border-primary-500 outline-none transition-all duration-300 text-gray-700 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+            </div>
+            <div class="mb-6">
+                <button type="submit" class="w-full flex items-center justify-center py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                    <i class="fa-solid fa-right-to-bracket mr-2"></i>
+                    Sign In
+                </button>
+            </div>
+            <p class="text-center text-sm text-gray-600 dark:text-gray-400">
+                Don't have an account? <a href="/register" class="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">Register here</a>
+            </p>
+        </form>
+    </div>
+</body>
+</html> 

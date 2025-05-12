@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users</title>
+    <!-- Basic styling - you'll want to replace this with your actual CSS framework or styles -->
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .container { max-width: 900px; margin: auto; }
+        select, button { padding: 8px; margin-top: 5px; }
+        .status-message { margin-top: 10px; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Manage Users</h1>
+
+        <div id="status-message-container"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Current Role</th>
+                    <th>User ID</th>
+                    <th>Refresh Token Expires</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="user-table-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const userTableBody = document.getElementById('user-table-body');
+        const statusMessageContainer = document.getElementById('status-message-container');
+
+        function displayMessage(message, type) {
+            statusMessageContainer.innerHTML = ''; // Clear previous messages
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.className = `status-message ${type}`;
+            statusMessageContainer.appendChild(messageDiv);
+            setTimeout(() => { messageDiv.remove(); }, 5000); // Message disappears after 5s
+        }
+
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/admin/users', {
+                    method: 'GET'
+                });
+                if (response.status === 401 || response.status === 403) {
+                    const errorData = await response.json();
+                    displayMessage(`Error fetching users: ${errorData.detail || response.statusText}`, 'error');
+                    if (response.status === 401) window.location.href = '/login'; // Redirect if unauthorized
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                const users = await response.json();
+                populateUserTable(users);
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                displayMessage(`Failed to load users: ${error.message}`, 'error');
+            }
+        }
+
+        function populateUserTable(users) {
+            userTableBody.innerHTML = ''; // Clear existing rows
+            users.forEach(user => {
+                const row = userTableBody.insertRow();
+                row.insertCell().textContent = user.username;
+                row.insertCell().textContent = user.role;
+                row.insertCell().textContent = user.id;
+                row.insertCell().textContent = user.refresh_token_expires_at ? new Date(user.refresh_token_expires_at).toLocaleString() : 'N/A';
+
+                const actionsCell = row.insertCell();
+                const roleSelect = document.createElement('select');
+                roleSelect.id = `role-select-${user.username}`;
+                
+                // UserRoleValues is passed from the backend as a list of strings
+                const availableRoles = {{ UserRoleValues | tojson | safe }};
+                
+                availableRoles.forEach(roleValue => {
+                    const option = document.createElement('option');
+                    option.value = roleValue;
+                    option.textContent = roleValue.charAt(0).toUpperCase() + roleValue.slice(1);
+                    if (user.role === roleValue) {
+                        option.selected = true;
+                    }
+                    roleSelect.appendChild(option);
+                });
+                actionsCell.appendChild(roleSelect);
+
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save Role';
+                saveButton.onclick = () => updateUserRole(user.username, roleSelect.value);
+                actionsCell.appendChild(saveButton);
+            });
+        }
+
+        async function updateUserRole(username, newRole) {
+            try {
+                const response = await fetch(`/admin/users/${username}/role`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ new_role: newRole })
+                });
+                const result = await response.json(); // Try to parse JSON for all responses
+                if (!response.ok) {
+                    displayMessage(`Error updating role: ${result.detail || response.statusText}`, 'error');
+                    if (response.status === 401) window.location.href = '/login';
+                } else {
+                    displayMessage(result.message || 'Role updated successfully!', 'success');
+                    fetchUsers(); // Refresh the table
+                }
+            } catch (error) {
+                console.error('Error updating role:', error);
+                displayMessage(`Failed to update role: ${error.message}`, 'error');
+            }
+        }
+
+        // Initial load
+        fetchUsers();
+    </script>
+</body>
+</html> 
