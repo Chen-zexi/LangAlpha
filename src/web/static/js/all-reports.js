@@ -282,11 +282,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Remove Tailwind hover classes, keep base transition
         card.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-md transition-all duration-300 ease-in-out border border-gray-200 dark:border-gray-700 mb-4 flex flex-col opacity-0'; // Start transparent for animation
         
-        // Format date more nicely and make it muted
+        // Format date more nicely
         const reportDate = new Date(report.timestamp);
-        const formattedDate = reportDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-        const formattedTime = reportDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-        const friendlyTimestamp = `${formattedDate} · ${formattedTime}`; // e.g., "May 3, 2025 · 05:53"
+        const estOptions = { timeZone: 'America/New_York' };
+        const formattedDate = reportDate.toLocaleDateString(undefined, { ...estOptions, year: 'numeric', month: 'short', day: 'numeric' });
+        const formattedTime = reportDate.toLocaleTimeString(undefined, { ...estOptions, hour: '2-digit', minute: '2-digit', hour12: true });
+        const friendlyTimestamp = `${formattedDate} · ${formattedTime} EST`;
         
         // Get report title or fallback
         const reportTitle = report.title || 

@@ -3,7 +3,8 @@ Report model for storing final generated reports.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any, TypedDict
+from typing import Dict, List, Optional, Any
+from typing_extensions import TypedDict
 from pymongo.collection import Collection
 from pymongo import ReturnDocument # Import ReturnDocument for upsert
 
@@ -72,7 +73,6 @@ def save_report(report: Report) -> Optional[Report]:
         return_document=ReturnDocument.AFTER # Return the modified document
     )
     
-    # 'result' will contain the document after the update/insert
     return result
 
 
@@ -140,4 +140,19 @@ def get_recent_reports(limit: int = 3) -> List[Report]:
     """
     collection = get_reports_collection()
     reports = collection.find().sort("timestamp", -1).limit(limit)
-    return list(reports) 
+    return list(reports)
+
+
+def delete_report_by_session_id(session_id: str) -> bool:
+    """
+    Deletes a report from the database by its session_id.
+
+    Args:
+        session_id (str): The session_id of the report to delete.
+
+    Returns:
+        bool: True if a report was deleted, False otherwise.
+    """
+    collection = get_reports_collection()
+    result = collection.delete_one({"session_id": session_id})
+    return result.deleted_count > 0 

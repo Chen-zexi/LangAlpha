@@ -894,6 +894,17 @@ submitBtn.addEventListener('click', async () => {
     // REMOVED report-related variable resets (currentReportId, localStorage, etc.)
     window.plannerTitle = null;
 
+    // --- Role Check --- START
+    console.log(`[Workflow Submit] window.currentUserRole is: '${window.currentUserRole}'`);
+    if (window.currentUserRole === 'visitor') {
+        console.log("[Workflow Submit] User is 'visitor'. Showing restriction modal.");
+        showWorkflowRestrictionModal();
+        submitBtn.innerHTML = '<div class="flex items-center justify-center gap-2 z-10"><span>Get Investment Insights</span></div>'; // Reset button text
+        submitBtn.disabled = false; // Re-enable button
+        return; // Prevent workflow execution
+    }
+    // --- Role Check --- END
+
     // Create an initial state message directly inside the results container
     const initialMessage = document.createElement('div');
     initialMessage.className = 'px-4 py-2 italic text-gray-600 dark:text-gray-400 text-sm flex items-center';
@@ -1493,4 +1504,47 @@ function loadRecentReports() {
             `;
             throw error; // Re-throw so calling code knows it failed
         });
+}
+
+// Function to show a modal for workflow restriction
+function showWorkflowRestrictionModal() {
+    // Check if modal already exists to prevent duplicates
+    if (document.getElementById('workflow-restriction-modal')) {
+        return;
+    }
+
+    const modalHTML = `
+        <div id="workflow-restriction-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
+                <div class="mt-3 text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900 mb-3">
+                        <i class="fa-solid fa-triangle-exclamation text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Workflow Restricted</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            Your current account status ('${window.currentUserRole}') does not permit running new AI workflows. 
+                            Please contact support or upgrade your account for full access.
+                        </p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="close-restriction-modal-btn" class="px-4 py-2 bg-primary-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const closeButton = document.getElementById('close-restriction-modal-btn');
+    const modalElement = document.getElementById('workflow-restriction-modal');
+    
+    if (closeButton && modalElement) {
+        closeButton.addEventListener('click', () => {
+            modalElement.remove();
+        });
+    }
 } 

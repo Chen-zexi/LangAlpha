@@ -208,6 +208,9 @@
         <i class="fa-solid fa-arrow-up"></i>
     </button>
 
+    <script>
+        window.currentUserRole = "{{ user.role.value if user else 'visitor' }}";
+    </script>
     <!-- External JavaScript -->
     <script src="/static/js/settings.js"></script>
 </body>
