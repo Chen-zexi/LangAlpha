@@ -26,7 +26,6 @@ class WorkflowConfig(BaseModel):
     stream_config: Optional[StreamConfig] = Field(default_factory=StreamConfig)
     budget: Optional[Literal["low", "medium", "high"]] = "low"
     llm_configs: Optional[LLMConfigs] = None
-    active_model_config: ModelConfig
 
 # New Schemas for Ginzu Analysis API
 class GinzuAnalysisRequest(BaseModel):
