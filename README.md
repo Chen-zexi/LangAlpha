@@ -1,28 +1,27 @@
 # LangAlpha
 
+> **⚠️ Notice:** This repository is early work and is **no longer considered best practice** as of March 26, 2026. If you are interested in an Agent for Finance, please visit [ginlix-ai/LangAlpha](https://github.com/ginlix-ai/LangAlpha) for the most recent work.
+
 ## Table of Contents
-- [Key Technologies](#key-technologies)
-- [Core Functionality: Market Intelligence Agent Workflow](#core-functionality-market-intelligence-agent-workflow)
-- [Damodaran Valuation Model](#damodaran-valuation-model)
-- [Trading Strategy](#trading-strategy)
-- [Repository Structure](#repository-structure)
-- [Example Analysis](#example-analysis)
-- [General Guide for Usage](#general-guide-for-usage)
-  - [How to get better result](#how-to-get-better-result)
-  - [What LangAlpha Does Well](#what-langalpha-does-well)
-  - [Limitations to Keep in Mind](#limitations-to-keep-in-mind)
-- [Getting Started](#getting-started)
-  - [Clone the Repository](#1-clone-the-repository)
-  - [Docker Setup with Web UI (Recommended)](#2-docker-setup-with-web-ui-recommended)
-  - [Manual Setup without Web UI and Docker](#manual-setup-without-web-ui-and-docker)
-    - [Environment Setup](#1-environment-setup)
-    - [Run the Application](#2-run-the-application)
-- [Contributors and contributions](#contributors-and-contributions)
-- [Acknowledgements](#acknowledgements)
-- [Citation](#citation)
+- [LangAlpha](#langalpha)
+  - [Table of Contents](#table-of-contents)
+  - [Key Technologies](#key-technologies)
+  - [Core Functionality: Market Intelligence Agent Workflow](#core-functionality-market-intelligence-agent-workflow)
+  - [Damodaran Valuation Model:](#damodaran-valuation-model)
+  - [Trading Strategy:](#trading-strategy)
+  - [Repository Structure](#repository-structure)
+  - [Example Analysis](#example-analysis)
+  - [General Guide for Usage:](#general-guide-for-usage)
+    - [How to get better result:](#how-to-get-better-result)
+    - [What LangAlpha Does Well:](#what-langalpha-does-well)
+    - [Limitations to Keep in Mind:](#limitations-to-keep-in-mind)
+  - [Data Accessible by Agent](#data-accessible-by-agent)
+  - [Getting Started](#getting-started)
+    - [1. Clone the Repository](#1-clone-the-repository)
+    - [2. Docker Setup with Web UI (Recommended)](#2-docker-setup-with-web-ui-recommended)
 
  **Note**: Stocksflags is now renamed to LangAlpha
- 
+
 LangAlpha is a multi-agent AI equity analysis tool designed to provide comprehensive insights into the stock market. It leverages Large Language Models (LLMs) and agentic workflows to automate data gathering, processing, and analysis.
 
 ## Key Technologies
@@ -82,7 +81,7 @@ Below is an image demonstrate the current agent workflow
 LangAlpha/
 ├── data                                  # Data directory
 ├── models                                # Valuation Model directory
-├── notebooks/                            # Jupyter notebooks for demonstration               
+├── notebooks/                            # Jupyter notebooks for demonstration
 ├── src/                                    # Source code
 |    ├── agent/                           # Agent directory
 |    |    └── market_intelligence_agent/    # Market Intelligence Agent
@@ -105,7 +104,7 @@ LangAlpha/
 |    |    └── Dockerfile                    # Dockerfile for web service
 |    |
 |    └──utlitity/                      # Tools for data retriving
-|  
+|
 └── ...
 ```
 
@@ -232,7 +231,7 @@ This project is configured to run using Docker Compose, which simplifies the set
         *   Set up the necessary network connections between the services.
 
 4.  **Access the Application:** Once the containers are running, you should be able to access the web application by navigating to `http://localhost:8000` (or the port specified in `docker-compose.yml` and the web service configuration) in your web browser.
- 
+
     **Note:** Browser is not supported in Web UI. Please use the local version instead.
 
 5.  **Stopping the Application:**
