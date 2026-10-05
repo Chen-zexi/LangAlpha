@@ -1,6 +1,6 @@
 # LangAlpha
 
-> **⚠️ Notice:** This repository is early work and is **no longer considered best practice** as of March 26, 2026. If you are interested in an Agent for Finance, please visit [ginlix-ai/LangAlpha](https://github.com/ginlix-ai/LangAlpha) for the most recent work.
+> **⚠️ Note (October 4, 2026):** This repository is an early exploration and proof of concept. If you are interested in AI agents for financial research, please visit [LangAlpha](https://langalpha.ai), or [ginlix-ai/LangAlpha](https://github.com/ginlix-ai/LangAlpha) for the open-source work.
 
 ## Table of Contents
 - [LangAlpha](#langalpha)
